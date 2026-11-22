@@ -3,9 +3,10 @@ CREATE TABLE "api_keys" (
 	"user_id" uuid NOT NULL,
 	"name" text NOT NULL,
 	"permission" text NOT NULL,
-	"key_hash" text NOT NULL,
+	"key" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "api_keys_key_hash_unique" UNIQUE("key_hash")
+	"deleted_at" timestamp with time zone,
+	CONSTRAINT "api_keys_key_unique" UNIQUE("key")
 );
 --> statement-breakpoint
 CREATE TABLE "accounts" (

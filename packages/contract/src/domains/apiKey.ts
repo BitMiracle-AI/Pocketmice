@@ -8,8 +8,9 @@ import { operation } from '../operation.ts';
 // - a key whose permission is read calls reads only;
 // - no key calls an operation whose access is session (see operation.ts).
 // A key is sent with every request in the Authorization header, as a bearer token.
-// The key itself is shown once, when it is made. The server keeps only what it takes to recognise it, so a key that
-// was lost cannot be shown again: delete it and make another.
+// The person who made a key can see the key itself again whenever they are signed in, to copy it once more. Only
+// they can: the operations on keys are for the person themselves, so no key reads a key.
+// A key that was deleted stops working for good, and is not listed any more.
 
 /** What a key may do: read is reads only; write is reads and writes */
 export const API_KEY_PERMISSIONS = ['read', 'write'] as const;
@@ -37,27 +38,29 @@ export function bearerToken(authorization: string | null | undefined): string | 
   return /^Bearer +(\S+)$/i.exec(authorization ?? '')?.[1] ?? null;
 }
 
-/** A key, as the person who made it sees it afterwards: without the key itself */
+/** A key, as the person who made it sees it */
 const apiKey = z.object({
   id: z.string(),
   name: z.string(),
   permission: apiKeyPermission,
+  /** The key itself: what a request is sent with */
+  key: z.string(),
   /** When it was made: an ISO 8601 time in UTC */
   createdAt: z.iso.datetime()
 });
 
-/** Makes a key for the caller. key is the key itself, and this is the only time it is shown */
+/** Makes a key for the caller */
 export const createApiKey = operation({
   name: 'createApiKey',
   kind: 'write',
   access: 'session',
   belongsTo: 'none',
   input: z.object({ name: apiKeyName, permission: apiKeyPermission }),
-  output: z.object({ apiKey, key: z.string() }),
+  output: z.object({ apiKey }),
   errors: []
 });
 
-/** The caller's keys, the oldest first */
+/** The caller's keys that work, the oldest first. A key that was deleted is not among them */
 export const getApiKeys = operation({
   name: 'getApiKeys',
   kind: 'read',
@@ -69,8 +72,9 @@ export const getApiKeys = operation({
 });
 
 /**
- * Deletes one of the caller's keys: from then on a request sent with it is from nobody.
- * NOT_FOUND: the caller has no such key.
+ * Deletes one of the caller's keys: from then on a request sent with it is from nobody, and nothing brings the key
+ * back.
+ * NOT_FOUND: the caller has no such key, or deleted it before.
  */
 export const deleteApiKey = operation({
   name: 'deleteApiKey',

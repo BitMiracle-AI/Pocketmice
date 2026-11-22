@@ -425,7 +425,9 @@ test('an API key made while signed in calls as that person, with no cookie; a ke
   const account = newAccount();
   const cookie = sessionCookie(await post(SIGN_UP_PATH, account));
   assert.ok(cookie);
-  const made = (await call('createApiKey', { name: 'Research agent', permission: 'read' }, cookie)) as { key: string };
+  const made = (await call('createApiKey', { name: 'Research agent', permission: 'read' }, cookie)) as {
+    apiKey: { key: string };
+  };
 
   /** The email address of whoever this key calls as, or the error code. Sent the way an agent does: no web page */
   async function calledWith(key: string, withCookie: string | null) {
@@ -437,7 +439,7 @@ test('an API key made while signed in calls as that person, with no cookie; a ke
     return body.error?.code ?? body.email;
   }
 
-  assert.equal(await calledWith(made.key, null), account.email);
+  assert.equal(await calledWith(made.apiKey.key, null), account.email);
   const noSuchKey = `pm_${'x'.repeat(43)}`;
   assert.equal(await calledWith(noSuchKey, null), 'UNAUTHENTICATED');
   // The session beside it is not looked at

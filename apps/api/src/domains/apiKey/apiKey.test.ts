@@ -25,15 +25,14 @@ import { eq } from 'drizzle-orm';
 import type { CurrentUser } from '../../http/operation.ts';
 import { NOBODY, useTestApi } from '../testing.ts';
 import { identifyCaller } from './identifyCaller.ts';
-import { hashKey } from './key.ts';
 
 const api = useTestApi();
 
-/** Makes a key as this person, signed in, and returns the key itself and what is told about it afterwards */
+/** Makes a key as this person, signed in, and returns what they are told about it, and the key itself on its own */
 async function makeKey(person: CurrentUser, permission: ApiKeyPermission, name = 'Research agent') {
   const result = await api.as(person)(createApiKey, { name, permission });
   assert.ok(result.ok, `createApiKey should have worked: ${JSON.stringify(result)}`);
-  return result.data;
+  return { apiKey: result.data.apiKey, key: result.data.apiKey.key };
 }
 
 /** Makes a space as this person and returns its id */
@@ -57,30 +56,33 @@ test('createApiKey makes a key under the name, trimmed, and shows the key itself
   assert.notEqual((await makeKey(ada, 'read')).key, key);
 });
 
-test('the database keeps the hash of a key and not the key', async () => {
+test('the database keeps the key as it is, in a row of the person who made it', async () => {
   const ada = await api.addPerson('Ada');
 
   const { apiKey, key } = await makeKey(ada, 'write');
 
   const [row] = await api.db.select().from(apiKeys).where(eq(apiKeys.id, apiKey.id));
   assert.ok(row);
-  assert.equal(row.keyHash, hashKey(key));
+  assert.equal(row.key, key);
   assert.equal(row.userId, ada.id);
-  assert.equal(JSON.stringify(row).includes(key.slice(API_KEY_PREFIX.length)), false);
+  assert.equal(row.deletedAt, null);
 });
 
-test('getApiKeys lists the keys of the caller, the oldest first, without the keys themselves and none of anyone else', async () => {
+test('getApiKeys lists the keys of the caller, the oldest first, each with the key itself to copy again, and none of anyone else', async () => {
   const ada = await api.addPerson('Ada');
   const grace = await api.addPerson('Grace');
   const first = await makeKey(ada, 'read', 'Reader');
   await makeKey(grace, 'write', 'Hers');
   const second = await makeKey(ada, 'write', 'Writer');
 
-  assert.deepEqual(await api.as(ada)(getApiKeys, {}), {
-    ok: true,
-    data: { apiKeys: [first.apiKey, second.apiKey] }
-  });
-  assert.deepEqual(Object.keys(first.apiKey).sort(), ['createdAt', 'id', 'name', 'permission']);
+  const listed = await api.as(ada)(getApiKeys, {});
+
+  assert.deepEqual(listed, { ok: true, data: { apiKeys: [first.apiKey, second.apiKey] } });
+  assert.deepEqual(Object.keys(first.apiKey).sort(), ['createdAt', 'id', 'key', 'name', 'permission']);
+  // The key shown again is the key that works
+  const shownAgain = listed.ok ? listed.data.apiKeys.map((apiKey) => apiKey.key) : [];
+  assert.deepEqual(shownAgain, [first.key, second.key]);
+  assert.equal((await api.withKey(shownAgain[0] ?? '')(getProfile, {})).ok, true);
 });
 
 test('an agent with a key is the person whose key it is: it sees their profile and their spaces, in the role they have', async () => {
@@ -204,6 +206,26 @@ test('deleteApiKey stops the key from working: a request sent with it is from no
   assert.equal(!after.ok && after.code, 'UNAUTHENTICATED');
   assert.equal((await api.withKey(kept.key)(getProfile, {})).ok, true);
   assert.deepEqual(await api.as(ada)(getApiKeys, {}), { ok: true, data: { apiKeys: [kept.apiKey] } });
+});
+
+test('a deleted key keeps its row, marked with the time, and deleting it again is NOT_FOUND', async () => {
+  const ada = await api.addPerson('Ada');
+  const { apiKey, key } = await makeKey(ada, 'write', 'Gone');
+  const before = Date.now();
+  await api.as(ada)(deleteApiKey, { apiKeyId: apiKey.id });
+
+  const [row] = await api.db.select().from(apiKeys).where(eq(apiKeys.id, apiKey.id));
+  // What was done with the key can still name it
+  assert.equal(row?.name, 'Gone');
+  assert.ok(row?.deletedAt && Math.abs(row.deletedAt.getTime() - before) < 60_000);
+
+  const again = await api.as(ada)(deleteApiKey, { apiKeyId: apiKey.id });
+  assert.equal(!again.ok && again.code, 'NOT_FOUND');
+  // The second try changed nothing: the time is the one of the first, and the key still does not work
+  const [after] = await api.db.select().from(apiKeys).where(eq(apiKeys.id, apiKey.id));
+  assert.deepEqual(after?.deletedAt, row.deletedAt);
+  const called = await api.withKey(key)(getProfile, {});
+  assert.equal(!called.ok && called.code, 'UNAUTHENTICATED');
 });
 
 test("deleting a key that is not the caller's is NOT_FOUND, and the key keeps working", async () => {
