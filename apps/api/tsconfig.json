@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "types": ["node"],
+    // main.ts reads the version of the server from package.json
+    "resolveJsonModule": true
+  },
+  "include": ["src"]
+}

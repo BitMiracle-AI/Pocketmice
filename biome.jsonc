@@ -1,0 +1,112 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": ["**"]
+  },
+  "linter": {
+    "rules": {
+      "suspicious": {
+        // Imports between files must not form a cycle: A imports B, and B imports A back, directly or through other
+        // files. In a cycle, one of the files can be handed a value that is not initialised yet when it loads.
+        // Type-only imports do not count: they are gone at run time.
+        // Two things are harmless at run time and reported anyway: a dynamic import() counts as an import, and so do
+        // two components that render each other. Fix a report by moving what both sides need into a third file.
+        // The rule looks at files, not folders: the domains of the api may import from each other, as long as the
+        // files themselves do not loop.
+        "noImportCycles": "error"
+      },
+      "style": {
+        // File names: code files are camelCase (getServerInfo.ts, checkWorkspace.mjs).
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["camelCase"]
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      // contract and client are shared by every kind of caller: a web page, a phone app and Node all import them,
+      // so they cannot use Node's built-in modules. Tests only run in Node and are exempt.
+      "includes": ["packages/contract/src/**", "packages/client/src/**", "!**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noNodejsModules": "error"
+          }
+        }
+      }
+    },
+    {
+      // The next two blocks are the import rules inside the api's src:
+      // 1. Direction. domains (the product) imports from http; http never imports from domains.
+      // 2. Neither reads environment variables: no process.env and no import of env.ts. What they need is passed in
+      //    by main.ts, so a test can build the same thing with its own values.
+      // Paths are written relative (starting with ../). Written as **/domains/**, the rule would also catch a path
+      // inside a package, like @pocketmice/contract/domains/server.
+      "includes": ["apps/api/src/domains/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noProcessEnv": "error",
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**/env.ts"],
+                    "message": "Code in domains/ does not read environment variables. Take what you need as a parameter: main.ts passes it in."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/api/src/http/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noProcessEnv": "error",
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**/domains/**"],
+                    "message": "Code in http/ must not import from domains/."
+                  },
+                  {
+                    "group": ["../**/env.ts"],
+                    "message": "Code in http/ does not read environment variables. Take what you need as a parameter: main.ts passes it in."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "none"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+# Internal development files, never committed: the rules the maintainers'
+# coding agents read. Public-facing docs (README, CONTRIBUTING, …) are separate
+# deliverables written on their own.
+AGENTS.md
+CLAUDE.md
+
+# Secrets and real env files (only *.example may be committed)
+.env
+.env.*
+!.env.example
+
+# Node / pnpm
+node_modules/
+dist/
+
+# Scratch pages and scripts that only ever run on one machine
+/apps/*/temp/
+
+# System and editors
+.DS_Store
+.idea/
+.vscode/
