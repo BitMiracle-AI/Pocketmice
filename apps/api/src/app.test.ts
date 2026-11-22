@@ -24,7 +24,7 @@ function setup() {
     },
     webOrigins: [WEB_ORIGIN],
     implementations: [],
-    currentUser: async () => ({ user: null }),
+    identifyCaller: async () => ({ user: null }),
     spaceMembership: async () => null,
     reportError: () => {}
   });

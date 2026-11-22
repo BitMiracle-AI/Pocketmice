@@ -52,6 +52,17 @@ test('a call is a POST of the input as JSON to the address of the operation', as
   ]);
 });
 
+test("the fetch is called on its own, not as the config's: a browser's fetch passed in as it is works", async () => {
+  // What a browser's fetch does when it is called as a method of anything but the window
+  const browserFetch: ApiClientConfig['fetch'] = async function (this: unknown) {
+    if (this !== undefined) throw new TypeError('Illegal invocation');
+    return { status: 200, text: async () => '{"title":"Groceries"}' };
+  };
+  const call = createApiClient({ baseUrl: 'https://api.example.com', fetch: browserFetch, reportError: () => {} });
+
+  assert.deepEqual(await call(getNote, { noteId: NOTE }), { ok: true, data: { title: 'Groceries' } });
+});
+
 test('a field the server added later, unknown to this side, comes through', async () => {
   const { call } = setup({ status: 200, body: '{"title":"Groceries","pinned":true}' });
 

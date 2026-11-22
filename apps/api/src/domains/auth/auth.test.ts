@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+import { apiKeyAuthorization } from '@pocketmice/contract/domains/apiKey';
 import { SIGN_IN_PATH, SIGN_OUT_PATH, SIGN_UP_PATH } from '@pocketmice/contract/domains/auth';
 import { connectDb, type Db } from '@pocketmice/db';
 import { accounts, sessions, users } from '@pocketmice/db/schema/auth';
@@ -9,12 +10,14 @@ import { createTestDb, type TestDb } from '@pocketmice/db/testing';
 import { eq } from 'drizzle-orm';
 import { createApp } from '../../app.ts';
 import { requireEnv } from '../../env.ts';
+import { identifyCaller } from '../apiKey/identifyCaller.ts';
 import { domainImplementations } from '../implementations.ts';
 import { prepareSignIn } from '../prepareSignIn.ts';
 import { findMembership } from '../space/findMembership.ts';
-import { createAuth, currentUserFrom, MAX_AUTH_INPUT_BYTES, SIGN_IN_ATTEMPT_LIMIT } from './auth.ts';
+import { createAuth, identifyBySession, MAX_AUTH_INPUT_BYTES, SIGN_IN_ATTEMPT_LIMIT } from './auth.ts';
 
-// The sign-in library for real, on a temporary database of this file.
+// The sign-in library for real, on a temporary database of this file. The api around it is put together the way
+// main.ts does it, so what is tested here is what runs.
 const WEB_ORIGIN = 'http://localhost:11211';
 const SESSION_COOKIE = 'pocketmice.session_token';
 
@@ -59,7 +62,7 @@ function setup({ prepare, authDb = db }: Options = {}) {
     auth,
     webOrigins: [WEB_ORIGIN],
     implementations: domainImplementations({ db, version: '1.2.3' }),
-    currentUser: currentUserFrom(auth),
+    identifyCaller: identifyCaller(db, identifyBySession(auth)),
     spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
     reportError
   });
@@ -391,4 +394,53 @@ test('a session that was signed out leaves no row behind', async () => {
   await post(SIGN_OUT_PATH, {}, { cookie });
 
   assert.equal((await db.select().from(sessions).where(eq(sessions.userId, user.id))).length, 0);
+});
+
+test('a session last extended over a day ago is extended when it is used, and the browser is handed the new cookie', async () => {
+  const { post } = setup();
+  const account = newAccount();
+  const cookie = sessionCookie(await post(SIGN_UP_PATH, account));
+  const [user] = await db.select().from(users).where(eq(users.email, account.email));
+  assert.ok(user && cookie);
+  // A session started just now is left as it is
+  assert.equal(sessionCookie(await post('/api/getProfile', {}, { cookie })), null);
+
+  // A session lasts seven days from when it was last extended: this one has five left
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const inFiveDays = new Date(Date.now() + 5 * DAY_MS);
+  await db.update(sessions).set({ expiresAt: inFiveDays }).where(eq(sessions.userId, user.id));
+
+  const response = await post('/api/getProfile', {}, { cookie });
+
+  assert.equal(response.status, 200);
+  // Without the new cookie the browser keeps the one from the day of sign-in, which runs out: someone who comes
+  // every day would still be signed out after a week
+  assert.ok(sessionCookie(response), 'the response should hand the browser a new cookie');
+  const [session] = await db.select().from(sessions).where(eq(sessions.userId, user.id));
+  assert.ok(session && session.expiresAt.getTime() > inFiveDays.getTime() + DAY_MS, 'the session should be extended');
+});
+
+test('an API key made while signed in calls as that person, with no cookie; a key that does not exist is nobody, also beside a cookie that is signed in', async () => {
+  const { post, call, profile } = setup();
+  const account = newAccount();
+  const cookie = sessionCookie(await post(SIGN_UP_PATH, account));
+  assert.ok(cookie);
+  const made = (await call('createApiKey', { name: 'Research agent', permission: 'read' }, cookie)) as { key: string };
+
+  /** The email address of whoever this key calls as, or the error code. Sent the way an agent does: no web page */
+  async function calledWith(key: string, withCookie: string | null) {
+    const headers = { origin: null, cookie: withCookie, authorization: apiKeyAuthorization(key) };
+    const body = (await (await post('/api/getProfile', {}, headers)).json()) as {
+      email?: string;
+      error?: { code: string };
+    };
+    return body.error?.code ?? body.email;
+  }
+
+  assert.equal(await calledWith(made.key, null), account.email);
+  const noSuchKey = `pm_${'x'.repeat(43)}`;
+  assert.equal(await calledWith(noSuchKey, null), 'UNAUTHENTICATED');
+  // The session beside it is not looked at
+  assert.equal(await calledWith(noSuchKey, cookie), 'UNAUTHENTICATED');
+  assert.notEqual(await profile(cookie), 'UNAUTHENTICATED');
 });

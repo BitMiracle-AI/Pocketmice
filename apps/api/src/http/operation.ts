@@ -111,7 +111,7 @@ export interface OperationDeps {
    * Tells who is calling from the request headers, and whether it is the person themselves or an API key of
    * theirs. Asked once for every call of an operation that is not public.
    */
-  currentUser: (headers: Headers) => Promise<Identified>;
+  identifyCaller: (headers: Headers) => Promise<Identified>;
   /**
    * What this person is in this space. Null when the space does not exist for them: there is no such space, or
    * they are not a member. Asked once for every call of an operation of a space.
@@ -190,7 +190,7 @@ async function admit(
 
   let user: CurrentUser | null = null;
   if (operation.access !== 'public') {
-    const identified = await deps.currentUser(c.req.raw.headers);
+    const identified = await deps.identifyCaller(c.req.raw.headers);
     // Whoever identified the caller has something for the client (a renewed cookie, say): it goes onto the response
     // now, and stays there however the rest of this request turns out
     identified.responseHeaders?.forEach((value, name) => {

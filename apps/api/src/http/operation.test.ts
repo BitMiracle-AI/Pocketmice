@@ -102,7 +102,7 @@ function setup({ user = ADA, apiKey, responseHeaders, membership = OWNER, rename
         return { token: 'abc' };
       })
     ],
-    currentUser: async () => {
+    identifyCaller: async () => {
       identified += 1;
       return { user, apiKey, responseHeaders };
     },
@@ -491,7 +491,7 @@ test('the same operation implemented twice is an error when the app is built', (
         auth: { handler: async () => new Response(null) },
         webOrigins: [WEB_ORIGIN],
         implementations: [twice, twice],
-        currentUser: async () => ({ user: null }),
+        identifyCaller: async () => ({ user: null }),
         spaceMembership: async () => null,
         reportError: () => {}
       }),

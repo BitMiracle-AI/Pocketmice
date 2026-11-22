@@ -48,7 +48,8 @@ export const getMembers = operation({
 The definition also says who may call the operation. The server checks all of it in one place, before the
 implementation runs:
 
-- `kind` is a read or a write. A read-only API key calls reads only.
+- `kind` is a read or a write, and a read is what a name starting with `get` is. A read-only API key calls reads
+  only.
 - `access` is `public` for anyone, `signed-in` for a person (signed in, or through one of their API keys), and
   `session` for the person themselves, never an API key.
 - `belongsTo` says whether it works inside a space. If it does, the caller must be a member of that space, in the

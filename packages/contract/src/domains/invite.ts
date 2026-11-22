@@ -10,6 +10,8 @@ import { space } from './space.ts';
 // owner deletes it. Nothing is emailed, and nobody is put into a space without doing something themselves.
 // The link carries the id of the invite, and the id is all it takes to join: an invite's id is a secret between
 // the owner and the people the link was given to.
+// A link that still works lets in whoever has it, someone the owner has since removed included. An owner who wants
+// a person kept out deletes the invites that person may have.
 
 /** An invite works for this many days after it was made */
 export const INVITE_LIFETIME_DAYS = 7;

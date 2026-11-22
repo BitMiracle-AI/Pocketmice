@@ -4,7 +4,7 @@ import { createAdaptorServer } from '@hono/node-server';
 import manifest from '../package.json' with { type: 'json' };
 import { createApp } from './app.ts';
 import { identifyCaller } from './domains/apiKey/identifyCaller.ts';
-import { currentUserFrom } from './domains/auth/auth.ts';
+import { identifyBySession } from './domains/auth/auth.ts';
 import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
 import { portFromEnv } from './env.ts';
@@ -20,7 +20,7 @@ const app = createApp({
   webOrigins,
   implementations: domainImplementations({ db, version: manifest.version }),
   // By the API key a request carries, or else by who is signed in
-  currentUser: identifyCaller(db, currentUserFrom(auth)),
+  identifyCaller: identifyCaller(db, identifyBySession(auth)),
   spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
   reportError: logInternalError
 });
@@ -29,7 +29,9 @@ const app = createApp({
 // HTTP server
 const server = createAdaptorServer({ fetch: app.fetch }) as Server;
 
-// Listens on this machine only: requests from outside come in through a reverse proxy.
+// Listens on this machine only: requests from outside come in through a reverse proxy. The proxy must set
+// x-forwarded-for to the address each request came from: the limit on sign-in attempts counts by it (see rateLimit
+// in domains/auth/auth.ts).
 server.listen({ port, host: '127.0.0.1' }, () => {
   console.log(`api listening on http://localhost:${port}`);
 });

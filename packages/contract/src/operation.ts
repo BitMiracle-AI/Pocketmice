@@ -7,11 +7,15 @@ import type { SpaceRole } from './spaceRole.ts';
  * The name of an operation is a verb followed by a noun, in camelCase: getServerInfo, createSpace. The code, the
  * address and the logs all use this one word.
  * A read always starts with get: singular for one thing, plural for several — never list or query. An operation
- * that changes something uses the verb the product uses, like leaveSpace.
+ * that changes something uses the verb the product uses, like leaveSpace, and never get: operation() refuses a
+ * definition whose name and kind disagree.
  * At least two words: a one-word name is refused, so the address of an operation can never collide with another
  * entrance under /api/, like /api/health or /api/auth (the sign-in library).
  */
 const NAME = /^[a-z][a-z0-9]*(?:[A-Z][a-z0-9]*)+$/;
+
+/** The name of a read: get, then the noun */
+const READ_NAME = /^get[A-Z]/;
 
 /**
  * The definition of one operation. The server implements it and every caller calls it from this one definition:
@@ -30,7 +34,7 @@ export interface Operation<
   readonly name: string;
   /**
    * Read or write. A read changes nothing, so calling it again is always safe. An API key that is read-only calls
-   * reads only.
+   * reads only, so a write that said read here would be open to it: the name has to say the same (see NAME).
    */
   readonly kind: Kind;
   /**
@@ -90,6 +94,7 @@ interface OperationsOfASpaceRequireSignIn {
 /**
  * Defines an operation. A definition that is wrong fails here, when the file loads, not when someone calls it:
  * - the name breaks the rule above;
+ * - the name says read (it starts with get) and the kind says write, or the other way round;
  * - an input field called id, or ending in Id, is not the shared id (see id.ts).
  */
 export function operation<
@@ -107,6 +112,11 @@ export function operation<
       `Operation name "${definition.name}" is invalid. Write it as a verb followed by a noun in camelCase, like getServerInfo.`
     );
   }
+  if (READ_NAME.test(definition.name) !== (definition.kind === 'read')) {
+    throw new Error(
+      `Operation ${definition.name} is a ${definition.kind}, and its name says otherwise. A read is named get…, and nothing else is.`
+    );
+  }
   for (const [field, schema] of Object.entries(definition.input.shape)) {
     if ((field === 'id' || field.endsWith('Id')) && schema !== id) {
       throw new Error(
@@ -116,12 +126,6 @@ export function operation<
   }
   return definition;
 }
-
-/**
- * A read. Calling it again is safe, so only its result may be cached or fetched again automatically.
- * Code that should only ever be given a read takes this type: passing it a write fails the type check.
- */
-export type ReadOperation = Operation<'read'>;
 
 /** Whether value is the definition of an operation. Used to pick the operations out of what a file exports */
 export function isOperation(value: unknown): value is Operation {

@@ -82,7 +82,7 @@ export const updateMember = operation({
 
 /**
  * Takes a member out of a space. From then on the space does not exist for them, nor for an agent calling with
- * one of their API keys.
+ * one of their API keys — unless they join again with an invite that still works (see invite.ts).
  * NOT_FOUND: the space has no such member. CONFLICT: the member is the owner, who cannot be removed.
  */
 export const removeMember = operation({

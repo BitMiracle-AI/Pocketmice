@@ -53,6 +53,9 @@ export function createApiClient(config: ApiClientConfig) {
     throw new Error(`API base URL "${config.baseUrl}" is invalid. Write it like https://api.example.com.`);
   }
   const headers = { 'content-type': 'application/json' };
+  // Taken out of the config and called on its own. A browser's fetch only runs as the window's: called as
+  // config.fetch it throws, a TypeError, which below would be taken for a server that cannot be reached
+  const send = config.fetch;
 
   return async function call<Op extends Operation>(operation: Op, input: InputOf<Op>): Promise<Result<Op>> {
     const url = new URL(operationPath(operation), config.baseUrl).href;
@@ -75,7 +78,7 @@ export function createApiClient(config: ApiClientConfig) {
     let status: number;
     let text: string;
     try {
-      const response = await config.fetch(url, { method: 'POST', headers, body });
+      const response = await send(url, { method: 'POST', headers, body });
       status = response.status;
       text = await response.text();
     } catch (thrown) {

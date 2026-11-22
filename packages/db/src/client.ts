@@ -51,6 +51,3 @@ export function connectDb(url: string, options: ConnectOptions = {}) {
 }
 
 export type Db = ReturnType<typeof connectDb>;
-
-/** The database object inside a transaction: the one db.transaction hands to its callback */
-export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];

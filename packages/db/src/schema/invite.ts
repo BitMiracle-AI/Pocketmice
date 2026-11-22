@@ -3,7 +3,7 @@ import { users } from './auth.ts';
 import { spaces } from './space.ts';
 
 /** The roles an invite can give. owner is not among them: an invite never makes an owner */
-export const INVITE_ROLES = ['editor', 'viewer'] as const;
+export const INVITE_ROLES = ['viewer', 'editor'] as const;
 
 /**
  * The invites to spaces. A row is an invite that was made and not deleted; it works until expiresAt. Whoever is

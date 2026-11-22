@@ -25,8 +25,8 @@ export async function migrateDb(url: string): Promise<void> {
   const db = drizzle({ connection: { url, max: 1, onnotice: () => {}, connection: SESSION_SETTINGS } });
   try {
     // The migration tool does not guard against running twice at once: it reads how far the database has got, then
-    // applies what comes after, with no lock between the two steps. A server applies migrations when it starts, and
-    // two new servers started almost together would apply the same migration twice.
+    // applies what comes after, with no lock between the two steps. A deployed server applies migrations before it
+    // starts the api, and two new servers started almost together would apply the same migration twice.
     // So a lock is taken in the database first, and whoever does not get it waits. It is not released by hand: the
     // database releases it when the connection ends (the end below, or the process dying half way).
     await db.execute(sql`select pg_advisory_lock(${MIGRATION_LOCK})`);

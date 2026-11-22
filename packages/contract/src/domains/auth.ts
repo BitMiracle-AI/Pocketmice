@@ -5,6 +5,9 @@ import { profileName } from './profile.ts';
 // The addresses below belong to the sign-in library (they are under /api/auth) and are not operations: they are not
 // defined with operation(), a success sets the cookie that proves who is calling, and a failure has the library's
 // body, { code, message }, with a code the library decides (INVALID_EMAIL_OR_PASSWORD and the like).
+// A body that does not fit the rule written here never reaches the library: the server refuses it in the same
+// shape, with the code INVALID_BODY. One failure has no code: a request that comes too often is status 429, with a
+// message alone.
 // What each address accepts is written here once: the server refuses a body that does not fit, and every caller
 // builds its request from the same rule.
 
@@ -35,7 +38,8 @@ export const signUpBody = z.strictObject({ name: profileName, email: signInEmail
 
 /**
  * Signing in: POST. An address with no account and a wrong password get the same answer: status 401 and the
- * library's code INVALID_EMAIL_OR_PASSWORD, so nobody can ask whether an address has an account.
+ * library's code INVALID_EMAIL_OR_PASSWORD. Signing in does not tell whether an address has an account; signing up
+ * does, and has to, as long as an address is not verified by mail.
  * The password is only held to the longest length here: one shorter than the shortest goes to the library, which
  * gives it that same answer and no other.
  */

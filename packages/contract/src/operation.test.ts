@@ -8,7 +8,7 @@ import { isOperation, operation, operationPath } from './operation.ts';
 function named(name: string) {
   return operation({
     name,
-    kind: 'read',
+    kind: name.startsWith('get') ? 'read' : 'write',
     access: 'public',
     belongsTo: 'none',
     input: z.object({}),
@@ -27,6 +27,27 @@ test('a name of one word, or not in camelCase, is refused when the operation is 
   for (const name of ['health', 'auth', 'get', 'GetProfile', 'get_profile', 'get-profile', 'getProfile!', '1get', '']) {
     assert.throws(() => named(name), /Operation name ".*" is invalid/, `"${name}" should be refused`);
   }
+});
+
+test('a name that says read on a write, or a read whose name does not say so, is refused: a read-only key goes by the kind', () => {
+  const define = (name: string, kind: 'read' | 'write') =>
+    operation({
+      name,
+      kind,
+      access: 'public',
+      belongsTo: 'none',
+      input: z.object({}),
+      output: z.object({}),
+      errors: []
+    });
+
+  assert.equal(define('getThings', 'read').kind, 'read');
+  assert.equal(define('deleteThing', 'write').kind, 'write');
+  // A word that only begins with the letters g, e, t is not the verb get
+  assert.equal(define('getawayCar', 'write').kind, 'write');
+
+  assert.throws(() => define('deleteThing', 'read'), /Operation deleteThing is a read, and its name says otherwise/);
+  assert.throws(() => define('getThings', 'write'), /Operation getThings is a write, and its name says otherwise/);
 });
 
 test('an input field called id or ending in Id must be the shared id', () => {

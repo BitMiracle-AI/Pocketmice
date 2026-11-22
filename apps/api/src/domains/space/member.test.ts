@@ -208,3 +208,18 @@ test('leaveSpace: an editor and a viewer leave on their own, and the space no lo
 
   assert.deepEqual(await membersOf(spaceId, ada), [{ userId: ada.id, name: 'Ada', role: 'owner' }]);
 });
+
+test('leaveSpace leaves that one space: the person stays in the others they are in', async () => {
+  const ada = await api.addPerson('Ada');
+  const grace = await api.addPerson('Grace');
+  const notes = await make(ada, 'Notes');
+  const photos = await make(ada, 'Photos');
+  await add(notes, grace, 'editor');
+  await add(photos, grace, 'viewer');
+
+  assert.deepEqual(await api.as(grace)(leaveSpace, { spaceId: notes }), { ok: true, data: {} });
+
+  assert.equal(await membersOf(notes, grace), 'UNKNOWN_SPACE');
+  const spaces = await api.as(grace)(getSpaces, {});
+  assert.deepEqual(spaces.ok && spaces.data.spaces, [{ id: photos, name: 'Photos', role: 'viewer' }]);
+});

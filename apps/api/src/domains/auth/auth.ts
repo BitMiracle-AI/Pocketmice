@@ -59,9 +59,10 @@ export interface AuthDeps {
   /** The address of the api as callers reach it, like http://localhost:11210 */
   apiUrl: string;
   /**
-   * The web pages allowed to call the api. The library refuses a request that carries a cookie and comes from an
-   * origin not on this list. A request without a cookie it does not check; those are kept out by the browser's
-   * rules about other origins, from the same list (see app.ts).
+   * The web pages allowed to call the api. The library refuses a request whose origin is not on this list, or
+   * cannot be told: every request that carries a cookie, and every sign-in and sign-up a browser sends (it knows
+   * one by the headers a browser adds to each request). A sign-in or sign-up with no cookie and none of those
+   * headers does not come from a web page, and is not checked.
    */
   webOrigins: string[];
   /**
@@ -132,6 +133,11 @@ export function createAuth({ db, secret, apiUrl, webOrigins, prepareSignIn, repo
     // The counts are kept in the memory of this process, separately for each "IP and address". The IP is only taken
     // from the x-forwarded-for a reverse proxy reports, and only when it holds a single address; without the header
     // the IP is unknown and everyone shares one count.
+    // So the reverse proxy in front must set x-forwarded-for itself, to the one address the request came from, in
+    // place of whatever the client sent (nginx: proxy_set_header X-Forwarded-For $remote_addr). A proxy that hands
+    // on the client's own header lets anyone escape the limit by naming a new address each time; and when no header
+    // arrives, thirty wrong passwords a minute from anyone keep everyone from signing in. The library warns in the
+    // log the first time it cannot tell the IP.
     // An address with no rule of its own has the library's default: 100 in 10 seconds, counted as described at
     // SIGN_IN_ATTEMPT_LIMIT.
     rateLimit: {
@@ -254,9 +260,10 @@ export function createAuth({ db, secret, apiUrl, webOrigins, prepareSignIn, repo
 }
 
 /**
- * How an operation finds out who is calling: with a valid sign-in cookie on the request, user is that person;
- * otherwise null. "Who is this request from" is asked of the library alone; the layer of the operations does not
- * read cookies itself.
+ * Tells who is signed in on a request: with a valid sign-in cookie, user is that person; otherwise null. It is the
+ * half of identifying a caller that goes by the session; the other half, API keys, is identifyCaller in
+ * domains/apiKey, which is given this one. Who a cookie belongs to is asked of the library alone; the layer of the
+ * operations does not read cookies itself.
  *
  * While identifying, the library may have a cookie for the browser, which is handed on for that layer to add to the
  * response: when a session was last extended a day ago or more, the library extends it and issues a new cookie, so
@@ -265,7 +272,7 @@ export function createAuth({ db, secret, apiUrl, webOrigins, prepareSignIn, repo
  * Only cookies are passed on. The library's other response headers (no caching, say) speak of its own response, not
  * of ours.
  */
-export function currentUserFrom(auth: ReturnType<typeof createAuth>) {
+export function identifyBySession(auth: ReturnType<typeof createAuth>) {
   return async (headers: Headers): Promise<Identified> => {
     const { response: session, headers: fromAuth } = await auth.api.getSession({ headers, returnHeaders: true });
 

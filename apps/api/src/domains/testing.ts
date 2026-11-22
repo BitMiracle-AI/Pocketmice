@@ -66,7 +66,7 @@ export function useTestApi(): TestApi {
       implementations: domainImplementations({ db: connected, version: '1.2.3' }),
       // An API key is recognised the way a running server does it. Who is signed in is read from the test's header,
       // which holds the id of a user row
-      currentUser: identifyCaller(connected, async (headers) => {
+      identifyCaller: identifyCaller(connected, async (headers) => {
         const id = headers.get(TEST_USER_HEADER);
         if (id === null) return { user: null };
         const [user] = await connected.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, id));
