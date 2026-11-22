@@ -17,6 +17,6 @@ export function createSpace({ db }: { db: Db }) {
       return created;
     });
 
-    return { space };
+    return { space: { ...space, role: 'owner' as const } };
   });
 }

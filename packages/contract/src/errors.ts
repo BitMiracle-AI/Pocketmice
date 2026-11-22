@@ -10,11 +10,15 @@ export const UNIVERSAL_ERROR_STATUS = {
   INVALID_INPUT: 400,
   /** The request body is over the size limit */
   INPUT_TOO_LARGE: 413,
-  /** The operation is for someone signed in, and this request carries no valid proof of who is calling */
+  /**
+   * The operation is not public, and this request carries no valid proof of who is calling: no session, and no API
+   * key that works
+   */
   UNAUTHENTICATED: 401,
   /**
-   * The caller is known and is not allowed to do this; or the request comes from a web page that this server does
-   * not allow to call it
+   * The caller is known and is not allowed to do this: their role in the space is too low, or the API key the
+   * request came with may not call the operation. Or the request comes from a web page that this server does not
+   * allow to call it
    */
   FORBIDDEN: 403,
   /**

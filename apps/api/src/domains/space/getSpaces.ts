@@ -7,7 +7,7 @@ import { implement } from '../../http/operation.ts';
 export function getSpaces({ db }: { db: Db }) {
   return implement(definition, async ({ user }) => {
     const rows = await db
-      .select({ id: spaces.id, name: spaces.name })
+      .select({ id: spaces.id, name: spaces.name, role: spaceMembers.role })
       .from(spaceMembers)
       .innerJoin(spaces, eq(spaces.id, spaceMembers.spaceId))
       .where(eq(spaceMembers.userId, user.id))

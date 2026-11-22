@@ -1,9 +1,10 @@
 // The setup the tests of the domains share: a temporary database, people in it, and calling operations the way a web
-// page does. It is not a test, and nothing a running server uses imports it.
+// page or an agent does. It is not a test, and nothing a running server uses imports it.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, afterEach, before } from 'node:test';
 import { type ApiClient, createApiClient } from '@pocketmice/client/api';
+import { apiKeyAuthorization } from '@pocketmice/contract/domains/apiKey';
 import { connectDb, type Db } from '@pocketmice/db';
 import { users } from '@pocketmice/db/schema/auth';
 import { createTestDb, type TestDb } from '@pocketmice/db/testing';
@@ -12,6 +13,7 @@ import { createApp } from '../app.ts';
 import { requireEnv } from '../env.ts';
 import { describeError } from '../http/errorLog.ts';
 import type { CurrentUser } from '../http/operation.ts';
+import { identifyCaller } from './apiKey/identifyCaller.ts';
 import { domainImplementations } from './implementations.ts';
 import { prepareSignIn } from './prepareSignIn.ts';
 import { findMembership } from './space/findMembership.ts';
@@ -34,6 +36,8 @@ export interface TestApi {
   addPerson: (name?: string) => Promise<CurrentUser>;
   /** Calls operations as this person, the way the web app does. Null calls them signed out */
   as: (person: CurrentUser | null) => ApiClient;
+  /** Calls operations with this API key, the way an agent does: no web page, no sign-in */
+  withKey: (key: string) => ApiClient;
   /**
    * What the server reported about itself since the last call. A test that expects the server to fail takes the
    * reports here; a report nobody took fails the test it happened in.
@@ -60,13 +64,14 @@ export function useTestApi(): TestApi {
       auth: { handler: async () => new Response(null, { status: 404 }) },
       webOrigins: [WEB_ORIGIN],
       implementations: domainImplementations({ db: connected, version: '1.2.3' }),
-      // Who is calling is read from the test's header, which holds the id of a user row
-      currentUser: async (headers) => {
+      // An API key is recognised the way a running server does it. Who is signed in is read from the test's header,
+      // which holds the id of a user row
+      currentUser: identifyCaller(connected, async (headers) => {
         const id = headers.get(TEST_USER_HEADER);
         if (id === null) return { user: null };
         const [user] = await connected.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, id));
         return { user: user ?? null };
-      },
+      }),
       spaceMembership: (spaceId, userId) => findMembership(connected, spaceId, userId),
       reportError: (error, where) => reported.push({ error, where })
     });
@@ -118,6 +123,16 @@ export function useTestApi(): TestApi {
             ...init,
             headers: { ...init.headers, origin: WEB_ORIGIN, ...(person && { [TEST_USER_HEADER]: person.id }) }
           }),
+        reportError: (error, name) => assert.fail(`the client reported ${describeError(error)} calling ${name}`)
+      });
+    },
+
+    withKey(key) {
+      const { app } = ready();
+      return createApiClient({
+        baseUrl: 'http://api.test',
+        fetch: async (url, init) =>
+          app.request(url, { ...init, headers: { ...init.headers, authorization: apiKeyAuthorization(key) } }),
         reportError: (error, name) => assert.fail(`the client reported ${describeError(error)} calling ${name}`)
       });
     },

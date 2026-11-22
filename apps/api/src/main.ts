@@ -3,6 +3,7 @@ import type { Server } from 'node:http';
 import { createAdaptorServer } from '@hono/node-server';
 import manifest from '../package.json' with { type: 'json' };
 import { createApp } from './app.ts';
+import { identifyCaller } from './domains/apiKey/identifyCaller.ts';
 import { currentUserFrom } from './domains/auth/auth.ts';
 import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
@@ -18,7 +19,8 @@ const app = createApp({
   auth,
   webOrigins,
   implementations: domainImplementations({ db, version: manifest.version }),
-  currentUser: currentUserFrom(auth),
+  // By the API key a request carries, or else by who is signed in
+  currentUser: identifyCaller(db, currentUserFrom(auth)),
   spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
   reportError: logInternalError
 });

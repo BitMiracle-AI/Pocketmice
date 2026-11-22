@@ -1,9 +1,10 @@
 import type { z } from 'zod';
 import type { DeclaredErrorCode } from './errors.ts';
 import { id } from './id.ts';
+import type { SpaceRole } from './spaceRole.ts';
 
 /**
- * The name of an operation is a verb followed by a noun, in camelCase: getServerInfo, getSpaceMembers. The code, the
+ * The name of an operation is a verb followed by a noun, in camelCase: getServerInfo, createSpace. The code, the
  * address and the logs all use this one word.
  * A read always starts with get: singular for one thing, plural for several — never list or query. An operation
  * that changes something uses the verb the product uses, like leaveSpace.
@@ -19,7 +20,7 @@ const NAME = /^[a-z][a-z0-9]*(?:[A-Z][a-z0-9]*)+$/;
  */
 export interface Operation<
   Kind extends 'read' | 'write' = 'read' | 'write',
-  Access extends 'signed-in' | 'public' = 'signed-in' | 'public',
+  Access extends 'public' | 'signed-in' | 'session' = 'public' | 'signed-in' | 'session',
   BelongsTo extends 'space' | 'none' = 'space' | 'none',
   Input extends z.ZodObject = z.ZodObject,
   Output extends z.ZodObject = z.ZodObject,
@@ -27,9 +28,19 @@ export interface Operation<
 > {
   /** The operation's name, like getServerInfo. The constant that exports the definition has the same name */
   readonly name: string;
-  /** Read or write. A read changes nothing, so calling it again is always safe */
+  /**
+   * Read or write. A read changes nothing, so calling it again is always safe. An API key that is read-only calls
+   * reads only.
+   */
   readonly kind: Kind;
-  /** Who may call it: signed-in is a person who is signed in; public is anyone */
+  /**
+   * Who may call it.
+   * public: anyone.
+   * signed-in: a person the server knows. That is someone who signed in, or an agent calling with one of that
+   * person's API keys.
+   * session: a person who signed in themselves; an API key is not enough. It is for whatever decides who can get
+   * in (API keys, members, invites), which an agent does not do on anyone's behalf.
+   */
   readonly access: Access;
   /**
    * Whether the operation belongs to a space.
@@ -39,6 +50,12 @@ export interface Operation<
    * none: it is about the caller alone, or about nothing that is in a space, like "which spaces am I in".
    */
   readonly belongsTo: BelongsTo;
+  /**
+   * For an operation of a space: the lowest role that may call it (see spaceRole.ts). The server checks it together
+   * with the membership; a member whose role is lower is answered FORBIDDEN.
+   * An operation that belongs to no space has none.
+   */
+  readonly minRole?: SpaceRole;
   readonly input: Input;
   readonly output: Output;
   /**
@@ -49,19 +66,21 @@ export interface Operation<
 }
 
 /**
- * The two rules an operation of a space keeps besides, written into the types: a definition that breaks one fails
- * the type check where it is written.
- * It requires sign-in: without knowing who is calling, membership cannot be checked. Its input has a spaceId, which
- * says which space.
+ * The rules an operation of a space keeps besides, written into the types: a definition that breaks one fails the
+ * type check where it is written.
+ * It is not public: without knowing who is calling, membership cannot be checked. Its input has a spaceId, which
+ * says which space. It states the lowest role that may call it.
+ * And an operation that belongs to no space states no role: there is no space to have one in.
  */
 type SpaceRules<Access, BelongsTo> = BelongsTo extends 'space'
   ? {
-      // Not written as 'signed-in' outright: with a wrong access, TypeScript would then judge the whole definition
-      // an impossible type and report every field, hiding which one is wrong
-      readonly access: Access extends 'signed-in' ? unknown : OperationsOfASpaceRequireSignIn;
+      // Not written as the two values that are right: with a wrong access, TypeScript would then judge the whole
+      // definition an impossible type and report every field, hiding which one is wrong
+      readonly access: Access extends 'public' ? OperationsOfASpaceRequireSignIn : unknown;
       readonly input: z.ZodType<{ spaceId: string }>;
+      readonly minRole: SpaceRole;
     }
-  : unknown;
+  : { readonly minRole?: never };
 
 /** Exists only to put this sentence into the type checker's message. No value has this type */
 interface OperationsOfASpaceRequireSignIn {
@@ -75,7 +94,7 @@ interface OperationsOfASpaceRequireSignIn {
  */
 export function operation<
   Kind extends 'read' | 'write',
-  Access extends 'signed-in' | 'public',
+  Access extends 'public' | 'signed-in' | 'session',
   BelongsTo extends 'space' | 'none',
   Input extends z.ZodObject,
   Output extends z.ZodObject,

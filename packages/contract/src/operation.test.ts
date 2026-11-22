@@ -73,13 +73,26 @@ test('an operation only lists error codes that exist: a made-up code fails the t
   });
 });
 
-test('an operation of a space requires sign-in and takes a spaceId: a definition without either fails the type check', () => {
-  // Right: signed in, and the input says which space
+test('an operation of a space is not public, takes a spaceId and states a role: a definition without one fails the type check', () => {
+  // Right: the caller is known, the input says which space, and the lowest role is stated
   operation({
     name: 'getSpaceThings',
     kind: 'read',
     access: 'signed-in',
     belongsTo: 'space',
+    minRole: 'viewer',
+    input: z.object({ spaceId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  // Right as well: an operation of a space that an API key cannot call
+  operation({
+    name: 'deleteSpaceThings',
+    kind: 'write',
+    access: 'session',
+    belongsTo: 'space',
+    minRole: 'owner',
     input: z.object({ spaceId: id }),
     output: z.object({}),
     errors: []
@@ -91,6 +104,7 @@ test('an operation of a space requires sign-in and takes a spaceId: a definition
     // @ts-expect-error -- without knowing who is calling, membership cannot be checked
     access: 'public',
     belongsTo: 'space',
+    minRole: 'viewer',
     input: z.object({ spaceId: id }),
     output: z.object({}),
     errors: []
@@ -101,8 +115,46 @@ test('an operation of a space requires sign-in and takes a spaceId: a definition
     kind: 'read',
     access: 'signed-in',
     belongsTo: 'space',
+    minRole: 'viewer',
     // @ts-expect-error -- the input does not say which space
     input: z.object({ folderId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  // @ts-expect-error -- it does not say which members may call it
+  operation({
+    name: 'getSpaceThings',
+    kind: 'read',
+    access: 'signed-in',
+    belongsTo: 'space',
+    input: z.object({ spaceId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  operation({
+    name: 'getSpaceThings',
+    kind: 'read',
+    access: 'signed-in',
+    belongsTo: 'space',
+    // @ts-expect-error -- there is no such role
+    minRole: 'admin',
+    input: z.object({ spaceId: id }),
+    output: z.object({}),
+    errors: []
+  });
+});
+
+test('an operation that belongs to no space states no role: one that does fails the type check', () => {
+  operation({
+    name: 'getThings',
+    kind: 'read',
+    access: 'signed-in',
+    belongsTo: 'none',
+    // @ts-expect-error -- there is no space to have a role in
+    minRole: 'viewer',
+    input: z.object({}),
     output: z.object({}),
     errors: []
   });

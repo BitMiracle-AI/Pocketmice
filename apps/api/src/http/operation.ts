@@ -1,6 +1,7 @@
+import type { ApiKeyPermission } from '@pocketmice/contract/domains/apiKey';
 import { ERROR_STATUS, type ErrorBody, type ErrorCode, isUniversalErrorCode } from '@pocketmice/contract/errors';
 import { type CheckedInputOf, type Operation, type OutputOf, operationPath } from '@pocketmice/contract/operation';
-import type { SpaceRole } from '@pocketmice/db/schema/space';
+import { roleCovers, type SpaceRole } from '@pocketmice/contract/spaceRole';
 import type { Context, Hono } from 'hono';
 
 /** The input of one request is at most this large, in bytes. An input is JSON; files do not come this way */
@@ -9,8 +10,10 @@ export const MAX_INPUT_BYTES = 1024 * 1024;
 const INTERNAL_MESSAGE = 'The server ran into an internal error.';
 
 /**
- * The person calling an operation. What else there is to know about them (the name they go by) is in their
- * profile, and is read there by the implementations that need it.
+ * The person calling an operation: themselves, signed in, or an agent calling with one of their API keys. Either
+ * way what is done is done as this person, and an implementation is not told which of the two it was.
+ * What else there is to know about them (the name they go by) is in their profile, and is read there by the
+ * implementations that need it.
  */
 export interface CurrentUser {
   id: string;
@@ -20,8 +23,13 @@ export interface CurrentUser {
 
 /** What identifying the caller yields */
 export interface Identified {
-  /** The person calling; null when nobody is signed in */
+  /** The person calling; null when the request proves nobody */
   user: CurrentUser | null;
+  /**
+   * The API key the request was sent with, when that is how the caller is known. Left out, the person signed in
+   * themselves.
+   */
+  apiKey?: { permission: ApiKeyPermission };
   /**
    * Response headers that whoever identified the caller wants sent to the client, if any. This layer adds them to
    * the response of this request as they are, whether it succeeds or fails.
@@ -39,13 +47,13 @@ export interface Membership {
 }
 
 /**
- * What an implementation is given: the input, checked against the definition. For an operation that requires
- * sign-in, also the person calling. For an operation of a space, also what the caller is in that space — getting
- * it means the caller is a member.
+ * What an implementation is given: the input, checked against the definition. For an operation that is not public,
+ * also the person calling. For an operation of a space, also what the caller is in that space — getting it means
+ * the caller is a member, in a role the operation accepts.
  */
-type HandlerContext<Op extends Operation> = { input: CheckedInputOf<Op> } & (Op['access'] extends 'signed-in'
-  ? { user: CurrentUser }
-  : unknown) &
+type HandlerContext<Op extends Operation> = { input: CheckedInputOf<Op> } & (Op['access'] extends 'public'
+  ? unknown
+  : { user: CurrentUser }) &
   (Op['belongsTo'] extends 'space' ? { membership: Membership } : unknown);
 
 /**
@@ -88,7 +96,7 @@ export function implement<Op extends Operation>(
 ): Implementation {
   return {
     operation,
-    // By the time this runs the input has been checked against the definition, an operation that requires sign-in
+    // By the time this runs the input has been checked against the definition, an operation that is not public
     // knows who is calling, and an operation of a space knows the caller is a member (see admit), so the assertion
     // holds
     run: (input, { user, membership }) =>
@@ -99,7 +107,10 @@ export function implement<Op extends Operation>(
 export interface OperationDeps {
   /** Every operation the api implements */
   implementations: Implementation[];
-  /** Tells who is calling from the request headers. Asked once for every call of an operation that requires sign-in */
+  /**
+   * Tells who is calling from the request headers, and whether it is the person themselves or an API key of
+   * theirs. Asked once for every call of an operation that is not public.
+   */
   currentUser: (headers: Headers) => Promise<Identified>;
   /**
    * What this person is in this space. Null when the space does not exist for them: there is no such space, or
@@ -142,9 +153,11 @@ export function mountOperations(app: Hono, deps: OperationDeps): void {
 
 /**
  * Whether a request is let in. Every request passes through here before the implementation runs, and the first
- * check it fails decides the response: how large the body is, which web page it comes from, whether the caller is
- * signed in, whether the body fits the definition, whether the caller is a member of the space.
- * A request that passes yields the checked input and who is calling.
+ * check it fails decides the response: how large the body is, which web page it comes from, who is calling, what
+ * the API key it came with may do, whether the body fits the definition, whether the caller is a member of the
+ * space, whether their role there is enough.
+ * A request that passes yields the checked input and who is calling. Whether the caller may call the operation at
+ * all is settled here, for every operation alike: an implementation does not check it again.
  */
 async function admit(
   c: Context,
@@ -176,7 +189,7 @@ async function admit(
   }
 
   let user: CurrentUser | null = null;
-  if (operation.access === 'signed-in') {
+  if (operation.access !== 'public') {
     const identified = await deps.currentUser(c.req.raw.headers);
     // Whoever identified the caller has something for the client (a renewed cookie, say): it goes onto the response
     // now, and stays there however the rest of this request turns out
@@ -184,7 +197,20 @@ async function admit(
       c.header(name, value, { append: true });
     });
     user = identified.user;
-    if (!user) return fail(c, 'UNAUTHENTICATED', 'Sign in to call this operation.');
+    if (!user) {
+      const how = operation.access === 'session' ? 'Sign in' : 'Sign in, or send a valid API key,';
+      return fail(c, 'UNAUTHENTICATED', `${how} to call this operation.`);
+    }
+
+    // The request came with an API key. A key only ever narrows what the person it belongs to may do: it never
+    // calls an operation kept for the person themselves, and a read-only key never changes anything
+    const { apiKey } = identified;
+    if (apiKey && operation.access === 'session') {
+      return fail(c, 'FORBIDDEN', 'This operation cannot be called with an API key: sign in to call it.');
+    }
+    if (apiKey?.permission === 'read' && operation.kind === 'write') {
+      return fail(c, 'FORBIDDEN', 'This API key is read-only, and this operation changes something.');
+    }
   }
 
   if (!c.req.header('content-type')?.toLowerCase().startsWith('application/json')) {
@@ -199,21 +225,31 @@ async function admit(
   const input = operation.input.safeParse(body);
   if (!input.success) return fail(c, 'INVALID_INPUT', describeIssues(input.error.issues));
 
-  // An operation of a space: the caller must be a member of the space the input names. Checked here once, so no
-  // implementation has to remember to.
+  // An operation of a space: the caller must be a member of the space the input names, in a role that is enough
+  // for the operation. Checked here once, so no implementation has to remember to.
   let membership: Membership | null = null;
   if (operation.belongsTo === 'space') {
-    // The types of a definition guarantee both (see operation in the contract). Reaching either line means someone
-    // wrote a definition around the types
-    if (!user) throw new Error(`Operation ${operation.name} belongs to a space, so it must require sign-in.`);
+    // The types of a definition guarantee all three (see operation in the contract). Reaching one of these lines
+    // means someone wrote a definition around the types
+    if (!user) throw new Error(`Operation ${operation.name} belongs to a space, so it must not be public.`);
     const spaceId = (input.data as { spaceId?: unknown } | null)?.spaceId;
     if (typeof spaceId !== 'string') {
       throw new Error(`Operation ${operation.name} belongs to a space, so its input must have a spaceId.`);
     }
+    const { minRole } = operation;
+    if (!minRole) throw new Error(`Operation ${operation.name} belongs to a space, so it must state a minRole.`);
+
     membership = await deps.spaceMembership(spaceId, user.id);
     // Not a member and no such space get one answer: someone who is not a member cannot find out whether a space
     // exists
     if (!membership) return fail(c, 'UNKNOWN_SPACE', `There is no space ${spaceId}, or you are not a member of it.`);
+    if (!roleCovers(membership.role, minRole)) {
+      return fail(
+        c,
+        'FORBIDDEN',
+        `This operation takes the role ${minRole} in the space, and yours is ${membership.role}.`
+      );
+    }
   }
 
   return { input: input.data, caller: { user, membership } };

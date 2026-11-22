@@ -4,14 +4,17 @@
 the same files: they read what people give them and hand back what they make.
 
 > **Status: just started.** What exists is the foundation and the first pieces on it: signing up and signing in,
-> profiles, and spaces. There are no files yet, and nothing here is usable.
+> profiles, spaces with their members, invites, and API keys for agents. There are no files yet, and nothing here
+> is usable.
 
 ## What is planned
 
 - A web app for people: upload, organise and share files.
 - Spaces. A space is a set of files together with the people who can get in, and someone can be in many spaces.
+  A member is a viewer, an editor or the owner, and people get in with an invite link.
 - Three ways in for agents: an HTTP API with a TypeScript SDK, an MCP server, and an agent skill. An agent calls the
-  same API as a person, with an API key of that person.
+  same API as a person, with an API key that person made. What it does is done as that person; a key can be
+  read-only, and no key decides who gets into a space.
 - A server you can run yourself, on Postgres.
 
 ## Repository layout
@@ -30,19 +33,26 @@ Every operation is a `POST` to `/api/<name>`, and its name is a verb followed by
 is written down once, in `packages/contract`:
 
 ```ts
-export const createSpace = operation({
-  name: 'createSpace',
-  kind: 'write',
+export const getMembers = operation({
+  name: 'getMembers',
+  kind: 'read',
   access: 'signed-in',
-  belongsTo: 'none',
-  input: z.object({ name: spaceName }),
-  output: z.object({ space }),
+  belongsTo: 'space',
+  minRole: 'viewer',
+  input: z.object({ spaceId: id }),
+  output: z.object({ members: z.array(member) }),
   errors: []
 });
 ```
 
-`access` says who may call it. `belongsTo` says whether it works inside a space: if it does, the server checks that
-the caller is a member of that space before the implementation runs.
+The definition also says who may call the operation. The server checks all of it in one place, before the
+implementation runs:
+
+- `kind` is a read or a write. A read-only API key calls reads only.
+- `access` is `public` for anyone, `signed-in` for a person (signed in, or through one of their API keys), and
+  `session` for the person themselves, never an API key.
+- `belongsTo` says whether it works inside a space. If it does, the caller must be a member of that space, in the
+  role `minRole` or a higher one.
 
 The server implements an operation from its definition with `implement()`, and callers call it from the same
 definition with `@pocketmice/client`, so the input, the output and the error codes are typed on both sides and
@@ -57,6 +67,13 @@ if (result.ok) console.log(result.data.version);
 
 A failure is the real HTTP status with one error body, `{ "error": { "code": "...", "message": "..." } }`. Callers
 decide what to do by the code; the message is for logs and developers.
+
+An agent sends its API key with every request, as a bearer token:
+
+```sh
+curl -X POST http://localhost:11210/api/getSpaces \
+  -H 'authorization: Bearer pm_...' -H 'content-type: application/json' -d '{}'
+```
 
 ## Development
 

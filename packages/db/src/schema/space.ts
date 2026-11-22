@@ -27,12 +27,11 @@ export const spaces = pgTable('spaces', {
 });
 
 /**
- * The role of a member in a space. There is one: owner. Whoever makes a space is its owner, and a space has
- * exactly one.
+ * The roles a member of a space can have. Whoever makes a space is its owner, and a space has exactly one.
+ * What each role may do is not decided here: see spaceRole.ts in the contract, which lists the same roles. The api
+ * hands roles from one list to the other, so a role that is in one and not in the other fails its type check.
  */
-export const SPACE_ROLES = ['owner'] as const;
-
-export type SpaceRole = (typeof SPACE_ROLES)[number];
+export const SPACE_ROLES = ['owner', 'editor', 'viewer'] as const;
 
 /**
  * Who is in which space. A row means "is a member now". Someone has at most one row in a space, which the primary

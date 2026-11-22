@@ -1,11 +1,13 @@
 import { z } from 'zod';
+import { id } from '../id.ts';
 import { operation } from '../operation.ts';
+import { grantableRole, spaceRole } from '../spaceRole.ts';
 
 // Spaces. A space is the container everything in the drive belongs to, together with its members: whoever is a
-// member can get in, and nobody else can. Whether someone may see or change what is in a space is decided by that
-// one fact.
+// member can get in, and nobody else can. What a member may do there is decided by their role (see spaceRole.ts).
 // Someone can be a member of many spaces, and of none: the server never makes a space for anyone.
 // "Space" always means this container. The room that files take up is called storage.
+// How someone becomes a member of a space they did not make is in invite.ts.
 
 /** The name of a space has at most this many characters */
 export const SPACE_NAME_MAX_LENGTH = 50;
@@ -14,7 +16,20 @@ export const SPACE_NAME_MAX_LENGTH = 50;
 export const spaceName = z.string().trim().min(1).max(SPACE_NAME_MAX_LENGTH);
 
 /** A space, as one of its members sees it */
-const space = z.object({ id: z.string(), name: z.string() });
+export const space = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** The caller's own role in it */
+  role: spaceRole
+});
+
+/** A member of a space, as the other members see them */
+const member = z.object({
+  userId: z.string(),
+  /** The name they go by */
+  name: z.string(),
+  role: spaceRole
+});
 
 /** The spaces the caller is a member of, the oldest first. Empty for someone who is in none */
 export const getSpaces = operation({
@@ -36,4 +51,62 @@ export const createSpace = operation({
   input: z.object({ name: spaceName }),
   output: z.object({ space }),
   errors: []
+});
+
+/** The members of a space, in the order they became members */
+export const getMembers = operation({
+  name: 'getMembers',
+  kind: 'read',
+  access: 'signed-in',
+  belongsTo: 'space',
+  minRole: 'viewer',
+  input: z.object({ spaceId: id }),
+  output: z.object({ members: z.array(member) }),
+  errors: []
+});
+
+/**
+ * Changes the role of a member. Answers with the member as they are after the change.
+ * NOT_FOUND: the space has no such member. CONFLICT: the member is the owner, whose role does not change.
+ */
+export const updateMember = operation({
+  name: 'updateMember',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'space',
+  minRole: 'owner',
+  input: z.object({ spaceId: id, userId: id, role: grantableRole }),
+  output: z.object({ member }),
+  errors: ['NOT_FOUND', 'CONFLICT']
+});
+
+/**
+ * Takes a member out of a space. From then on the space does not exist for them, nor for an agent calling with
+ * one of their API keys.
+ * NOT_FOUND: the space has no such member. CONFLICT: the member is the owner, who cannot be removed.
+ */
+export const removeMember = operation({
+  name: 'removeMember',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'space',
+  minRole: 'owner',
+  input: z.object({ spaceId: id, userId: id }),
+  output: z.object({}),
+  errors: ['NOT_FOUND', 'CONFLICT']
+});
+
+/**
+ * The caller stops being a member of a space.
+ * CONFLICT: the caller is the owner, who cannot leave: the space would be left with nobody to decide who is in it.
+ */
+export const leaveSpace = operation({
+  name: 'leaveSpace',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'space',
+  minRole: 'viewer',
+  input: z.object({ spaceId: id }),
+  output: z.object({}),
+  errors: ['CONFLICT']
 });

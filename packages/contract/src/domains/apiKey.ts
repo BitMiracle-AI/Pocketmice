@@ -1,0 +1,83 @@
+import { z } from 'zod';
+import { id } from '../id.ts';
+import { operation } from '../operation.ts';
+
+// API keys: how an agent calls the api.
+// An agent is not a user. It calls with a key that a person made, and what it does is done as that person: in the
+// spaces that person is in, in the role they have there. A key only ever narrows that:
+// - a key whose permission is read calls reads only;
+// - no key calls an operation whose access is session (see operation.ts).
+// A key is sent with every request in the Authorization header, as a bearer token.
+// The key itself is shown once, when it is made. The server keeps only what it takes to recognise it, so a key that
+// was lost cannot be shown again: delete it and make another.
+
+/** What a key may do: read is reads only; write is reads and writes */
+export const API_KEY_PERMISSIONS = ['read', 'write'] as const;
+
+export type ApiKeyPermission = (typeof API_KEY_PERMISSIONS)[number];
+
+export const apiKeyPermission = z.enum(API_KEY_PERMISSIONS);
+
+/** The name of a key has at most this many characters */
+export const API_KEY_NAME_MAX_LENGTH = 50;
+
+/** What the person calls the key, to tell their keys apart. Spaces around it are dropped; it is not empty */
+export const apiKeyName = z.string().trim().min(1).max(API_KEY_NAME_MAX_LENGTH);
+
+/** Every key starts with this, so a key that turns up where it should not be is recognised as one */
+export const API_KEY_PREFIX = 'pm_';
+
+/** The Authorization header of a request sent with this key */
+export function apiKeyAuthorization(key: string): string {
+  return `Bearer ${key}`;
+}
+
+/** The bearer token in an Authorization header. Null when there is no header, or it holds something else */
+export function bearerToken(authorization: string | null | undefined): string | null {
+  return /^Bearer +(\S+)$/i.exec(authorization ?? '')?.[1] ?? null;
+}
+
+/** A key, as the person who made it sees it afterwards: without the key itself */
+const apiKey = z.object({
+  id: z.string(),
+  name: z.string(),
+  permission: apiKeyPermission,
+  /** When it was made: an ISO 8601 time in UTC */
+  createdAt: z.iso.datetime()
+});
+
+/** Makes a key for the caller. key is the key itself, and this is the only time it is shown */
+export const createApiKey = operation({
+  name: 'createApiKey',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'none',
+  input: z.object({ name: apiKeyName, permission: apiKeyPermission }),
+  output: z.object({ apiKey, key: z.string() }),
+  errors: []
+});
+
+/** The caller's keys, the oldest first */
+export const getApiKeys = operation({
+  name: 'getApiKeys',
+  kind: 'read',
+  access: 'session',
+  belongsTo: 'none',
+  input: z.object({}),
+  output: z.object({ apiKeys: z.array(apiKey) }),
+  errors: []
+});
+
+/**
+ * Deletes one of the caller's keys: from then on a request sent with it is from nobody.
+ * NOT_FOUND: the caller has no such key.
+ */
+export const deleteApiKey = operation({
+  name: 'deleteApiKey',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'none',
+  input: z.object({ apiKeyId: id }),
+  output: z.object({}),
+  errors: ['NOT_FOUND']
+});

@@ -14,13 +14,14 @@ const OWNER: Membership = { role: 'owner' };
 const S1 = '11111111-1111-4111-8111-111111111111';
 const N1 = '22222222-2222-4222-8222-222222222222';
 
-// The three operations the tests call: one of a space, one that requires sign-in and belongs to no space, and one
-// anyone may call
+// The operations the tests call: a write of a space that takes an editor, a read that belongs to no space, one
+// anyone may call, and one kept for the person themselves
 const renameNote = operation({
   name: 'renameNote',
   kind: 'write',
   access: 'signed-in',
   belongsTo: 'space',
+  minRole: 'editor',
   input: z.object({ spaceId: id, noteId: id, title: z.string().min(1).max(50), notify: z.boolean().default(false) }),
   output: z.object({ note: z.object({ id: z.string(), title: z.string() }) }),
   errors: ['NOT_FOUND']
@@ -46,9 +47,21 @@ const getInvitation = operation({
   errors: []
 });
 
+const createToken = operation({
+  name: 'createToken',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'none',
+  input: z.object({}),
+  output: z.object({ token: z.string() }),
+  errors: []
+});
+
 interface Options {
-  /** Who is signed in. Left out, it is ADA; null is nobody */
+  /** Who is calling. Left out, it is ADA; null is nobody */
   user?: CurrentUser | null;
+  /** The API key the request came with. Left out, the person signed in themselves */
+  apiKey?: { permission: 'read' | 'write' };
   /** Response headers that whoever identified the caller wants sent along. Left out, there are none */
   responseHeaders?: Headers;
   /** What the caller is in the space the input names. Left out, the owner; null means the space does not exist for them */
@@ -58,11 +71,11 @@ interface Options {
 }
 
 /**
- * An app with the three operations mounted. The sign-in and the membership lookup are stand-ins. What the
+ * An app with the four operations mounted. Telling who is calling and the membership lookup are stand-ins. What the
  * implementations were given is collected in calls, the lookups in identified and membershipLookups, and what the
  * server reported about itself in reported.
  */
-function setup({ user = ADA, responseHeaders, membership = OWNER, rename }: Options = {}) {
+function setup({ user = ADA, apiKey, responseHeaders, membership = OWNER, rename }: Options = {}) {
   const calls: unknown[] = [];
   const reported: { error: unknown; where: string }[] = [];
   let identified = 0;
@@ -83,11 +96,15 @@ function setup({ user = ADA, responseHeaders, membership = OWNER, rename }: Opti
       implement(getInvitation, async (context) => {
         calls.push(context);
         return { spaceName: 'Research' };
+      }),
+      implement(createToken, async (context) => {
+        calls.push(context);
+        return { token: 'abc' };
       })
     ],
     currentUser: async () => {
       identified += 1;
-      return { user, responseHeaders };
+      return { user, apiKey, responseHeaders };
     },
     spaceMembership: async (spaceId, userId) => {
       membershipLookups.push({ spaceId, userId });
@@ -135,7 +152,7 @@ test('a request that fits the definition: the implementation gets the checked in
   assert.deepEqual(reported, []);
 });
 
-test('an operation that requires sign-in, called by nobody, is UNAUTHENTICATED; the implementation does not run', async () => {
+test('an operation that is not public, called by nobody, is UNAUTHENTICATED; the implementation does not run', async () => {
   const { post, calls, membershipLookups } = setup({ user: null });
 
   for (const [name, input] of [
@@ -145,12 +162,84 @@ test('an operation that requires sign-in, called by nobody, is UNAUTHENTICATED; 
     assert.deepEqual(await failure(await post(name, input)), {
       status: 401,
       code: 'UNAUTHENTICATED',
-      message: 'Sign in to call this operation.'
+      message: 'Sign in, or send a valid API key, to call this operation.'
     });
   }
+  // An operation kept for the person themselves does not suggest an API key
+  assert.deepEqual(await failure(await post('createToken', {})), {
+    status: 401,
+    code: 'UNAUTHENTICATED',
+    message: 'Sign in to call this operation.'
+  });
   assert.deepEqual(calls, []);
   // Without knowing who is calling there is nobody to look up
   assert.deepEqual(membershipLookups, []);
+});
+
+test('a request that came with an API key is the person whose key it is: the implementation is given the same as when they sign in', async () => {
+  const { post, calls } = setup({ apiKey: { permission: 'write' } });
+
+  assert.equal((await post('renameNote', RENAME)).status, 200);
+  assert.equal((await post('getSettings', {})).status, 200);
+
+  assert.deepEqual(calls, [
+    { input: { ...RENAME, notify: false }, user: ADA, membership: OWNER },
+    { input: {}, user: ADA }
+  ]);
+});
+
+test('a read-only API key calls reads, and is FORBIDDEN to call a write whatever the person may do themselves', async () => {
+  // The person is the owner of the space: the key still does not write
+  const { post, calls, membershipLookups } = setup({ apiKey: { permission: 'read' } });
+
+  assert.equal((await post('getSettings', {})).status, 200);
+  assert.deepEqual(await failure(await post('renameNote', RENAME)), {
+    status: 403,
+    code: 'FORBIDDEN',
+    message: 'This API key is read-only, and this operation changes something.'
+  });
+
+  assert.deepEqual(calls, [{ input: {}, user: ADA }]);
+  // Refused before the body was read or anyone was looked up
+  assert.deepEqual(membershipLookups, []);
+  const unread = await failure(await post('renameNote', '{"spaceId":'));
+  assert.deepEqual([unread.status, unread.code], [403, 'FORBIDDEN']);
+});
+
+test('an operation kept for the person themselves is FORBIDDEN to any API key, and open to the person signed in', async () => {
+  for (const permission of ['read', 'write'] as const) {
+    const { post, calls } = setup({ apiKey: { permission } });
+
+    assert.deepEqual(await failure(await post('createToken', {})), {
+      status: 403,
+      code: 'FORBIDDEN',
+      message: 'This operation cannot be called with an API key: sign in to call it.'
+    });
+    assert.deepEqual(calls, []);
+  }
+
+  const { post, calls } = setup();
+  assert.deepEqual(await (await post('createToken', {})).json(), { token: 'abc' });
+  assert.deepEqual(calls, [{ input: {}, user: ADA }]);
+});
+
+test('a member whose role is lower than the operation takes is FORBIDDEN; the implementation does not run', async () => {
+  const viewer = setup({ membership: { role: 'viewer' } });
+
+  assert.deepEqual(await failure(await viewer.post('renameNote', RENAME)), {
+    status: 403,
+    code: 'FORBIDDEN',
+    message: 'This operation takes the role editor in the space, and yours is viewer.'
+  });
+  assert.deepEqual(viewer.calls, []);
+
+  // The role it takes, and any role above it, is let in
+  for (const role of ['editor', 'owner'] as const) {
+    const { post, calls } = setup({ membership: { role } });
+
+    assert.equal((await post('renameNote', RENAME)).status, 200, role);
+    assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, membership: { role } }]);
+  }
 });
 
 test('an operation that belongs to no space gets the caller and no membership; nobody is looked up', async () => {
