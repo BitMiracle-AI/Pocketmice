@@ -16,17 +16,21 @@ import { fileURLToPath } from 'node:url';
 const TARGETS = [
   {
     dir: 'apps/api/src',
-    // Three code files and the tests of two of them: main.ts starts the process, app.ts mounts every route and
-    // env.ts reads the configuration. The two folders are the only places any other code goes
-    files: ['app.test.ts', 'app.ts', 'env.test.ts', 'env.ts', 'main.ts'],
+    // main.ts starts the process, app.ts mounts every route, env.ts reads the configuration, instances.ts builds
+    // the set a running server uses and migrate.ts is the command that applies migrations. db.test.ts tests
+    // @pocketmice/db against a real database: the address of the database is the api's configuration, so the test
+    // is here. The two folders are the only places any other code goes
+    files: ['app.test.ts', 'app.ts', 'db.test.ts', 'env.test.ts', 'env.ts', 'instances.ts', 'main.ts', 'migrate.ts'],
     dirs: ['domains', 'http'],
     hint: 'Put it in domains/<domain>/ (one area of the product) or http/ (how every request is received, checked and answered).'
   },
   {
     dir: 'apps/api/src/domains',
     // Any subfolder is allowed: there is one per domain, and adding a domain should not mean editing this list.
-    // The files that stay at the top level are the ones that list something from every domain
-    files: ['implementations.test.ts', 'implementations.ts'],
+    // The files that stay at the top level are the ones that list something from every domain: every
+    // implementation, what every domain makes ready for someone who signs in, and the setup the tests of every
+    // domain share
+    files: ['implementations.test.ts', 'implementations.ts', 'prepareSignIn.ts', 'testing.ts'],
     hint: 'Put it in the folder of the domain it belongs to, domains/<domain>/. Only a file that lists something from every domain stays here.'
   }
 ];

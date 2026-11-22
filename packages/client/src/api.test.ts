@@ -8,6 +8,8 @@ import { type ApiClientConfig, createApiClient } from './api.ts';
 const getNote = operation({
   name: 'getNote',
   kind: 'read',
+  access: 'public',
+  belongsTo: 'none',
   input: z.object({ noteId: id }),
   output: z.object({ title: z.string() }),
   errors: ['NOT_FOUND']

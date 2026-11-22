@@ -3,17 +3,23 @@ import type { Server } from 'node:http';
 import { createAdaptorServer } from '@hono/node-server';
 import manifest from '../package.json' with { type: 'json' };
 import { createApp } from './app.ts';
+import { currentUserFrom } from './domains/auth/auth.ts';
 import { domainImplementations } from './domains/implementations.ts';
-import { portFromEnv, requireOrigins } from './env.ts';
+import { findMembership } from './domains/space/findMembership.ts';
+import { portFromEnv } from './env.ts';
 import { logInternalError } from './http/errorLog.ts';
+import { auth, db, webOrigins } from './instances.ts';
 
 // The ports of this project start at 11210, one for each unit that listens. A port that is taken is an error and
 // the process exits: it never picks another one.
 const port = portFromEnv('PORT', 11210);
 
 const app = createApp({
-  webOrigins: requireOrigins('WEB_ORIGINS'),
-  implementations: domainImplementations({ version: manifest.version }),
+  auth,
+  webOrigins,
+  implementations: domainImplementations({ db, version: manifest.version }),
+  currentUser: currentUserFrom(auth),
+  spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
   reportError: logInternalError
 });
 
@@ -28,7 +34,7 @@ server.listen({ port, host: '127.0.0.1' }, () => {
 
 /**
  * When told to stop (a new version is deployed, the container is stopped): stop taking new requests, answer the
- * ones in hand, then exit. Waits at most this long, in milliseconds.
+ * ones in hand, disconnect from the database, then exit. Waits at most this long, in milliseconds.
  */
 const SHUTDOWN_MS = 10_000;
 let stopping = false;
@@ -37,6 +43,8 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     if (stopping) return;
     stopping = true;
     setTimeout(() => process.exit(0), SHUTDOWN_MS).unref();
-    server.close(() => process.exit(0));
+    server.close(() => {
+      void db.$client.end().finally(() => process.exit(0));
+    });
   });
 }

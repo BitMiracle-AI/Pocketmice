@@ -1,5 +1,6 @@
 import { ERROR_STATUS, type ErrorBody, type ErrorCode, isUniversalErrorCode } from '@pocketmice/contract/errors';
 import { type CheckedInputOf, type Operation, type OutputOf, operationPath } from '@pocketmice/contract/operation';
+import type { SpaceRole } from '@pocketmice/db/schema/space';
 import type { Context, Hono } from 'hono';
 
 /** The input of one request is at most this large, in bytes. An input is JSON; files do not come this way */
@@ -7,10 +8,45 @@ export const MAX_INPUT_BYTES = 1024 * 1024;
 
 const INTERNAL_MESSAGE = 'The server ran into an internal error.';
 
-/** What an implementation is given: the input, checked against the definition */
-interface HandlerContext<Op extends Operation> {
-  input: CheckedInputOf<Op>;
+/**
+ * The person calling an operation. What else there is to know about them (the name they go by) is in their
+ * profile, and is read there by the implementations that need it.
+ */
+export interface CurrentUser {
+  id: string;
+  /** The email address they sign in with */
+  email: string;
 }
+
+/** What identifying the caller yields */
+export interface Identified {
+  /** The person calling; null when nobody is signed in */
+  user: CurrentUser | null;
+  /**
+   * Response headers that whoever identified the caller wants sent to the client, if any. This layer adds them to
+   * the response of this request as they are, whether it succeeds or fails.
+   * Today that is the cookie of the sign-in library: the new cookie after a session was extended, or the order to
+   * delete the cookie of a session that has ended. Not passed on, the session would be extended in the database
+   * while the browser kept the cookie from the day of sign-in, which runs out: someone who uses the product every
+   * day would still be signed out.
+   */
+  responseHeaders?: Headers;
+}
+
+/** What the caller is in the space that spaceId in the input names */
+export interface Membership {
+  role: SpaceRole;
+}
+
+/**
+ * What an implementation is given: the input, checked against the definition. For an operation that requires
+ * sign-in, also the person calling. For an operation of a space, also what the caller is in that space — getting
+ * it means the caller is a member.
+ */
+type HandlerContext<Op extends Operation> = { input: CheckedInputOf<Op> } & (Op['access'] extends 'signed-in'
+  ? { user: CurrentUser }
+  : unknown) &
+  (Op['belongsTo'] extends 'space' ? { membership: Membership } : unknown);
 
 /**
  * An operation together with its implementation. The exact types of the input and the output were matched up in
@@ -18,7 +54,13 @@ interface HandlerContext<Op extends Operation> {
  */
 export interface Implementation {
   operation: Operation;
-  run: (input: unknown) => Promise<unknown>;
+  run: (input: unknown, caller: Caller) => Promise<unknown>;
+}
+
+/** What this layer found out and hands to the implementation: who is calling. Which parts are set depends on the definition */
+export interface Caller {
+  user: CurrentUser | null;
+  membership: Membership | null;
 }
 
 /**
@@ -37,8 +79,8 @@ export class ApiError extends Error {
 }
 
 /**
- * Writes the implementation of an operation from its definition. The types of the input and of the output come
- * from the definition: an implementation that does not match it fails the type check.
+ * Writes the implementation of an operation from its definition. The types of the input, of the caller and of the
+ * output come from the definition: an implementation that does not match it fails the type check.
  */
 export function implement<Op extends Operation>(
   operation: Op,
@@ -46,14 +88,24 @@ export function implement<Op extends Operation>(
 ): Implementation {
   return {
     operation,
-    // By the time this runs the input has been checked against the definition (see handle), so the assertion holds
-    run: (input) => handler({ input: input as CheckedInputOf<Op> })
+    // By the time this runs the input has been checked against the definition, an operation that requires sign-in
+    // knows who is calling, and an operation of a space knows the caller is a member (see admit), so the assertion
+    // holds
+    run: (input, { user, membership }) =>
+      handler({ input, ...(user && { user }), ...(membership && { membership }) } as unknown as HandlerContext<Op>)
   };
 }
 
 export interface OperationDeps {
   /** Every operation the api implements */
   implementations: Implementation[];
+  /** Tells who is calling from the request headers. Asked once for every call of an operation that requires sign-in */
+  currentUser: (headers: Headers) => Promise<Identified>;
+  /**
+   * What this person is in this space. Null when the space does not exist for them: there is no such space, or
+   * they are not a member. Asked once for every call of an operation of a space.
+   */
+  spaceMembership: (spaceId: string, userId: string) => Promise<Membership | null>;
   /** The web pages allowed to call the api. A request from any other web page is refused */
   webOrigins: string[];
   /**
@@ -90,10 +142,15 @@ export function mountOperations(app: Hono, deps: OperationDeps): void {
 
 /**
  * Whether a request is let in. Every request passes through here before the implementation runs, and the first
- * check it fails decides the response: how large the body is, which web page it comes from, whether the body fits
- * the definition. A request that passes yields the checked input.
+ * check it fails decides the response: how large the body is, which web page it comes from, whether the caller is
+ * signed in, whether the body fits the definition, whether the caller is a member of the space.
+ * A request that passes yields the checked input and who is calling.
  */
-async function admit(c: Context, operation: Operation, deps: OperationDeps): Promise<{ input: unknown } | Response> {
+async function admit(
+  c: Context,
+  operation: Operation,
+  deps: OperationDeps
+): Promise<{ input: unknown; caller: Caller } | Response> {
   // How large the body is, is read from the length the request declares, without reading the body: that what is
   // sent is as long as what was declared is guaranteed by the HTTP server.
   // The body must not be touched just to measure it. Several of the steps below answer without reading the body,
@@ -111,10 +168,23 @@ async function admit(c: Context, operation: Operation, deps: OperationDeps): Pro
   }
 
   // A browser always sends the origin with a request to another site, so a web page that is not on the list is
-  // refused here, whatever else its request carries. Callers that are not browsers send no origin.
+  // refused here, whether or not its request carries the sign-in cookie. Callers that are not browsers send no
+  // origin, and they do not carry somebody else's cookie either.
   const origin = c.req.header('origin');
   if (origin !== undefined && !deps.webOrigins.includes(origin)) {
     return fail(c, 'FORBIDDEN', 'Requests from this origin are not allowed.');
+  }
+
+  let user: CurrentUser | null = null;
+  if (operation.access === 'signed-in') {
+    const identified = await deps.currentUser(c.req.raw.headers);
+    // Whoever identified the caller has something for the client (a renewed cookie, say): it goes onto the response
+    // now, and stays there however the rest of this request turns out
+    identified.responseHeaders?.forEach((value, name) => {
+      c.header(name, value, { append: true });
+    });
+    user = identified.user;
+    if (!user) return fail(c, 'UNAUTHENTICATED', 'Sign in to call this operation.');
   }
 
   if (!c.req.header('content-type')?.toLowerCase().startsWith('application/json')) {
@@ -129,7 +199,24 @@ async function admit(c: Context, operation: Operation, deps: OperationDeps): Pro
   const input = operation.input.safeParse(body);
   if (!input.success) return fail(c, 'INVALID_INPUT', describeIssues(input.error.issues));
 
-  return { input: input.data };
+  // An operation of a space: the caller must be a member of the space the input names. Checked here once, so no
+  // implementation has to remember to.
+  let membership: Membership | null = null;
+  if (operation.belongsTo === 'space') {
+    // The types of a definition guarantee both (see operation in the contract). Reaching either line means someone
+    // wrote a definition around the types
+    if (!user) throw new Error(`Operation ${operation.name} belongs to a space, so it must require sign-in.`);
+    const spaceId = (input.data as { spaceId?: unknown } | null)?.spaceId;
+    if (typeof spaceId !== 'string') {
+      throw new Error(`Operation ${operation.name} belongs to a space, so its input must have a spaceId.`);
+    }
+    membership = await deps.spaceMembership(spaceId, user.id);
+    // Not a member and no such space get one answer: someone who is not a member cannot find out whether a space
+    // exists
+    if (!membership) return fail(c, 'UNKNOWN_SPACE', `There is no space ${spaceId}, or you are not a member of it.`);
+  }
+
+  return { input: input.data, caller: { user, membership } };
 }
 
 /** Handles one request to an operation. If a check fails, the implementation does not run */
@@ -140,7 +227,7 @@ async function handle(c: Context, { operation, run }: Implementation, deps: Oper
 
   let result: unknown;
   try {
-    result = await run(admitted.input);
+    result = await run(admitted.input, admitted.caller);
   } catch (thrown) {
     if (!(thrown instanceof ApiError)) {
       deps.reportError(thrown, name);

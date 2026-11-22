@@ -1,3 +1,8 @@
 packages:
   - apps/*
   - packages/*
+# The install scripts of dependencies do not run unless they are allowed here, one by one.
+# esbuild (brought in by the migration tool and by the command-line tool of the sign-in library) works without
+# running its install script.
+allowBuilds:
+  esbuild: false

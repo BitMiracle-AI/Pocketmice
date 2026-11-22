@@ -10,8 +10,19 @@ export const UNIVERSAL_ERROR_STATUS = {
   INVALID_INPUT: 400,
   /** The request body is over the size limit */
   INPUT_TOO_LARGE: 413,
-  /** The request comes from a web page that this server does not allow to call it */
+  /** The operation is for someone signed in, and this request carries no valid proof of who is calling */
+  UNAUTHENTICATED: 401,
+  /**
+   * The caller is known and is not allowed to do this; or the request comes from a web page that this server does
+   * not allow to call it
+   */
   FORBIDDEN: 403,
+  /**
+   * The operation belongs to a space, and the space the input names does not exist for the caller: there is no
+   * such space, or the caller is not a member of it. Both get the same answer, so someone who is not a member
+   * cannot find out whether a space exists.
+   */
+  UNKNOWN_SPACE: 404,
   /** The server has no such operation */
   UNKNOWN_OPERATION: 404,
   /** The server itself failed. The reason goes to the server's log only, never to the caller */

@@ -10,6 +10,8 @@ import { operation } from '../operation.ts';
 export const getServerInfo = operation({
   name: 'getServerInfo',
   kind: 'read',
+  access: 'public',
+  belongsTo: 'none',
   input: z.object({}),
   output: z.object({
     /** The version of the server: three numbers, like 0.1.0 */

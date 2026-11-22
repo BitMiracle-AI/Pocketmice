@@ -3,12 +3,12 @@ import type { DeclaredErrorCode } from './errors.ts';
 import { id } from './id.ts';
 
 /**
- * The name of an operation is a verb followed by a noun, in camelCase: getServerInfo, getTeamMembers. The code, the
+ * The name of an operation is a verb followed by a noun, in camelCase: getServerInfo, getSpaceMembers. The code, the
  * address and the logs all use this one word.
  * A read always starts with get: singular for one thing, plural for several — never list or query. An operation
- * that changes something uses the verb the product uses, like leaveTeam.
+ * that changes something uses the verb the product uses, like leaveSpace.
  * At least two words: a one-word name is refused, so the address of an operation can never collide with another
- * entrance under /api/, like /api/health.
+ * entrance under /api/, like /api/health or /api/auth (the sign-in library).
  */
 const NAME = /^[a-z][a-z0-9]*(?:[A-Z][a-z0-9]*)+$/;
 
@@ -19,6 +19,8 @@ const NAME = /^[a-z][a-z0-9]*(?:[A-Z][a-z0-9]*)+$/;
  */
 export interface Operation<
   Kind extends 'read' | 'write' = 'read' | 'write',
+  Access extends 'signed-in' | 'public' = 'signed-in' | 'public',
+  BelongsTo extends 'space' | 'none' = 'space' | 'none',
   Input extends z.ZodObject = z.ZodObject,
   Output extends z.ZodObject = z.ZodObject,
   Code extends DeclaredErrorCode = DeclaredErrorCode
@@ -27,6 +29,16 @@ export interface Operation<
   readonly name: string;
   /** Read or write. A read changes nothing, so calling it again is always safe */
   readonly kind: Kind;
+  /** Who may call it: signed-in is a person who is signed in; public is anyone */
+  readonly access: Access;
+  /**
+   * Whether the operation belongs to a space.
+   * space: it reads or writes what is in the space that spaceId in the input names. The caller must be a member of
+   * that space, and the server checks so before the implementation runs, rather than trusting every implementation
+   * to remember; not a member, or no such space, is UNKNOWN_SPACE.
+   * none: it is about the caller alone, or about nothing that is in a space, like "which spaces am I in".
+   */
+  readonly belongsTo: BelongsTo;
   readonly input: Input;
   readonly output: Output;
   /**
@@ -37,16 +49,40 @@ export interface Operation<
 }
 
 /**
+ * The two rules an operation of a space keeps besides, written into the types: a definition that breaks one fails
+ * the type check where it is written.
+ * It requires sign-in: without knowing who is calling, membership cannot be checked. Its input has a spaceId, which
+ * says which space.
+ */
+type SpaceRules<Access, BelongsTo> = BelongsTo extends 'space'
+  ? {
+      // Not written as 'signed-in' outright: with a wrong access, TypeScript would then judge the whole definition
+      // an impossible type and report every field, hiding which one is wrong
+      readonly access: Access extends 'signed-in' ? unknown : OperationsOfASpaceRequireSignIn;
+      readonly input: z.ZodType<{ spaceId: string }>;
+    }
+  : unknown;
+
+/** Exists only to put this sentence into the type checker's message. No value has this type */
+interface OperationsOfASpaceRequireSignIn {
+  readonly operationsOfASpaceRequireSignIn: never;
+}
+
+/**
  * Defines an operation. A definition that is wrong fails here, when the file loads, not when someone calls it:
  * - the name breaks the rule above;
  * - an input field called id, or ending in Id, is not the shared id (see id.ts).
  */
 export function operation<
   Kind extends 'read' | 'write',
+  Access extends 'signed-in' | 'public',
+  BelongsTo extends 'space' | 'none',
   Input extends z.ZodObject,
   Output extends z.ZodObject,
   Code extends DeclaredErrorCode = never
->(definition: Operation<Kind, Input, Output, Code>): Operation<Kind, Input, Output, Code> {
+>(
+  definition: Operation<Kind, Access, BelongsTo, Input, Output, Code> & SpaceRules<Access, BelongsTo>
+): Operation<Kind, Access, BelongsTo, Input, Output, Code> {
   if (!NAME.test(definition.name)) {
     throw new Error(
       `Operation name "${definition.name}" is invalid. Write it as a verb followed by a noun in camelCase, like getServerInfo.`
@@ -71,7 +107,7 @@ export type ReadOperation = Operation<'read'>;
 /** Whether value is the definition of an operation. Used to pick the operations out of what a file exports */
 export function isOperation(value: unknown): value is Operation {
   if (typeof value !== 'object' || value === null) return false;
-  return ['name', 'kind', 'input', 'output', 'errors'].every((field) => field in value);
+  return ['name', 'kind', 'access', 'belongsTo', 'input', 'output', 'errors'].every((field) => field in value);
 }
 
 /**

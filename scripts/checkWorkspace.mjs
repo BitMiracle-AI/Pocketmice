@@ -6,10 +6,13 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCOPE = '@pocketmice/';
-// Server-only packages: each one mapped to the set of units allowed to depend on it, for example
-// ['@pocketmice/db', new Set(['@pocketmice/api'])]. What is in such a package must not reach code that runs on a
-// client, so a new unit is not on a list by default: add it when it really needs the package. There are none yet.
-const SERVER_ONLY_PACKAGES = new Map();
+// Server-only packages, each mapped to the set of units allowed to depend on it. What is in such a package must not
+// reach code that runs on a client, so a new unit is not on a list by default: add it when it really needs the
+// package.
+const SERVER_ONLY_PACKAGES = new Map([
+  // The database. A client gets data through the api only
+  ['@pocketmice/db', new Set(['@pocketmice/api'])]
+]);
 // Units that live directly in the repo root rather than under apps/ or packages/, by folder name. They are outside
 // those two folders but follow the same naming and dependency rules. There are none yet.
 const ROOT_UNITS = [];

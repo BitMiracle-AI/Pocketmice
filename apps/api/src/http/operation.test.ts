@@ -5,38 +5,94 @@ import { id } from '@pocketmice/contract/id';
 import { operation } from '@pocketmice/contract/operation';
 import { z } from 'zod';
 import { createApp } from '../app.ts';
-import { ApiError, implement, MAX_INPUT_BYTES } from './operation.ts';
+import { ApiError, type CurrentUser, implement, MAX_INPUT_BYTES, type Membership } from './operation.ts';
 
 const WEB_ORIGIN = 'http://localhost:11211';
-const N1 = '11111111-1111-4111-8111-111111111111';
+const ADA: CurrentUser = { id: 'u1', email: 'ada@example.com' };
+const OWNER: Membership = { role: 'owner' };
+// The ids the tests use. An id in an input is a lowercase uuid
+const S1 = '11111111-1111-4111-8111-111111111111';
+const N1 = '22222222-2222-4222-8222-222222222222';
 
-// The operation the tests call: a write that lists one error code and has an input field with a default
+// The three operations the tests call: one of a space, one that requires sign-in and belongs to no space, and one
+// anyone may call
 const renameNote = operation({
   name: 'renameNote',
   kind: 'write',
-  input: z.object({ noteId: id, title: z.string().min(1).max(50), notify: z.boolean().default(false) }),
+  access: 'signed-in',
+  belongsTo: 'space',
+  input: z.object({ spaceId: id, noteId: id, title: z.string().min(1).max(50), notify: z.boolean().default(false) }),
   output: z.object({ note: z.object({ id: z.string(), title: z.string() }) }),
   errors: ['NOT_FOUND']
 });
 
-type Rename = Parameters<typeof implement<typeof renameNote>>[1];
+const getSettings = operation({
+  name: 'getSettings',
+  kind: 'read',
+  access: 'signed-in',
+  belongsTo: 'none',
+  input: z.object({}),
+  output: z.object({ theme: z.string() }),
+  errors: []
+});
+
+const getInvitation = operation({
+  name: 'getInvitation',
+  kind: 'read',
+  access: 'public',
+  belongsTo: 'none',
+  input: z.object({ invitationId: id }),
+  output: z.object({ spaceName: z.string() }),
+  errors: []
+});
+
+interface Options {
+  /** Who is signed in. Left out, it is ADA; null is nobody */
+  user?: CurrentUser | null;
+  /** Response headers that whoever identified the caller wants sent along. Left out, there are none */
+  responseHeaders?: Headers;
+  /** What the caller is in the space the input names. Left out, the owner; null means the space does not exist for them */
+  membership?: Membership | null;
+  /** What the implementation of renameNote does. Left out, it renames as the input says */
+  rename?: Parameters<typeof implement<typeof renameNote>>[1];
+}
 
 /**
- * An app with renameNote mounted. rename is what its implementation does; left out, it renames as the input says.
- * What the implementation was given is collected in calls, what the server reported about itself in reported.
+ * An app with the three operations mounted. The sign-in and the membership lookup are stand-ins. What the
+ * implementations were given is collected in calls, the lookups in identified and membershipLookups, and what the
+ * server reported about itself in reported.
  */
-function setup(rename?: Rename) {
+function setup({ user = ADA, responseHeaders, membership = OWNER, rename }: Options = {}) {
   const calls: unknown[] = [];
   const reported: { error: unknown; where: string }[] = [];
+  let identified = 0;
+  const membershipLookups: unknown[] = [];
 
   const app = createApp({
+    auth: { handler: async () => new Response('from the sign-in library') },
     webOrigins: [WEB_ORIGIN],
     implementations: [
       implement(renameNote, async (context) => {
         calls.push(context);
         return rename ? rename(context) : { note: { id: context.input.noteId, title: context.input.title } };
+      }),
+      implement(getSettings, async (context) => {
+        calls.push(context);
+        return { theme: 'dark' };
+      }),
+      implement(getInvitation, async (context) => {
+        calls.push(context);
+        return { spaceName: 'Research' };
       })
     ],
+    currentUser: async () => {
+      identified += 1;
+      return { user, responseHeaders };
+    },
+    spaceMembership: async (spaceId, userId) => {
+      membershipLookups.push({ spaceId, userId });
+      return membership;
+    },
     reportError: (error, where) => reported.push({ error, where })
   });
 
@@ -54,8 +110,11 @@ function setup(rename?: Rename) {
     return app.request(`/api/${name}`, { method: 'POST', headers: merged, body: text });
   }
 
-  return { app, post, calls, reported };
+  return { app, post, calls, reported, membershipLookups, identifiedTimes: () => identified };
 }
+
+/** A renameNote input that fits the definition */
+const RENAME = { spaceId: S1, noteId: N1, title: 'Groceries' };
 
 /** The error code and the status of a failed response */
 async function failure(response: Response) {
@@ -63,28 +122,101 @@ async function failure(response: Response) {
   return { status: response.status, code: body.error.code, message: body.error.message };
 }
 
-test('a request that fits the definition: the implementation gets the checked input, the caller gets the output', async () => {
-  const { post, calls, reported } = setup();
+test('a request that fits the definition: the implementation gets the checked input and who is calling, the caller gets the output', async () => {
+  const { post, calls, reported, membershipLookups } = setup();
 
-  const response = await post('renameNote', { noteId: N1, title: 'Groceries' });
+  const response = await post('renameNote', RENAME);
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { note: { id: N1, title: 'Groceries' } });
   // The default in the definition is filled in
-  assert.deepEqual(calls, [{ input: { noteId: N1, title: 'Groceries', notify: false } }]);
+  assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, membership: OWNER }]);
+  assert.deepEqual(membershipLookups, [{ spaceId: S1, userId: 'u1' }]);
   assert.deepEqual(reported, []);
 });
 
+test('an operation that requires sign-in, called by nobody, is UNAUTHENTICATED; the implementation does not run', async () => {
+  const { post, calls, membershipLookups } = setup({ user: null });
+
+  for (const [name, input] of [
+    ['getSettings', {}],
+    ['renameNote', RENAME]
+  ] as const) {
+    assert.deepEqual(await failure(await post(name, input)), {
+      status: 401,
+      code: 'UNAUTHENTICATED',
+      message: 'Sign in to call this operation.'
+    });
+  }
+  assert.deepEqual(calls, []);
+  // Without knowing who is calling there is nobody to look up
+  assert.deepEqual(membershipLookups, []);
+});
+
+test('an operation that belongs to no space gets the caller and no membership; nobody is looked up', async () => {
+  const { post, calls, membershipLookups } = setup();
+
+  const response = await post('getSettings', {});
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ input: {}, user: ADA }]);
+  assert.deepEqual(membershipLookups, []);
+});
+
+test('an operation anyone may call does not ask who is calling', async () => {
+  const { post, calls, identifiedTimes } = setup({ user: null });
+
+  const response = await post('getInvitation', { invitationId: N1 });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ input: { invitationId: N1 } }]);
+  assert.equal(identifiedTimes(), 0);
+});
+
+test('a space that does not exist for the caller is UNKNOWN_SPACE; the implementation does not run', async () => {
+  const { post, calls } = setup({ membership: null });
+
+  assert.deepEqual(await failure(await post('renameNote', RENAME)), {
+    status: 404,
+    code: 'UNKNOWN_SPACE',
+    message: `There is no space ${S1}, or you are not a member of it.`
+  });
+  assert.deepEqual(calls, []);
+});
+
+test('the headers whoever identified the caller wants sent are on the response, whether it succeeds or fails', async () => {
+  const responseHeaders = new Headers();
+  responseHeaders.append('set-cookie', 'pocketmice.session_token=renewed; HttpOnly');
+  responseHeaders.append('set-cookie', 'pocketmice.other=1');
+
+  const succeeded = await setup({ responseHeaders }).post('getSettings', {});
+  assert.equal(succeeded.status, 200);
+  assert.deepEqual(succeeded.headers.getSetCookie(), [
+    'pocketmice.session_token=renewed; HttpOnly',
+    'pocketmice.other=1'
+  ]);
+
+  // The session has ended: the order to delete the cookie goes out with the refusal
+  const expired = new Headers({ 'set-cookie': 'pocketmice.session_token=; Max-Age=0' });
+  const refused = await setup({ user: null, responseHeaders: expired }).post('getSettings', {});
+  assert.equal(refused.status, 401);
+  assert.deepEqual(refused.headers.getSetCookie(), ['pocketmice.session_token=; Max-Age=0']);
+
+  const invalid = await setup({ responseHeaders }).post('renameNote', { ...RENAME, title: '' });
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.headers.getSetCookie().length, 2);
+});
+
 test('an input that does not fit the definition is INVALID_INPUT, naming the field; the implementation does not run', async () => {
-  const { post, calls } = setup();
+  const { post, calls, membershipLookups } = setup();
 
   for (const input of [
-    { noteId: N1, title: '' },
-    { noteId: N1 },
-    { noteId: 'abc', title: 'Groceries' },
+    { ...RENAME, title: '' },
+    { spaceId: S1, noteId: N1 },
+    { ...RENAME, noteId: 'abc' },
     // A uuid, but in uppercase: an id has one spelling
-    { noteId: 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA', title: 'Groceries' },
-    { noteId: N1, title: 'Groceries', notify: 'yes' },
+    { ...RENAME, spaceId: 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA' },
+    { ...RENAME, notify: 'yes' },
     null,
     []
   ]) {
@@ -93,8 +225,10 @@ test('an input that does not fit the definition is INVALID_INPUT, naming the fie
     assert.equal(failed.status, 400, JSON.stringify(input));
     assert.equal(failed.code, 'INVALID_INPUT');
   }
-  assert.match((await failure(await post('renameNote', { noteId: N1, title: '' }))).message, /^title: /);
+  assert.match((await failure(await post('renameNote', { ...RENAME, title: '' }))).message, /^title: /);
   assert.deepEqual(calls, []);
+  // An input that does not fit names no space to look anyone up in
+  assert.deepEqual(membershipLookups, []);
 });
 
 test('a body that is not JSON, or not sent as JSON, is INVALID_INPUT', async () => {
@@ -105,23 +239,17 @@ test('a body that is not JSON, or not sent as JSON, is INVALID_INPUT', async () 
   assert.match(notJson.message, /not valid JSON/);
 
   for (const contentType of ['text/plain', null]) {
-    const failed = await failure(
-      await post('renameNote', { noteId: N1, title: 'Groceries' }, { 'content-type': contentType })
-    );
+    const failed = await failure(await post('renameNote', RENAME, { 'content-type': contentType }));
     assert.deepEqual([failed.status, failed.code], [400, 'INVALID_INPUT']);
     assert.match(failed.message, /content-type application\/json/);
   }
   assert.deepEqual(calls, []);
 });
 
-test('a body over the size limit is INPUT_TOO_LARGE, decided from the declared length', async () => {
-  const { post, calls } = setup();
+test('a body over the size limit is INPUT_TOO_LARGE, decided from the declared length before anyone is identified', async () => {
+  const { post, calls, identifiedTimes } = setup();
 
-  const response = await post(
-    'renameNote',
-    { noteId: N1, title: 'Groceries' },
-    { 'content-length': String(MAX_INPUT_BYTES + 1) }
-  );
+  const response = await post('renameNote', RENAME, { 'content-length': String(MAX_INPUT_BYTES + 1) });
 
   assert.deepEqual(await failure(response), {
     status: 413,
@@ -129,60 +257,64 @@ test('a body over the size limit is INPUT_TOO_LARGE, decided from the declared l
     message: `The request body is larger than ${MAX_INPUT_BYTES} bytes.`
   });
   assert.deepEqual(calls, []);
+  assert.equal(identifiedTimes(), 0);
 });
 
 test('a body sent in chunks declares no length and is not accepted', async () => {
   const { post, calls } = setup();
 
-  const failed = await failure(
-    await post('renameNote', { noteId: N1, title: 'Groceries' }, { 'transfer-encoding': 'chunked' })
-  );
+  const failed = await failure(await post('renameNote', RENAME, { 'transfer-encoding': 'chunked' }));
 
   assert.deepEqual([failed.status, failed.code], [400, 'INVALID_INPUT']);
   assert.match(failed.message, /content-length header, not in chunks/);
   assert.deepEqual(calls, []);
 });
 
-test('a request from a web page that is not on the list is FORBIDDEN; one with no origin is let in', async () => {
-  const { post, calls } = setup();
+test('a request from a web page that is not on the list is FORBIDDEN, signed in or not; one with no origin is let in', async () => {
+  const { post, calls, identifiedTimes } = setup();
 
-  const other = await failure(
-    await post('renameNote', { noteId: N1, title: 'Groceries' }, { origin: 'https://evil.example' })
-  );
+  const other = await failure(await post('renameNote', RENAME, { origin: 'https://evil.example' }));
   assert.deepEqual([other.status, other.code], [403, 'FORBIDDEN']);
   assert.deepEqual(calls, []);
+  assert.equal(identifiedTimes(), 0);
 
   // A caller that is not a browser sends no origin
-  const none = await post('renameNote', { noteId: N1, title: 'Groceries' }, { origin: null });
+  const none = await post('renameNote', RENAME, { origin: null });
   assert.equal(none.status, 200);
   assert.equal(calls.length, 1);
 });
 
 test('an implementation refuses with a code its definition lists, or a universal one: the caller gets that code', async () => {
-  const listed = setup(async () => {
-    throw new ApiError('NOT_FOUND', 'There is no such note.');
+  const listed = setup({
+    rename: async () => {
+      throw new ApiError('NOT_FOUND', 'There is no such note.');
+    }
   });
-  assert.deepEqual(await failure(await listed.post('renameNote', { noteId: N1, title: 'Groceries' })), {
+  assert.deepEqual(await failure(await listed.post('renameNote', RENAME)), {
     status: 404,
     code: 'NOT_FOUND',
     message: 'There is no such note.'
   });
   assert.deepEqual(listed.reported, []);
 
-  const universal = setup(async () => {
-    throw new ApiError('INVALID_INPUT', 'That title is taken by a rule the definition cannot express.');
+  const universal = setup({
+    rename: async () => {
+      throw new ApiError('FORBIDDEN', 'Only the owner of the space renames its notes.');
+    }
   });
-  const failed = await failure(await universal.post('renameNote', { noteId: N1, title: 'Groceries' }));
-  assert.deepEqual([failed.status, failed.code], [400, 'INVALID_INPUT']);
+  const failed = await failure(await universal.post('renameNote', RENAME));
+  assert.deepEqual([failed.status, failed.code], [403, 'FORBIDDEN']);
 });
 
 test('the reason attached to a refusal goes to the log and not to the caller', async () => {
   const reason = new Error('the disk said no: /var/data/notes');
-  const { post, reported } = setup(async () => {
-    throw new ApiError('NOT_FOUND', 'There is no such note.', { cause: reason });
+  const { post, reported } = setup({
+    rename: async () => {
+      throw new ApiError('NOT_FOUND', 'There is no such note.', { cause: reason });
+    }
   });
 
-  const response = await post('renameNote', { noteId: N1, title: 'Groceries' });
+  const response = await post('renameNote', RENAME);
   const text = await response.text();
 
   assert.equal(response.status, 404);
@@ -191,11 +323,13 @@ test('the reason attached to a refusal goes to the log and not to the caller', a
 });
 
 test('an implementation refuses with a code its definition does not list: INTERNAL, and it is reported', async () => {
-  const { post, reported } = setup(async () => {
-    throw new ApiError('CONFLICT', 'A note with that title exists.');
+  const { post, reported } = setup({
+    rename: async () => {
+      throw new ApiError('CONFLICT', 'A note with that title exists.');
+    }
   });
 
-  const failed = await failure(await post('renameNote', { noteId: N1, title: 'Groceries' }));
+  const failed = await failure(await post('renameNote', RENAME));
 
   assert.deepEqual(failed, { status: 500, code: 'INTERNAL', message: 'The server ran into an internal error.' });
   assert.equal(reported.length, 1);
@@ -205,11 +339,13 @@ test('an implementation refuses with a code its definition does not list: INTERN
 
 test('an implementation throws anything else: INTERNAL, the reason is reported and not told to the caller', async () => {
   const bug = new TypeError('cannot read properties of undefined (reading "rows")');
-  const { post, reported } = setup(async () => {
-    throw bug;
+  const { post, reported } = setup({
+    rename: async () => {
+      throw bug;
+    }
   });
 
-  const response = await post('renameNote', { noteId: N1, title: 'Groceries' });
+  const response = await post('renameNote', RENAME);
   const text = await response.text();
 
   assert.equal(response.status, 500);
@@ -220,21 +356,23 @@ test('an implementation throws anything else: INTERNAL, the reason is reported a
 });
 
 test('a field the definition does not have is dropped from the output before it is sent', async () => {
-  const { post } = setup(async ({ input }) => {
-    const row = { id: input.noteId, title: input.title, ownerEmail: 'ada@example.com' };
-    return { note: row, internalCounter: 7 };
+  const { post } = setup({
+    rename: async ({ input }) => {
+      const row = { id: input.noteId, title: input.title, ownerEmail: 'ada@example.com' };
+      return { note: row, internalCounter: 7 };
+    }
   });
 
-  const response = await post('renameNote', { noteId: N1, title: 'Groceries' });
+  const response = await post('renameNote', RENAME);
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { note: { id: N1, title: 'Groceries' } });
 });
 
 test('an output that does not match the definition is INTERNAL and reported, never sent', async () => {
-  const { post, reported } = setup(async () => ({ note: { id: N1 } }) as never);
+  const { post, reported } = setup({ rename: async () => ({ note: { id: N1 } }) as never });
 
-  const failed = await failure(await post('renameNote', { noteId: N1, title: 'Groceries' }));
+  const failed = await failure(await post('renameNote', RENAME));
 
   assert.deepEqual([failed.status, failed.code], [500, 'INTERNAL']);
   assert.match(String(reported[0]?.error), /returned a value that does not match its definition: note\.title: /);
@@ -256,18 +394,28 @@ test('an address with nothing at it answers UNKNOWN_OPERATION with the same erro
 });
 
 test('the same operation implemented twice is an error when the app is built', () => {
-  const twice = implement(renameNote, async ({ input }) => ({ note: { id: input.noteId, title: input.title } }));
+  const twice = implement(getSettings, async () => ({ theme: 'dark' }));
 
   assert.throws(
-    () => createApp({ webOrigins: [WEB_ORIGIN], implementations: [twice, twice], reportError: () => {} }),
-    /Operation renameNote is implemented more than once/
+    () =>
+      createApp({
+        auth: { handler: async () => new Response(null) },
+        webOrigins: [WEB_ORIGIN],
+        implementations: [twice, twice],
+        currentUser: async () => ({ user: null }),
+        spaceMembership: async () => null,
+        reportError: () => {}
+      }),
+    /Operation getSettings is implemented more than once/
   );
 });
 
 test('the client and the api agree: a call through the real client gets the output, or the code the api refused with', async () => {
-  const { app } = setup(async ({ input }) => {
-    if (input.title === 'Missing') throw new ApiError('NOT_FOUND', 'There is no such note.');
-    return { note: { id: input.noteId, title: input.title } };
+  const { app } = setup({
+    rename: async ({ input }) => {
+      if (input.title === 'Missing') throw new ApiError('NOT_FOUND', 'There is no such note.');
+      return { note: { id: input.noteId, title: input.title } };
+    }
   });
   const call = createApiClient({
     baseUrl: 'http://api.test',
@@ -275,17 +423,14 @@ test('the client and the api agree: a call through the real client gets the outp
     reportError: (error) => assert.fail(`the client reported ${String(error)}`)
   });
 
-  assert.deepEqual(await call(renameNote, { noteId: N1, title: 'Groceries' }), {
-    ok: true,
-    data: { note: { id: N1, title: 'Groceries' } }
-  });
-  assert.deepEqual(await call(renameNote, { noteId: N1, title: 'Missing' }), {
+  assert.deepEqual(await call(renameNote, RENAME), { ok: true, data: { note: { id: N1, title: 'Groceries' } } });
+  assert.deepEqual(await call(renameNote, { ...RENAME, title: 'Missing' }), {
     ok: false,
     code: 'NOT_FOUND',
     message: 'There is no such note.'
   });
   assert.deepEqual(
-    await call(renameNote, { noteId: N1, title: '' }).then((result) => !result.ok && result.code),
+    await call(renameNote, { ...RENAME, title: '' }).then((result) => !result.ok && result.code),
     'INVALID_INPUT'
   );
 });

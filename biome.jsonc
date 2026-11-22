@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**"]
+    // Both exclusions are files a tool generates
+    "includes": ["**", "!packages/db/migrations", "!packages/db/src/schema/auth.ts"]
   },
   "linter": {
     "rules": {
@@ -45,12 +46,39 @@
       }
     },
     {
-      // The next two blocks are the import rules inside the api's src:
+      // The next four blocks are the import rules inside the api's src:
       // 1. Direction. domains (the product) imports from http; http never imports from domains.
-      // 2. Neither reads environment variables: no process.env and no import of env.ts. What they need is passed in
-      //    by main.ts, so a test can build the same thing with its own values.
+      // 2. The set a running server uses (instances.ts) is imported by main.ts alone; other code is given what it
+      //    needs by main.ts. A test that reached it would get the set built from this machine's .env: the
+      //    development database.
+      // 3. domains and http do not read environment variables: no process.env and no import of env.ts.
+      //    A test in a domain may import env.ts: it has to learn from the environment which database server its
+      //    temporary database goes on.
       // Paths are written relative (starting with ../). Written as **/domains/**, the rule would also catch a path
       // inside a package, like @pocketmice/contract/domains/server.
+      // When several blocks cover one file, the import restrictions of a later block replace those of an earlier
+      // one whole; they are not merged. So each block spells out every restriction that applies to it.
+      // This block covers the files at the top level (except main.ts); the two folders have blocks of their own.
+      "includes": ["apps/api/src/**", "!apps/api/src/main.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["./instances.ts", "../**/instances.ts"],
+                    "message": "Only main.ts imports instances.ts. Other code takes what it needs as a parameter."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["apps/api/src/domains/**"],
       "linter": {
         "rules": {
@@ -61,8 +89,29 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["../**/env.ts"],
-                    "message": "Code in domains/ does not read environment variables. Take what you need as a parameter: main.ts passes it in."
+                    "group": ["../**/instances.ts", "../**/env.ts"],
+                    "message": "Code in domains/ does not read environment variables or import instances.ts. Take what you need as a parameter: main.ts passes it in."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // The tests in the domains and the setup they share: as the block above, except that env.ts may be imported
+      "includes": ["apps/api/src/domains/**/*.test.ts", "apps/api/src/domains/**/testing.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**/instances.ts"],
+                    "message": "Only main.ts imports instances.ts. A test builds its own instances."
                   }
                 ]
               }
@@ -86,8 +135,8 @@
                     "message": "Code in http/ must not import from domains/."
                   },
                   {
-                    "group": ["../**/env.ts"],
-                    "message": "Code in http/ does not read environment variables. Take what you need as a parameter: main.ts passes it in."
+                    "group": ["../**/instances.ts", "../**/env.ts"],
+                    "message": "Code in http/ does not read environment variables or import instances.ts. Take what you need as a parameter: main.ts passes it in."
                   }
                 ]
               }

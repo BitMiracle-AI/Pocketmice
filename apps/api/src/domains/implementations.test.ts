@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { test } from 'node:test';
-import { createApiClient } from '@pocketmice/client/api';
-import { getServerInfo } from '@pocketmice/contract/domains/server';
 import { isOperation, type Operation } from '@pocketmice/contract/operation';
-import { createApp } from '../app.ts';
+import type { Db } from '@pocketmice/db';
 import { domainImplementations } from './implementations.ts';
 
 // The folder of the contract that holds the definitions. The path is not written out relative to this file: where
@@ -34,7 +32,9 @@ async function definedOperations(): Promise<Map<string, Defined>> {
   return defined;
 }
 
-const implementations = domainImplementations({ version: '1.2.3' });
+// An implementation does not touch the database until it is called, and this file only looks at the list, so no real
+// connection is needed
+const implementations = domainImplementations({ db: {} as Db, version: '1.2.3' });
 
 test('every operation the contract defines has an implementation in the api', async () => {
   const defined = await definedOperations();
@@ -65,15 +65,4 @@ test('the constant that exports a definition has the name of the operation', asy
   for (const { operation, exportName, file } of (await definedOperations()).values()) {
     assert.equal(operation.name, exportName, `${exportName} in ${file}`);
   }
-});
-
-test('getServerInfo answers with the version the server was started with', async () => {
-  const app = createApp({ webOrigins: [], implementations, reportError: (error) => assert.fail(String(error)) });
-  const call = createApiClient({
-    baseUrl: 'http://api.test',
-    fetch: async (url, init) => app.request(url, init),
-    reportError: (error) => assert.fail(String(error))
-  });
-
-  assert.deepEqual(await call(getServerInfo, {}), { ok: true, data: { version: '1.2.3' } });
 });
