@@ -35,7 +35,7 @@ const member = z.object({
 export const getSpaces = operation({
   name: 'getSpaces',
   kind: 'read',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'none',
   input: z.object({}),
   output: z.object({ spaces: z.array(space) }),
@@ -46,7 +46,7 @@ export const getSpaces = operation({
 export const createSpace = operation({
   name: 'createSpace',
   kind: 'write',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'none',
   input: z.object({ name: spaceName }),
   output: z.object({ space }),
@@ -57,7 +57,7 @@ export const createSpace = operation({
 export const getMembers = operation({
   name: 'getMembers',
   kind: 'read',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'space',
   minRole: 'viewer',
   input: z.object({ spaceId: id }),

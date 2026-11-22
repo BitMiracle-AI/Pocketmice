@@ -25,7 +25,7 @@ const profile = z.object({
 export const getProfile = operation({
   name: 'getProfile',
   kind: 'read',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'none',
   input: z.object({}),
   output: profile,
@@ -36,7 +36,7 @@ export const getProfile = operation({
 export const updateProfile = operation({
   name: 'updateProfile',
   kind: 'write',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'none',
   input: z.object({ name: profileName }),
   output: profile,

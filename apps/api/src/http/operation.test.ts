@@ -19,7 +19,7 @@ const N1 = '22222222-2222-4222-8222-222222222222';
 const renameNote = operation({
   name: 'renameNote',
   kind: 'write',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'space',
   minRole: 'editor',
   input: z.object({ spaceId: id, noteId: id, title: z.string().min(1).max(50), notify: z.boolean().default(false) }),
@@ -30,7 +30,7 @@ const renameNote = operation({
 const getSettings = operation({
   name: 'getSettings',
   kind: 'read',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'none',
   input: z.object({}),
   output: z.object({ theme: z.string() }),

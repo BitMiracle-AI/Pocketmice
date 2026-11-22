@@ -36,7 +36,7 @@ is written down once, in `packages/contract`:
 export const getMembers = operation({
   name: 'getMembers',
   kind: 'read',
-  access: 'signed-in',
+  access: 'authenticated',
   belongsTo: 'space',
   minRole: 'viewer',
   input: z.object({ spaceId: id }),
@@ -50,7 +50,7 @@ implementation runs:
 
 - `kind` is a read or a write, and a read is what a name starting with `get` is. A read-only API key calls reads
   only.
-- `access` is `public` for anyone, `signed-in` for a person (signed in, or through one of their API keys), and
+- `access` is `public` for anyone, `authenticated` for a person (signed in, or through one of their API keys), and
   `session` for the person themselves, never an API key.
 - `belongsTo` says whether it works inside a space. If it does, the caller must be a member of that space, in the
   role `minRole` or a higher one.

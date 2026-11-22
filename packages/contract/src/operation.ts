@@ -24,7 +24,7 @@ const READ_NAME = /^get[A-Z]/;
  */
 export interface Operation<
   Kind extends 'read' | 'write' = 'read' | 'write',
-  Access extends 'public' | 'signed-in' | 'session' = 'public' | 'signed-in' | 'session',
+  Access extends 'public' | 'authenticated' | 'session' = 'public' | 'authenticated' | 'session',
   BelongsTo extends 'space' | 'none' = 'space' | 'none',
   Input extends z.ZodObject = z.ZodObject,
   Output extends z.ZodObject = z.ZodObject,
@@ -40,8 +40,8 @@ export interface Operation<
   /**
    * Who may call it.
    * public: anyone.
-   * signed-in: a person the server knows. That is someone who signed in, or an agent calling with one of that
-   * person's API keys.
+   * authenticated: a person the server knows, whichever way it knows them: someone who signed in, or an agent
+   * calling with one of that person's API keys.
    * session: a person who signed in themselves; an API key is not enough. It is for whatever decides who can get
    * in (API keys, members, invites), which an agent does not do on anyone's behalf.
    */
@@ -80,15 +80,15 @@ type SpaceRules<Access, BelongsTo> = BelongsTo extends 'space'
   ? {
       // Not written as the two values that are right: with a wrong access, TypeScript would then judge the whole
       // definition an impossible type and report every field, hiding which one is wrong
-      readonly access: Access extends 'public' ? OperationsOfASpaceRequireSignIn : unknown;
+      readonly access: Access extends 'public' ? OperationsOfASpaceAreNotPublic : unknown;
       readonly input: z.ZodType<{ spaceId: string }>;
       readonly minRole: SpaceRole;
     }
   : { readonly minRole?: never };
 
 /** Exists only to put this sentence into the type checker's message. No value has this type */
-interface OperationsOfASpaceRequireSignIn {
-  readonly operationsOfASpaceRequireSignIn: never;
+interface OperationsOfASpaceAreNotPublic {
+  readonly operationsOfASpaceAreNotPublic: never;
 }
 
 /**
@@ -99,7 +99,7 @@ interface OperationsOfASpaceRequireSignIn {
  */
 export function operation<
   Kind extends 'read' | 'write',
-  Access extends 'public' | 'signed-in' | 'session',
+  Access extends 'public' | 'authenticated' | 'session',
   BelongsTo extends 'space' | 'none',
   Input extends z.ZodObject,
   Output extends z.ZodObject,

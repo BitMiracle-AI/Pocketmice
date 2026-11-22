@@ -99,7 +99,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   operation({
     name: 'getSpaceThings',
     kind: 'read',
-    access: 'signed-in',
+    access: 'authenticated',
     belongsTo: 'space',
     minRole: 'viewer',
     input: z.object({ spaceId: id }),
@@ -134,7 +134,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   operation({
     name: 'getSpaceThings',
     kind: 'read',
-    access: 'signed-in',
+    access: 'authenticated',
     belongsTo: 'space',
     minRole: 'viewer',
     // @ts-expect-error -- the input does not say which space
@@ -147,7 +147,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   operation({
     name: 'getSpaceThings',
     kind: 'read',
-    access: 'signed-in',
+    access: 'authenticated',
     belongsTo: 'space',
     input: z.object({ spaceId: id }),
     output: z.object({}),
@@ -157,7 +157,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   operation({
     name: 'getSpaceThings',
     kind: 'read',
-    access: 'signed-in',
+    access: 'authenticated',
     belongsTo: 'space',
     // @ts-expect-error -- there is no such role
     minRole: 'admin',
@@ -171,7 +171,7 @@ test('an operation that belongs to no space states no role: one that does fails 
   operation({
     name: 'getThings',
     kind: 'read',
-    access: 'signed-in',
+    access: 'authenticated',
     belongsTo: 'none',
     // @ts-expect-error -- there is no space to have a role in
     minRole: 'viewer',
