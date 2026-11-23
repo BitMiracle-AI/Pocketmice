@@ -343,6 +343,8 @@ conversations the person is in. What you say there is said as that person, and m
 - `deleteMessage` deletes a message the person sent, by its number; with a key of the owner of the space, any
   message. It stays in the conversation under its number, with an empty text.
 - `createConversation` starts one, with the person as its only member. `updateConversation` changes its title.
+  A conversation with the person alone is where the two of you talk: what only they should hear, say there, and
+  not in a conversation others read.
 
 ### Hearing what happens
 

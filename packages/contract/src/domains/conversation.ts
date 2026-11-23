@@ -116,12 +116,26 @@ const conversationMember = z.object({
   name: z.string()
 });
 
+/**
+ * What a message carries, as the descriptions say it: a model that is offered an operation as a tool reads the
+ * description, and not the fields of the output.
+ */
+const A_MESSAGE =
+  'A message says who sent it (user), and through which API key when an agent sent it for them (apiKey; null ' +
+  'when the person sent it themselves). An agent is no member: it speaks as the person its key belongs to, and ' +
+  'tells what it said itself by its own key, whose id getProfile answers with. mentionedUserIds are the members ' +
+  'the message is addressed to; a mention of a person is how a message is addressed to them or to their agent. ' +
+  'files are the files it points at: each an id and, under file, its name, kind and path as they are now, or ' +
+  'null once the file is in the trash or deleted.';
+
 export const createConversation = operation({
   name: 'createConversation',
   description:
     'Starts a conversation in a space: where members of the space talk about one matter, under a title. The ' +
     'caller is its only member to begin with; a person adds the others, signed in themselves. Answers with the ' +
-    'conversation. The owner of the space can read every conversation in it.',
+    'conversation. A conversation with the caller alone is where a person and their own agent talk: an agent ' +
+    'that has something to tell only its person says it there. The owner of the space can read every ' +
+    'conversation in it.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -137,8 +151,12 @@ export const getConversations = operation({
     'The conversations of a space that the caller is a member of, the one with the latest message first; one ' +
     'without a message counts by when it was started. ' +
     PAGED +
-    ' A conversation whose lastMessageNumber is larger than its lastReadNumber has messages the caller has not ' +
-    'read.',
+    ' Each comes with its latest message (lastMessage). ' +
+    A_MESSAGE +
+    ' A conversation whose lastMessageNumber is larger than its lastReadNumber has messages the person has not ' +
+    'read. That is about the person, and not about an agent that calls with their key: for such an agent, a ' +
+    'conversation whose lastMessage was not sent through its own key is one where something was said since it ' +
+    'last spoke.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -154,9 +172,11 @@ export const getAllConversations = operation({
   name: 'getAllConversations',
   description:
     'Every conversation of a space, whether the caller is a member of it or not, in the order of ' +
-    'getConversations: for the owner of the space, who can read them all. ' +
+    'getConversations, each as getConversations answers with it: for the owner of the space, who can read ' +
+    'them all; anyone else is answered FORBIDDEN. ' +
     PAGED +
-    ' lastReadNumber is null for a conversation the caller is not a member of.',
+    ' lastReadNumber is null for a conversation the caller is not a member of: the owner reads it, and says ' +
+    'nothing in it until they are a member.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -257,8 +277,9 @@ export const getMessages = operation({
     'The messages of a conversation after the one numbered afterNumber, in the order they were sent, at most ' +
     'limit of them. Left out, afterNumber is 0: from the first message on. To read on, pass the number of the ' +
     'last message you were given; fewer messages than limit means there are no more for now. To read only the ' +
-    "latest, start from the conversation's lastMessageNumber less as many as you want. A message that was " +
-    'deleted is there under its number, with an empty text.',
+    "latest, start from the conversation's lastMessageNumber less as many as you want. " +
+    A_MESSAGE +
+    ' A message that was deleted is there under its number, with an empty text.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'conversation',
@@ -274,9 +295,11 @@ export const createMessage = operation({
   description:
     'Sends a message to a conversation, as the caller. Answers with the message, which has the next number of ' +
     'the conversation. mentionedUserIds names the members of the conversation the message is meant for, by ' +
-    'user id; fileIds points at files or folders of the space. Both may be left out. What the caller has read ' +
-    'stays as it was: see markConversationRead. NOT_FOUND: someone mentioned is not a member of the ' +
-    'conversation, or the space has no such file; the message says which.',
+    'user id; fileIds points at files or folders of the space. Both may be left out. Sent with an API key, the ' +
+    'message carries the key, and its readers are shown that an agent sent it for the person: it needs no ' +
+    'signature. Sending does not count as reading: what the person has read stays as it was. NOT_FOUND: ' +
+    'someone mentioned is not a member of the conversation, or the space has no such file; the message says ' +
+    'which.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'conversation',
@@ -316,9 +339,13 @@ export const deleteMessage = operation({
 export const markConversationRead = operation({
   name: 'markConversationRead',
   description:
-    'Says how far the caller has read a conversation: up to the message of this number. Their lastReadNumber ' +
-    'becomes that number. It only moves forward: a number below it changes nothing, and a number above the ' +
-    "latest message counts as the latest. It is the caller's own: nobody else is told, and nobody else's moves.",
+    'Says how far the person has read a conversation: up to the message of this number. Their lastReadNumber ' +
+    'becomes that number, and what is after it is what a page shows them as unread. It only moves forward: a ' +
+    'number below it changes nothing, and a number above the latest message counts as the latest. It is for ' +
+    'the person to say what they have read: an agent calling with the key of a person who reads the ' +
+    'conversation themselves does not call this, or they would never see what was said while they were away. ' +
+    'An agent with an account of its own, which nobody else reads as, keeps track of what it has dealt with ' +
+    "this way. Nobody else is told, and nobody else's number moves.",
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'conversation',
