@@ -18,18 +18,22 @@ import { fileText } from './text';
  * Anywhere on the row opens what the row is: a folder opens as a page of what is in it, a file opens its own page.
  * The row ends with what can be done with it: a file can be downloaded by anyone who sees it, and an editor has a
  * menu that renames it, describes it, moves it and puts it in the trash.
- * wide is what the wide column holds, which differs with the list. onPick is there for an editor: what was picked
- * from the menu of the row.
+ * wide is what the wide column holds, which differs with the list. A list too narrow for that column goes without
+ * it, unless keepWide says the list is no use without: what was found is from all over the space, and two things
+ * of one name are told apart by where they are. It then follows the name.
+ * onPick is there for an editor: what was picked from the menu of the row.
  */
 export function FileRow({
   file,
   spaceId,
   wide,
+  keepWide = false,
   onPick
 }: {
   file: DriveFile;
   spaceId: string;
   wide: ReactNode;
+  keepWide?: boolean;
   onPick: ((action: FileAction) => void) | undefined;
 }) {
   const isFolder = file.kind === 'folder';
@@ -45,6 +49,7 @@ export function FileRow({
         >
           {file.name}
         </Link>
+        {keepWide && <span className="flex min-w-0 text-muted-foreground @4xl:hidden">{wide}</span>}
         {file.description && (
           <span className="hidden min-w-0 shrink-[9999] truncate text-muted-foreground @2xl:block">
             {file.description}

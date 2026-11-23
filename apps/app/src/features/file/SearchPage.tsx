@@ -189,6 +189,7 @@ export function SearchPage({ words }: { words: string }) {
                   file={file}
                   spaceId={space.id}
                   wide={<span className="truncate">{placeOf(file.path) ?? space.name}</span>}
+                  keepWide
                   onPick={canEdit ? (what) => actions.pick(file, what) : undefined}
                 />
               ))}
