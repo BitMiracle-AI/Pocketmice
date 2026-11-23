@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
+import { Readable } from 'node:stream';
 import { test } from 'node:test';
 import { isOperation } from '@pocketmice/contract/operation';
 import { createPocketmice, type PocketmiceConfig } from './pocketmice.ts';
@@ -130,8 +131,6 @@ test('the types refuse an input the contract does not take, and what only the pe
   await drive.getFiles({ spaceId: SPACE });
   // @ts-expect-error a field that is misspelt is refused where it is written
   await drive.getFile({ spaceId: SPACE, fileID: FILE });
-  // @ts-expect-error a stream does not say how long it is
-  await drive.uploadFile({ spaceId: SPACE, parentId: null, name: 'a.md', content: new ReadableStream() });
   // @ts-expect-error for an upload too, directly in the space is said, not left out
   await drive.uploadFile({ spaceId: SPACE, name: 'a.md', content: '' });
 
@@ -331,6 +330,27 @@ test('content is handed to fetch in pieces of 64 KB, whatever it came as: none i
     );
     assert.deepEqual(Buffer.concat(pieces), expected[at]);
   }
+});
+
+test('what is not content is refused, and nothing is sent: a stream would be stored as the text of its name', async () => {
+  const { drive, sent } = setup(async () => json(200, { file: { id: FILE } }));
+  const upload = { spaceId: SPACE, parentId: null, name: 'a.md' };
+
+  // What a caller without types may hand over. A stream is refused by the types too: it does not say how long it is
+  const notContent = [new ReadableStream(), Readable.from(['a']), { text: 'a' }, [97], 42, null, undefined];
+  for (const content of notContent) {
+    // @ts-expect-error none of them is text, bytes or a Blob
+    const error = await thrownBy(drive.uploadFile({ ...upload, content }));
+    assert.equal(error.code, 'UNEXPECTED');
+    assert.equal(error.message, 'What uploadFile was given as content is not text, bytes or a Blob.');
+    assert.equal(error.operation, 'uploadFile');
+  }
+  const version = { spaceId: SPACE, fileId: FILE, baseVersionId: VERSION };
+  // @ts-expect-error nor is a stream content for a new version
+  const error = await thrownBy(drive.uploadFileVersion({ ...version, content: new ReadableStream() }));
+  assert.deepEqual([error.code, error.operation], ['UNEXPECTED', 'uploadFileVersion']);
+
+  assert.equal(sent.length, 0);
 });
 
 test('uploadFileVersion is a PUT that names the file and the version being replaced', async () => {

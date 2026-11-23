@@ -4,8 +4,9 @@ import type { DeclaredErrorCode, ErrorCode } from '@pocketmice/contract/errors';
 /**
  * Why a call failed. Either a code the server answered with (the list, and what each means, is in the contract's
  * errors.ts), or one of the three this side arrives at by itself: UNREACHABLE, the server could not be reached;
- * BAD_RESPONSE, it was reached, but what came back is not what was agreed; UNEXPECTED, sending the request failed
- * in a way that is not the network, and cause is what was thrown.
+ * BAD_RESPONSE, it was reached, but what came back is not what was agreed; UNEXPECTED, the request failed on this
+ * side in a way that is not the network: what the method was given cannot be sent, or the fetch that was passed in
+ * gave up. cause is what was thrown, when something was.
  */
 export type PocketmiceErrorCode = ErrorCode | ClientErrorCode;
 

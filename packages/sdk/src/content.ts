@@ -133,6 +133,13 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
 
   /** Uploads content with the query of a new file or of a new version. Returns the file the server answered with */
   async function upload(name: string, query: NewFileQuery | NewVersionQuery, content: Content): Promise<FileAnswer> {
+    // Checked as it arrives and not by its type, for a caller that has no types. What such a caller hands over
+    // most easily is a stream, and a Blob made of anything that is not content holds its name: the file would be
+    // stored, with the text "[object Object]" for its content
+    if (typeof content !== 'string' && !(content instanceof Uint8Array) && !(content instanceof Blob)) {
+      throw new PocketmiceError('UNEXPECTED', `What ${name} was given as content is not text, bytes or a Blob.`, name);
+    }
+
     const response = await request(name, query, { method: 'PUT', body: inPieces(content) });
     const text = await read(name, () => response.text());
     try {
