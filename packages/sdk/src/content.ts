@@ -192,8 +192,10 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
     async downloadFile(query) {
       const response = await request('downloadFile', query, { method: 'GET' });
 
-      // The etag of a download is the id of the version that was sent, in the quotes an etag is written in
-      const versionId = /^"(.+)"$/.exec(response.headers.get('etag') ?? '')?.[1];
+      // The etag of a download is the id of the version that was sent, in the quotes an etag is written in. A proxy
+      // that compresses what it passes on writes W/ before them, which says the bytes are not the same ones any
+      // more (nginx does, told to compress every kind of content). The version is the same one
+      const versionId = /^(?:W\/)?"(.+)"$/.exec(response.headers.get('etag') ?? '')?.[1];
       if (versionId === undefined) {
         // The bytes are not wanted any more: left unread, they would keep the connection busy. Letting go of them
         // fails when the connection has already broken, which nobody waits to hear: a failure nobody handles would

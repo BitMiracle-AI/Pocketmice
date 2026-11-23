@@ -452,6 +452,16 @@ test('downloadFile is a GET, and answers with the version that was sent and its 
   );
 });
 
+test('a download whose etag a proxy marked as weak still says which version it is', async () => {
+  // What nginx makes of the etag of an answer it compresses
+  const { drive } = setup(async () => new Response('# hello', { headers: { etag: `W/"${VERSION}"` } }));
+
+  const download = await drive.downloadFile({ spaceId: SPACE, fileId: FILE });
+
+  assert.equal(download.versionId, VERSION);
+  assert.equal(await download.text(), '# hello');
+});
+
 test('a download of content that is empty has no bytes, and still says which version it is', async () => {
   // An answer with no body at all, as a runtime may give one for content of no bytes
   const { drive } = setup(async () => download(null as unknown as BodyInit));
