@@ -8,11 +8,15 @@ import type { SignIn } from './auth/auth.ts';
 import { requestSignInCode } from './auth/requestSignInCode.ts';
 import { addConversationMember } from './conversation/addConversationMember.ts';
 import { createConversation } from './conversation/createConversation.ts';
+import { createMessage } from './conversation/createMessage.ts';
 import { deleteConversation } from './conversation/deleteConversation.ts';
+import { deleteMessage } from './conversation/deleteMessage.ts';
 import { getAllConversations } from './conversation/getAllConversations.ts';
 import { getConversation } from './conversation/getConversation.ts';
 import { getConversations } from './conversation/getConversations.ts';
+import { getMessages } from './conversation/getMessages.ts';
 import { leaveConversation } from './conversation/leaveConversation.ts';
+import { markConversationRead } from './conversation/markConversationRead.ts';
 import { removeConversationMember } from './conversation/removeConversationMember.ts';
 import { updateConversation } from './conversation/updateConversation.ts';
 import { createFolder } from './file/createFolder.ts';
@@ -114,6 +118,10 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     addConversationMember(deps),
     leaveConversation(deps),
     removeConversationMember(deps),
-    deleteConversation(deps)
+    deleteConversation(deps),
+    getMessages(deps),
+    createMessage(deps),
+    deleteMessage(deps),
+    markConversationRead(deps)
   ];
 }

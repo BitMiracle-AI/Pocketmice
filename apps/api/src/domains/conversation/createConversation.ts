@@ -23,6 +23,7 @@ export function createConversation({ db }: { db: Db }) {
         title: created.title,
         lastMessageNumber: 0,
         lastMessageAt: null,
+        lastMessage: null,
         lastReadNumber: 0,
         createdAt: created.createdAt.toISOString()
       }

@@ -181,7 +181,12 @@ test('signing up makes the account, signs the caller in, and makes their profile
   const [user] = await db.select().from(users).where(eq(users.email, account.email));
   assert.ok(user);
   assert.equal(user.name, 'Ada');
-  assert.deepEqual(await profile(sessionCookie(response)), { id: user.id, email: account.email, name: 'Ada' });
+  assert.deepEqual(await profile(sessionCookie(response)), {
+    id: user.id,
+    email: account.email,
+    name: 'Ada',
+    apiKey: null
+  });
 
   // The password is stored as a hash, never as it was typed
   const [credential] = await db.select().from(accounts).where(eq(accounts.userId, user.id));
@@ -394,7 +399,12 @@ test('what every signed-in person must have cannot be made ready: the sign-in fa
   assert.equal(signedIn.status, 200);
   assert.ok(sessionCookie(signedIn));
   assert.equal((await db.select().from(profiles).where(eq(profiles.id, user.id))).length, 1);
-  assert.deepEqual(await working.profile(sessionCookie(signedIn)), { id: user.id, email: account.email, name: 'Ada' });
+  assert.deepEqual(await working.profile(sessionCookie(signedIn)), {
+    id: user.id,
+    email: account.email,
+    name: 'Ada',
+    apiKey: null
+  });
 });
 
 test('the library fails in a way nobody foresaw: the caller gets an internal error without the reason, and it is reported', async () => {
@@ -568,7 +578,7 @@ test('a code is sent by mail, and signing in with it makes the account: the call
   assert.equal(user.name, '');
   assert.equal((await db.select().from(accounts).where(eq(accounts.userId, user.id))).length, 0);
   const name = email.slice(0, email.indexOf('@'));
-  assert.deepEqual(await profile(sessionCookie(response)), { id: user.id, email, name });
+  assert.deepEqual(await profile(sessionCookie(response)), { id: user.id, email, name, apiKey: null });
   assert.deepEqual(await call('getSpaces', {}, sessionCookie(response)), { spaces: [] });
   assert.deepEqual(reported, []);
 });
@@ -724,7 +734,7 @@ test('an account made with a password, on a server that now sends mail: the firs
   assert.equal(response.status, 200);
   const cookie = sessionCookie(response);
   // The same account, with its name and its space
-  assert.deepEqual(await now.profile(cookie), { id: user.id, email: account.email, name: 'Ada' });
+  assert.deepEqual(await now.profile(cookie), { id: user.id, email: account.email, name: 'Ada', apiKey: null });
   const { spaces } = (await now.call('getSpaces', {}, cookie)) as { spaces: { id: string }[] };
   assert.deepEqual(
     spaces.map(({ id }) => id),
@@ -803,7 +813,12 @@ test('a page signs up, out and in with a password, and is told what went wrong b
   const account = newAccount();
 
   assert.deepEqual(await auth.signUp(account), { ok: true });
-  assert.deepEqual(await api.profile(cookie()), { id: await userId(account.email), email: account.email, name: 'Ada' });
+  assert.deepEqual(await api.profile(cookie()), {
+    id: await userId(account.email),
+    email: account.email,
+    name: 'Ada',
+    apiKey: null
+  });
 
   const taken = await auth.signUp(account);
   assert.equal(!taken.ok && taken.code, 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL');

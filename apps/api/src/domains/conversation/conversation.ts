@@ -1,8 +1,10 @@
 import type { DbReader } from '@pocketmice/db';
-import { conversationMembers, conversations } from '@pocketmice/db/schema/conversation';
+import { apiKeys } from '@pocketmice/db/schema/apiKey';
+import { conversationMembers, conversations, messages } from '@pocketmice/db/schema/conversation';
 import { profiles } from '@pocketmice/db/schema/profile';
 import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { readTimeCursor, writeTimeCursor } from '../file/cursor.ts';
+import { type Message, messageColumns, toMessage } from './message.ts';
 
 /** A conversation as an operation answers with it: how it is, and how far this caller has read */
 export interface Conversation {
@@ -10,6 +12,7 @@ export interface Conversation {
   title: string;
   lastMessageNumber: number;
   lastMessageAt: string | null;
+  lastMessage: Message | null;
   /** Null when the caller is not a member of it */
   lastReadNumber: number | null;
   createdAt: string;
@@ -27,6 +30,8 @@ const latestAt = sql`coalesce(${conversations.lastMessageAt}, ${conversations.cr
  * What is read of a conversation, for this caller: with it comes their own row as a member, which says how far they
  * have read. Someone who is not a member has no row, and reads the conversation all the same when they are the
  * owner of the space.
+ * With it also comes its latest message, the one that has the number the conversation has reached, with who sent
+ * it. A conversation nothing was said in has none.
  */
 function selectConversations(db: DbReader, userId: string) {
   return db
@@ -37,13 +42,20 @@ function selectConversations(db: DbReader, userId: string) {
       lastMessageAt: conversations.lastMessageAt,
       lastReadNumber: conversationMembers.lastReadNumber,
       createdAt: conversations.createdAt,
-      latestAt
+      latestAt,
+      message: messageColumns
     })
     .from(conversations)
     .leftJoin(
       conversationMembers,
       and(eq(conversationMembers.conversationId, conversations.id), eq(conversationMembers.userId, userId))
-    );
+    )
+    .leftJoin(
+      messages,
+      and(eq(messages.conversationId, conversations.id), eq(messages.number, conversations.lastMessageNumber))
+    )
+    .leftJoin(profiles, eq(profiles.id, messages.userId))
+    .leftJoin(apiKeys, eq(apiKeys.id, messages.apiKeyId));
 }
 
 type ConversationRow = Awaited<ReturnType<typeof selectConversations>>[number];
@@ -54,9 +66,21 @@ function toConversation(row: ConversationRow): Conversation {
     title: row.title,
     lastMessageNumber: row.lastMessageNumber,
     lastMessageAt: row.lastMessageAt?.toISOString() ?? null,
+    lastMessage: latestMessage(row.message),
     lastReadNumber: row.lastReadNumber,
     createdAt: row.createdAt.toISOString()
   };
+}
+
+/**
+ * The latest message of a conversation, from what was read with it. The three tables it is read from are joined
+ * to a conversation that may have no message, so every column of it may be missing; with a message, the ones a
+ * message always has are there.
+ */
+function latestMessage(read: ConversationRow['message']): Message | null {
+  const { number, userId, userName, text, createdAt } = read;
+  if (number === null || userId === null || userName === null || text === null || createdAt === null) return null;
+  return toMessage({ ...read, number, userId, userName, text, createdAt });
 }
 
 /**

@@ -91,9 +91,14 @@ test('an agent with a key is the person whose key it is: it sees their profile a
   const mine = await makeSpace(ada, 'Research notes');
   const hers = await makeSpace(grace, 'Reports');
   await api.db.insert(spaceMembers).values({ spaceId: hers, userId: ada.id, role: 'viewer' });
-  const agent = api.withKey((await makeKey(ada, 'read')).key);
+  const theKey = await makeKey(ada, 'read');
+  const agent = api.withKey(theKey.key);
 
-  assert.deepEqual(await agent(getProfile, {}), { ok: true, data: { id: ada.id, email: ada.email, name: 'Ada' } });
+  // Whose key it is, and which: what is done through it is marked with that id
+  assert.deepEqual(await agent(getProfile, {}), {
+    ok: true,
+    data: { id: ada.id, email: ada.email, name: 'Ada', apiKey: { id: theKey.apiKey.id, name: 'Research agent' } }
+  });
   assert.deepEqual(await agent(getSpaces, {}), {
     ok: true,
     data: {
@@ -123,7 +128,8 @@ test('a key with the write permission changes things as the person', async () =>
 
 test('a read-only key reads and changes nothing', async () => {
   const ada = await api.addPerson('Ada');
-  const agent = api.withKey((await makeKey(ada, 'read')).key);
+  const theKey = await makeKey(ada, 'read');
+  const agent = api.withKey(theKey.key);
 
   const made = await agent(createSpace, { name: 'Made by the agent' });
   const renamed = await agent(updateProfile, { name: 'Ada Lovelace' });
@@ -131,7 +137,8 @@ test('a read-only key reads and changes nothing', async () => {
   assert.equal(!made.ok && made.code, 'FORBIDDEN');
   assert.equal(!renamed.ok && renamed.code, 'FORBIDDEN');
   assert.deepEqual(await agent(getSpaces, {}), { ok: true, data: { spaces: [] } });
-  assert.deepEqual(await agent(getProfile, {}), { ok: true, data: { id: ada.id, email: ada.email, name: 'Ada' } });
+  const profile = await agent(getProfile, {});
+  assert.equal(profile.ok && profile.data.name, 'Ada');
 });
 
 test('no key decides who can get in: keys, members and invites are FORBIDDEN to it, even the key of the owner', async () => {

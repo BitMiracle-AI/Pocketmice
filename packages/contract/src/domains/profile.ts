@@ -25,12 +25,17 @@ export const getProfile = operation({
   name: 'getProfile',
   description:
     "The caller's own profile: the name they go by and the email address they sign in with. Callers also use " +
-    'it to answer "who is signed in"; called with an API key, it says whose key it is.',
+    'it to answer "who is signed in". Called with an API key, it says whose key it is and which one (apiKey; ' +
+    'null for a person who signed in). What was written or said through that key is marked with the same id, ' +
+    'so an agent can tell what it did itself from what its person did.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'none',
   input: z.object({}),
-  output: profile,
+  output: profile.extend({
+    /** The API key this call came with. Null when the person signed in themselves */
+    apiKey: z.object({ id: z.string(), name: z.string() }).nullable()
+  }),
   errors: []
 });
 

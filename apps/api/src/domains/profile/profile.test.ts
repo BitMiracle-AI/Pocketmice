@@ -15,7 +15,8 @@ test('getProfile answers with the caller: their id, their email address and the 
 
   const result = await api.as(ada)(getProfile, {});
 
-  assert.deepEqual(result, { ok: true, data: { id: ada.id, email: ada.email, name: 'Ada' } });
+  // Signed in themselves: no API key came with the call
+  assert.deepEqual(result, { ok: true, data: { id: ada.id, email: ada.email, name: 'Ada', apiKey: null } });
 });
 
 test('getProfile and updateProfile signed out are UNAUTHENTICATED', async () => {

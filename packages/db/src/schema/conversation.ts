@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { foreignKey, index, integer, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { apiKeys } from './apiKey.ts';
 import { users } from './auth.ts';
 import { spaceMembers, spaces } from './space.ts';
 
@@ -97,4 +98,48 @@ export const conversationMembers = pgTable(
     // member of a space goes, the database looks here for their rows
     index('conversation_members_user_idx').on(table.userId, table.spaceId)
   ]
+);
+
+/**
+ * What was said in the conversations. A row is one message, named by its conversation and its number in it.
+ * A message is written once and stays as it was sent. The one thing that happens to it afterwards is that it is
+ * marked as deleted.
+ */
+export const messages = pgTable(
+  'messages',
+  {
+    /** The conversation it was sent in. A message goes when its conversation is deleted */
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    /**
+     * Its number in the conversation: 1 for the first, and one more for each sent after. Where the number comes
+     * from is conversations.lastMessageNumber
+     */
+    number: integer('number').notNull(),
+    /** Who sent it. The database refuses to delete a user who sent a message */
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    /**
+     * The API key it was sent through, when an agent sent it for the person. Null when the person sent it
+     * themselves. A deleted key keeps its row (see apiKeys), so this still names it.
+     */
+    apiKeyId: uuid('api_key_id').references(() => apiKeys.id),
+    /** What it says */
+    text: text('text').notNull(),
+    /**
+     * When it was deleted. Null for one that was not.
+     * Deleting marks the row and leaves it there, with its text: no operation answers with the text of a deleted
+     * message, and the numbers of a conversation keep no gap.
+     */
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    /**
+     * When it was sent. Kept to the millisecond: the time of the latest message is copied to its conversation
+     * (lastMessageAt), which is kept so, and a copy says the same as what it is a copy of.
+     */
+    createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).defaultNow().notNull()
+  },
+  // Also "the messages of this conversation after this number, in the order they were sent"
+  (table) => [primaryKey({ columns: [table.conversationId, table.number] })]
 );

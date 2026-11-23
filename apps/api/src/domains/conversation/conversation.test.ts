@@ -91,7 +91,13 @@ test('whoever starts a conversation is its only member; any member of the space 
   assert.ok(started.ok);
   const { id, createdAt, ...rest } = started.data.conversation;
   // The title is kept without the spaces around it; nothing was said yet, and nothing is unread
-  assert.deepEqual(rest, { title: 'Launch plan', lastMessageNumber: 0, lastMessageAt: null, lastReadNumber: 0 });
+  assert.deepEqual(rest, {
+    title: 'Launch plan',
+    lastMessageNumber: 0,
+    lastMessageAt: null,
+    lastMessage: null,
+    lastReadNumber: 0
+  });
   assert.ok(!Number.isNaN(Date.parse(createdAt)));
 
   const read = await api.as(linus)(getConversation, { spaceId, conversationId: id });

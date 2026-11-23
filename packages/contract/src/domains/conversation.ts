@@ -21,12 +21,47 @@ import { cursor, limit, nextCursor, PAGED } from '../paging.ts';
 //   person is in.
 // - A conversation that every member has left stays, for the owner of the space to read, to add someone to, or to
 //   delete.
+//
+// What is said in a conversation is its messages.
+// - A message is text, sent by a member of the conversation. It says who sent it, and through which API key when
+//   an agent sent it for them: that is how an agent tells what it said itself from what its person said.
+// - The messages of a conversation are numbered from 1 in the order they were sent, with no number left out. A
+//   message keeps its number and never changes. Whoever sent it can delete it, and so can the owner of the space:
+//   it is then still there under its number, and says nothing.
+// - Messages are read by number and not by cursor: getMessages answers with the ones after a number. A number is
+//   a place in the conversation that every caller shares and that does not move, which a cursor is not. Whoever
+//   is told that a conversation has reached message 12, and has the first 11, asks for what comes after 11.
+// - How far a member has read is one number of their own (lastReadNumber), and only they move it
+//   (markConversationRead). Sending a message does not move it: an agent that speaks with the key of a person
+//   leaves what that person has read as it was.
 
 /** The title of a conversation has at most this many characters */
 export const CONVERSATION_TITLE_MAX_LENGTH = 100;
 
 /** The title of a conversation. Spaces around it are dropped; it is not empty. Two may have the same title */
 export const conversationTitle = z.string().trim().min(1).max(CONVERSATION_TITLE_MAX_LENGTH);
+
+/** A message has at most this many characters */
+export const MESSAGE_TEXT_MAX_LENGTH = 10_000;
+
+/** What a message says. Spaces and line breaks around it are dropped; it is not empty */
+export const messageText = z.string().trim().min(1).max(MESSAGE_TEXT_MAX_LENGTH);
+
+/** A message, as whoever can read its conversation sees it */
+export const message = z.object({
+  /** Its number in the conversation: 1 for the first, and one more for each sent after */
+  number: z.number(),
+  /** Who sent it, by the name they go by */
+  user: z.object({ id: z.string(), name: z.string() }),
+  /** The API key it was sent through, when an agent sent it for that person. Null when they sent it themselves */
+  apiKey: z.object({ id: z.string(), name: z.string() }).nullable(),
+  /** What it says. Empty for a message that was deleted */
+  text: z.string(),
+  /** When it was deleted: an ISO 8601 time in UTC. Null for one that was not */
+  deletedAt: z.iso.datetime().nullable(),
+  /** When it was sent: an ISO 8601 time in UTC */
+  createdAt: z.iso.datetime()
+});
 
 /** A conversation, as someone who can read it sees it */
 export const conversation = z.object({
@@ -39,6 +74,8 @@ export const conversation = z.object({
   lastMessageNumber: z.number(),
   /** When its latest message was sent: an ISO 8601 time in UTC. Null when there is none yet */
   lastMessageAt: z.iso.datetime().nullable(),
+  /** Its latest message, the one numbered lastMessageNumber. Null when there is none yet */
+  lastMessage: message.nullable(),
   /**
    * The number of the latest message the caller has read; 0 when they have read none. Null when the caller is not
    * a member of the conversation: the owner of the space, reading one they are not in
@@ -186,6 +223,75 @@ export const deleteConversation = operation({
   minRole: 'owner',
   openTo: 'reader',
   input: z.object({ spaceId: id, conversationId: id }),
+  output: z.object({}),
+  errors: []
+});
+
+export const getMessages = operation({
+  name: 'getMessages',
+  description:
+    'The messages of a conversation after the one numbered afterNumber, in the order they were sent, at most ' +
+    'limit of them. Left out, afterNumber is 0: from the first message on. To read on, pass the number of the ' +
+    'last message you were given; fewer messages than limit means there are no more for now. To read only the ' +
+    "latest, start from the conversation's lastMessageNumber less as many as you want. A message that was " +
+    'deleted is there under its number, with an empty text.',
+  kind: 'read',
+  access: 'authenticated',
+  belongsTo: 'conversation',
+  minRole: 'viewer',
+  openTo: 'reader',
+  input: z.object({ spaceId: id, conversationId: id, afterNumber: z.number().int().min(0).default(0), limit }),
+  output: z.object({ messages: z.array(message) }),
+  errors: []
+});
+
+export const createMessage = operation({
+  name: 'createMessage',
+  description:
+    'Sends a message to a conversation, as the caller. Answers with the message, which has the next number of ' +
+    'the conversation. What the caller has read stays as it was: see markConversationRead.',
+  kind: 'write',
+  access: 'authenticated',
+  belongsTo: 'conversation',
+  minRole: 'viewer',
+  openTo: 'member',
+  input: z.object({ spaceId: id, conversationId: id, text: messageText }),
+  output: z.object({ message }),
+  errors: []
+});
+
+// Whose message it is cannot be told from the definition: it is the one thing an implementation of a conversation
+// decides for itself, after reading the message. Everything before that (the space, the role, the conversation) is
+// settled as for any other operation.
+export const deleteMessage = operation({
+  name: 'deleteMessage',
+  description:
+    'Deletes a message: it stays in the conversation under its number, marked as deleted, and no longer says ' +
+    'anything. For whoever sent it, and for the owner of the space; anyone else is answered FORBIDDEN. ' +
+    'Deleting one that is deleted already changes nothing. NOT_FOUND: the conversation has no message of that ' +
+    'number.',
+  kind: 'write',
+  access: 'authenticated',
+  belongsTo: 'conversation',
+  minRole: 'viewer',
+  openTo: 'reader',
+  input: z.object({ spaceId: id, conversationId: id, number: z.number().int().min(1) }),
+  output: z.object({}),
+  errors: ['NOT_FOUND']
+});
+
+export const markConversationRead = operation({
+  name: 'markConversationRead',
+  description:
+    'Says how far the caller has read a conversation: up to the message of this number. Their lastReadNumber ' +
+    'becomes that number. It only moves forward: a number below it changes nothing, and a number above the ' +
+    "latest message counts as the latest. It is the caller's own: nobody else is told, and nobody else's moves.",
+  kind: 'write',
+  access: 'authenticated',
+  belongsTo: 'conversation',
+  minRole: 'viewer',
+  openTo: 'member',
+  input: z.object({ spaceId: id, conversationId: id, number: z.number().int().min(0) }),
   output: z.object({}),
   errors: []
 });
