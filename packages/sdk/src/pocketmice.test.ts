@@ -332,6 +332,29 @@ test('content is handed to fetch in pieces of 64 KB, whatever it came as: none i
   }
 });
 
+test('content of no bytes is handed to fetch as empty text, and a Blob whose pieces do not add up to it as it came', async () => {
+  const { drive, sent } = setup(async () => json(200, { file: { id: FILE } }));
+  const upload = { spaceId: SPACE, parentId: null, name: 'a.bin' };
+
+  // Deno sends a Blob of no bytes without a length, and the server takes no upload without one
+  for (const content of ['', new Uint8Array(0), new Blob([])]) await drive.uploadFile({ ...upload, content });
+  assert.deepEqual(
+    sent.map(({ init }) => init.body),
+    ['', '', '']
+  );
+
+  // What Bun gives for a file on disk: a Blob whose pieces, put together, have no bytes. Sent as those pieces, the
+  // file would be stored empty, and the upload would still succeed
+  class OnDiskInBun extends Blob {
+    override slice(): Blob {
+      return new Blob([]);
+    }
+  }
+  const onDisk = new OnDiskInBun(['kept on disk']);
+  await drive.uploadFile({ ...upload, content: onDisk });
+  assert.equal(sent[3]?.init.body, onDisk);
+});
+
 test('what is not content is refused, and nothing is sent: a stream would be stored as the text of its name', async () => {
   const { drive, sent } = setup(async () => json(200, { file: { id: FILE } }));
   const upload = { spaceId: SPACE, parentId: null, name: 'a.md' };

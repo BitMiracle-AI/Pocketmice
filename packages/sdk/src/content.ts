@@ -27,7 +27,8 @@ export type Content = string | Uint8Array | Blob;
 const PIECE_BYTES = 64 * 1024;
 
 /**
- * The content as fetch is given it: a Blob that is read a piece at a time, whatever the content came as.
+ * The content as fetch is given it: a Blob that is read a piece at a time, whatever the content came as, but for
+ * the two cases at the end.
  * Node's fetch hands the connection what it reads from a body piece by piece, and content that is in memory is
  * one piece, whatever its size. Sent that way, two things go wrong, both measured on Node 26:
  * - The sending of a piece has five minutes. An upload that takes longer fails with UNREACHABLE, however well it
@@ -41,14 +42,22 @@ const PIECE_BYTES = 64 * 1024;
  * In pieces neither happens.
  * What is left: a refused upload still leaves what waited of one piece on the count. About 250 uploads of some MB
  * each, refused in one program, end its connection the same way.
+ * Two other runtimes do not take every content that way, both seen with real uploads (Bun 1.4, Deno 2.9):
+ * - Bun puts the pieces of a file on disk together as a Blob of no bytes: the file would be stored empty, and
+ *   nothing would say so. Where the pieces do not add up to the content, the content goes as it came.
+ * - Deno sends a Blob of no bytes without a length, which the server refuses. Content of no bytes goes as empty
+ *   text, which every fetch gives a length.
  */
-function inPieces(content: Content): Blob {
+function inPieces(content: Content): Blob | '' {
   // The types of a Blob take bytes over a buffer that is not shared only. Content does not ask a caller to say
   // which kind theirs is, and a Blob copies either
   const whole = content instanceof Blob ? content : new Blob([content as BlobPart]);
+  if (whole.size === 0) return '';
+
   const pieces: Blob[] = [];
   for (let start = 0; start < whole.size; start += PIECE_BYTES) pieces.push(whole.slice(start, start + PIECE_BYTES));
-  return new Blob(pieces);
+  const together = new Blob(pieces);
+  return together.size === whole.size ? together : whole;
 }
 
 /** The file an upload answers with, as getFile answers */
@@ -119,7 +128,7 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
   async function request(
     name: string,
     query: Parameters<typeof fileContentPath>[0],
-    init: { method: string; body?: Blob }
+    init: { method: string; body?: Blob | '' }
   ): Promise<Response> {
     const url = new URL(fileContentPath(query), baseUrl).href;
     let response: Response;
