@@ -12,5 +12,7 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // The tests are checked apart (tsconfig.test.json): they run in Node and use its types, which a page has not
+  "exclude": ["src/**/*.test.ts"]
 }

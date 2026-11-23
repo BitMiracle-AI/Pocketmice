@@ -128,5 +128,16 @@
      off. Windows and Linux are not affected. */
   html {
     @apply font-sans antialiased;
+    /* What the browser draws itself (a scrollbar, a date field) is light or dark as the page is */
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  /* Chinese is drawn in a typeface the system already has, so nobody downloads one. Inter stays first: digits and
+     Latin letters are still Inter. And Chinese is not set tighter the way a Latin heading is. */
+  html:lang(zh-Hans) {
+    font-family: "Inter Variable", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+    --tracking-tight: 0em;
   }
 }

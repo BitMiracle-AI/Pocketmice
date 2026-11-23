@@ -45,6 +45,15 @@ const TARGETS = [
     // domain share
     files: ['implementations.test.ts', 'implementations.ts', 'prepareSignIn.ts', 'testing.ts'],
     hint: 'Put it in the folder of the domain it belongs to, domains/<domain>/. Only a file that lists something from every domain stays here.'
+  },
+  {
+    dir: 'apps/app/src',
+    // main.tsx is where the pages start, index.css holds the styles of all of them, env.d.ts says what the
+    // configuration is, and routeTree.gen.ts is the list of routes the router's plugin writes. The folders are the
+    // only places any other code goes, and the rules on which of them imports from which name them (biome.jsonc)
+    files: ['env.d.ts', 'index.css', 'main.tsx', 'routeTree.gen.ts'],
+    dirs: ['components', 'features', 'hooks', 'lib', 'routes'],
+    hint: 'Put it in routes/ (which page an address shows), features/<area>/ (one area of the product), components/ (what is drawn and belongs to no area), hooks/ or lib/ (what every page shares).'
   }
 ];
 

@@ -13,6 +13,9 @@ CLAUDE.md
 node_modules/
 dist/
 
+# What the router's plugin keeps while it writes the app's list of routes
+.tanstack/
+
 # Scratch pages and scripts that only ever run on one machine
 /apps/*/temp/
 

@@ -6,8 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    // Both exclusions are files a tool generates
-    "includes": ["**", "!packages/db/migrations", "!packages/db/src/schema/auth.ts"]
+    // Every exclusion is a file a tool generates
+    "includes": ["**", "!packages/db/migrations", "!packages/db/src/schema/auth.ts", "!apps/app/src/routeTree.gen.ts"]
   },
   "css": {
     "parser": {
@@ -193,6 +193,72 @@
       }
     },
     {
+      // Imports inside the app's src go one way: routes import from features, and features from the code every
+      // page shares (components, hooks, lib). This block and the next stop an import that goes the other way.
+      // Features may import from each other.
+      // The rules name folders, and the top level of src has only these (scripts/checkTopLevel.mjs), so no folder
+      // is outside both blocks.
+      "includes": ["apps/app/src/components/**", "apps/app/src/hooks/**", "apps/app/src/lib/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/features/**", "**/routes/**"],
+                    "message": "Shared code (components, hooks, lib) must not import from features or routes."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/app/src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/routes/**"],
+                    "message": "Features must not import from routes."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // The pages are in more than one language, so the words a person reads are in the text files (see
+      // apps/app/src/lib/language/text.ts): a word written between two tags is reported. Let through is only what
+      // is the same in every language: the name of the product.
+      // What the rule does not see: a word in an attribute (aria-label="…"), and one a plain function returns.
+      // Those two are kept out by whoever writes the code.
+      // The components of shadcn are not covered yet: a few of them say a word of their own, in English.
+      "includes": ["apps/app/src/**", "!apps/app/src/components/ui/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noJsxLiterals": {
+              "level": "error",
+              "options": {
+                "allowedStrings": ["Pocketmice"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       // From here down are the kinds of file whose name is written another way; a later block replaces an earlier
       // one. A component file has the name of the component it exports (LoginPage.tsx exports LoginPage): the name
       // of a .tsx file must be one of the names it exports.
@@ -222,6 +288,34 @@
                 "filenameCases": ["kebab-case"]
               }
             }
+          }
+        }
+      }
+    },
+    {
+      // The file that holds the sentences of a language has the name of the language (zh-hans.ts)
+      "includes": ["apps/app/src/**/text/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "filenameCases": ["kebab-case"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // The name of a file in routes is how its address is written, which the router decides (__root.tsx,
+      // $spaceId.tsx). main.tsx is where the pages start, and exports nothing.
+      "includes": ["apps/app/src/routes/**", "apps/app/src/main.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
           }
         }
       }
