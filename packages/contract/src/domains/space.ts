@@ -54,6 +54,22 @@ export const createSpace = operation({
   errors: []
 });
 
+/**
+ * Changes the name of a space. Answers with the space as it is after the change.
+ * The name is what every member finds the space under, so it is the owner's to change. An API key of the owner may
+ * do it too: a new name lets nobody in and can be changed back.
+ */
+export const updateSpace = operation({
+  name: 'updateSpace',
+  kind: 'write',
+  access: 'authenticated',
+  belongsTo: 'space',
+  minRole: 'owner',
+  input: z.object({ spaceId: id, name: spaceName }),
+  output: z.object({ space }),
+  errors: []
+});
+
 /** The members of a space, in the order they became members */
 export const getMembers = operation({
   name: 'getMembers',

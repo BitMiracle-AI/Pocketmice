@@ -31,6 +31,7 @@ import { getSpaces } from './space/getSpaces.ts';
 import { leaveSpace } from './space/leaveSpace.ts';
 import { removeMember } from './space/removeMember.ts';
 import { updateMember } from './space/updateMember.ts';
+import { updateSpace } from './space/updateSpace.ts';
 
 /** What the implementations need from outside. main.ts passes it in; a test passes its own */
 export interface DomainDeps {
@@ -57,6 +58,7 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     updateProfile(deps),
     getSpaces(deps),
     createSpace(deps),
+    updateSpace(deps),
     getMembers(deps),
     updateMember(deps),
     removeMember(deps),

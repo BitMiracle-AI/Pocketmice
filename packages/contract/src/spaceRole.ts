@@ -4,7 +4,7 @@ import { z } from 'zod';
  * The roles a member of a space can have, from the one that may do the least to the one that may do the most:
  * - viewer sees what is in the space and changes nothing;
  * - editor also changes what is in the space;
- * - owner also decides who is in the space. A space has exactly one owner.
+ * - owner also decides what the space is called and who is in it. A space has exactly one owner.
  * The order is the rule: a role may do whatever a role before it in this list may. Every operation of a space
  * states the lowest role that may call it (minRole in its definition).
  */

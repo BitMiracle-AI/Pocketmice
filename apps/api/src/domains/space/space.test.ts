@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createSpace, getSpaces } from '@pocketmice/contract/domains/space';
+import { createApiKey } from '@pocketmice/contract/domains/apiKey';
+import { createSpace, getSpaces, updateSpace } from '@pocketmice/contract/domains/space';
 import { users } from '@pocketmice/db/schema/auth';
 import { spaceMembers, spaces } from '@pocketmice/db/schema/space';
 import { eq } from 'drizzle-orm';
@@ -15,6 +16,17 @@ async function make(person: CurrentUser, name: string) {
   const result = await api.as(person)(createSpace, { name });
   assert.ok(result.ok, `createSpace should have worked: ${JSON.stringify(result)}`);
   return result.data.space;
+}
+
+/** Puts this person into the space in this role, by writing the row (see member.test.ts) */
+async function add(spaceId: string, person: CurrentUser, role: 'editor' | 'viewer') {
+  await api.db.insert(spaceMembers).values({ spaceId, userId: person.id, role });
+}
+
+/** The name the space has in the database */
+async function nameOf(spaceId: string) {
+  const [row] = await api.db.select({ name: spaces.name }).from(spaces).where(eq(spaces.id, spaceId));
+  return row?.name;
 }
 
 test('someone who has made no space and joined none is in none', async () => {
@@ -76,6 +88,84 @@ test('createSpace refuses a name that is empty or too long, and makes nothing', 
   }
 
   assert.equal((await api.db.select().from(spaces).where(eq(spaces.userId, ada.id))).length, 0);
+});
+
+test('updateSpace changes the name, trimmed, for every member, and answers with the space as the caller sees it', async () => {
+  const ada = await api.addPerson('Ada');
+  const grace = await api.addPerson('Grace');
+  const space = await make(ada, 'Research notes');
+  const other = await make(ada, 'Reports');
+  await add(space.id, grace, 'viewer');
+
+  // Two spaces may have the same name, so the name of another space is not refused
+  const result = await api.as(ada)(updateSpace, { spaceId: space.id, name: '  Reports ' });
+
+  assert.deepEqual(result, { ok: true, data: { space: { id: space.id, name: 'Reports', role: 'owner' } } });
+  assert.deepEqual(await api.as(ada)(getSpaces, {}), {
+    ok: true,
+    data: { spaces: [{ id: space.id, name: 'Reports', role: 'owner' }, other] }
+  });
+  assert.deepEqual(await api.as(grace)(getSpaces, {}), {
+    ok: true,
+    data: { spaces: [{ id: space.id, name: 'Reports', role: 'viewer' }] }
+  });
+});
+
+test('updateSpace is for the owner: other members are FORBIDDEN, the space does not exist for anyone else, and the name stays', async () => {
+  const ada = await api.addPerson('Ada');
+  const grace = await api.addPerson('Grace');
+  const linus = await api.addPerson('Linus');
+  const margaret = await api.addPerson('Margaret');
+  const space = await make(ada, 'Research notes');
+  await add(space.id, grace, 'editor');
+  await add(space.id, linus, 'viewer');
+  const input = { spaceId: space.id, name: 'Taken over' };
+
+  const byEditor = await api.as(grace)(updateSpace, input);
+  const byViewer = await api.as(linus)(updateSpace, input);
+  const byOutsider = await api.as(margaret)(updateSpace, input);
+  const signedOut = await api.as(null)(updateSpace, input);
+
+  assert.equal(!byEditor.ok && byEditor.code, 'FORBIDDEN');
+  assert.equal(!byViewer.ok && byViewer.code, 'FORBIDDEN');
+  assert.equal(!byOutsider.ok && byOutsider.code, 'UNKNOWN_SPACE');
+  assert.equal(!signedOut.ok && signedOut.code, 'UNAUTHENTICATED');
+  assert.equal(await nameOf(space.id), 'Research notes');
+});
+
+test('an agent renames a space with a read-write key of its owner, and with no other key', async () => {
+  const ada = await api.addPerson('Ada');
+  const grace = await api.addPerson('Grace');
+  const space = await make(ada, 'Research notes');
+  await add(space.id, grace, 'editor');
+  const keyOf = async (person: CurrentUser, permission: 'read' | 'write') => {
+    const made = await api.as(person)(createApiKey, { name: 'Research agent', permission });
+    assert.ok(made.ok, `createApiKey should have worked: ${JSON.stringify(made)}`);
+    return api.withKey(made.data.apiKey.key);
+  };
+  const input = { spaceId: space.id, name: 'By the agent' };
+
+  const byReadOnly = await (await keyOf(ada, 'read'))(updateSpace, input);
+  const byEditorsKey = await (await keyOf(grace, 'write'))(updateSpace, input);
+  assert.equal(!byReadOnly.ok && byReadOnly.code, 'FORBIDDEN');
+  assert.equal(!byEditorsKey.ok && byEditorsKey.code, 'FORBIDDEN');
+  assert.equal(await nameOf(space.id), 'Research notes');
+
+  const byOwnersKey = await (await keyOf(ada, 'write'))(updateSpace, input);
+  assert.equal(byOwnersKey.ok && byOwnersKey.data.space.name, 'By the agent');
+  assert.equal(await nameOf(space.id), 'By the agent');
+});
+
+test('updateSpace refuses a name that is empty or too long, and the name stays', async () => {
+  const ada = await api.addPerson('Ada');
+  const space = await make(ada, 'Research notes');
+
+  for (const name of ['', '   ', 'a'.repeat(51)]) {
+    const result = await api.as(ada)(updateSpace, { spaceId: space.id, name });
+    assert.equal(!result.ok && result.code, 'INVALID_INPUT', `"${name.slice(0, 10)}" should be refused`);
+  }
+
+  assert.equal(await nameOf(space.id), 'Research notes');
 });
 
 test('getSpaces and createSpace signed out are UNAUTHENTICATED', async () => {

@@ -67,8 +67,8 @@ pm getSpaces '{}'
 ```
 
 `role` is what the person is there: a `viewer` reads, an `editor` also changes what is in the space, the `owner`
-also decides who gets in. People get in with an invite link the owner makes, signed in themselves: nobody is added
-by an email address. A read-only key reads, whatever the role.
+also renames the space (`updateSpace`) and decides who gets in. People get in with an invite link the owner makes,
+signed in themselves: nobody is added by an email address. A read-only key reads, whatever the role.
 
 Nothing says beforehand which kind your key is: a read-only key finds out at its first write, with `FORBIDDEN`. What
 a key may do is settled when the person makes it, so the remedy is a new, read-write key from them.
@@ -285,7 +285,7 @@ Each is the `code` of a failure, with its HTTP status:
 ## Every operation a key can call
 
 Ids are lowercase UUIDs. `?` marks a field that may be left out. Reads work with any key; writes take a read-write
-key and, inside a space, the role `editor`.
+key and, inside a space, the role `editor`. `updateSpace` alone takes the role `owner`.
 
 | Operation            | Kind  | Input                                                  | Answer                                            | Can also fail with      |
 | -------------------- | ----- | ------------------------------------------------------ | ------------------------------------------------- | ----------------------- |
@@ -299,6 +299,7 @@ key and, inside a space, the role `editor`.
 | `getFileVersions`    | read  | `{spaceId, fileId, limit?, cursor?}`                   | `{versions, nextCursor}`                          | `NOT_FOUND`             |
 | `getTrashedFiles`    | read  | `{spaceId, limit?, cursor?}`                           | `{files, nextCursor}`                             |                         |
 | `createSpace`        | write | `{name}`                                               | `{space}`: the person owns it                     |                         |
+| `updateSpace`        | write | `{spaceId, name}`: the new name of the space           | `{space}`                                         |                         |
 | `updateProfile`      | write | `{name}`: the name the person goes by                  | `{id, email, name}`                               |                         |
 | `createFolder`       | write | `{spaceId, parentId, name, description?}`              | `{file}`                                          | `NOT_FOUND`, `CONFLICT` |
 | `updateFile`         | write | `{spaceId, fileId, name?, description?}`: one at least | `{file}`                                          | `NOT_FOUND`, `CONFLICT` |
