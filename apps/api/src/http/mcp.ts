@@ -4,7 +4,7 @@ import { errorBody } from '@pocketmice/contract/errors';
 import { type Operation, operationPath } from '@pocketmice/contract/operation';
 import type { Hono } from 'hono';
 import type { z } from 'zod';
-import { type AdmissionDeps, admitCaller, fail } from './operation.ts';
+import { type AdmissionDeps, admitCaller, fail, INTERNAL_MESSAGE } from './operation.ts';
 
 // The MCP entrance: the address an agent that speaks the Model Context Protocol calls the api at. It is not an
 // operation: one address carries every tool, in the protocol's own requests and responses.
@@ -37,8 +37,6 @@ export const MCP_PATH = '/api/mcp';
  */
 export const MAX_MCP_INPUT_BYTES = 4 * 1024 * 1024;
 
-const INTERNAL_MESSAGE = 'INTERNAL: The server ran into an internal error.';
-
 /**
  * What a tool answers with: text for the model to read, and whether it is a failure.
  * A type and not an interface: the protocol's result may carry fields of any name, and only a type is taken for one
@@ -51,8 +49,7 @@ export type ToolResult = {
 
 /**
  * Sends one request to this api as the caller of the tool: the path with its query, and what fetch takes. It
- * carries the two things the api goes by to tell a request's caller, and nothing else of the request the tool came
- * in: the API key the tool was called with, and the address that call came from (x-forwarded-for).
+ * carries the API key the tool was called with, and nothing else of the request the tool came in.
  */
 export type Send = (path: string, init?: RequestInit) => Promise<Response>;
 
@@ -149,16 +146,11 @@ export function mountMcp(app: Hono, deps: McpDeps): void {
   }
 
   const handler = createMcpHandler(
-    ({ authInfo, requestInfo }) => {
+    ({ authInfo }) => {
       if (!authInfo) throw new Error('The MCP entrance was reached without an API key.');
-      const forwardedFor = requestInfo?.headers.get('x-forwarded-for');
       const send: Send = async (path, init = {}) => {
         const headers = new Headers(init.headers);
         headers.set('authorization', apiKeyAuthorization(authInfo.token));
-        // Where the call came from goes along. Every implementation is told it (clientIp in operation.ts): one that
-        // limits how often it is asked from one address must count a tool's request as coming from where the call
-        // did, not from nowhere
-        if (forwardedFor) headers.set('x-forwarded-for', forwardedFor);
         return app.request(path, { ...init, headers });
       };
 
@@ -179,7 +171,7 @@ export function mountMcp(app: Hono, deps: McpDeps): void {
             } catch (thrown) {
               // What went wrong is for the log. Left to the protocol's layer, the caller would be told
               deps.reportError(thrown, `${MCP_PATH} ${name}`);
-              return failure(INTERNAL_MESSAGE);
+              return failure(`INTERNAL: ${INTERNAL_MESSAGE}`);
             }
           }
         );

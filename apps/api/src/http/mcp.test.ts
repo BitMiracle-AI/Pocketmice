@@ -316,7 +316,7 @@ for (const era of ERAS) {
     assert.match(String(reported[0]?.error), /the reason, which is for the log/);
   });
 
-  test(`${era}: the request a tool sends carries the key and where the call came from, and nothing else of the request the tool came in`, async () => {
+  test(`${era}: the request a tool sends carries the key, and nothing else of the request the tool came in`, async () => {
     const { connect, identified } = setup();
     const client = await connect(WRITE_KEY, era, {
       cookie: 'pocketmice.session_token=abc',
@@ -332,10 +332,7 @@ for (const era of ERAS) {
     const [came, sent] = identified;
     assert.equal(came?.get('cookie'), 'pocketmice.session_token=abc');
     assert.equal(sent?.get('authorization'), `Bearer ${WRITE_KEY}`);
-    // An operation that limits its callers by where they call from counts a tool's call as coming from there too
-    assert.equal(sent?.get('x-forwarded-for'), '203.0.113.7');
-    assert.equal(sent?.get('cookie'), null);
-    assert.equal(sent?.get('x-something-else'), null);
+    for (const name of ['cookie', 'x-forwarded-for', 'x-something-else']) assert.equal(sent?.get(name), null, name);
   });
 }
 

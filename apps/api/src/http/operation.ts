@@ -8,7 +8,8 @@ import type { Context, Hono } from 'hono';
 /** The input of one request is at most this large, in bytes. An input is JSON; files do not come this way */
 export const MAX_INPUT_BYTES = 1024 * 1024;
 
-const INTERNAL_MESSAGE = 'The server ran into an internal error.';
+/** All a caller is told when the server itself fails. Why it failed is for the log (see reportError) */
+export const INTERNAL_MESSAGE = 'The server ran into an internal error.';
 
 /**
  * The person calling an operation: themselves, signed in, or an agent calling with one of their API keys. Either
