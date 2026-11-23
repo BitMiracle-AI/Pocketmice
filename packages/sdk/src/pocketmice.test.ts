@@ -75,7 +75,8 @@ test('a method is a POST of the input as JSON to the operation of its name, sent
       init: {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer pm_test' },
-        body: `{"spaceId":"${SPACE}","fileId":"${FILE}"}`
+        body: `{"spaceId":"${SPACE}","fileId":"${FILE}"}`,
+        redirect: 'manual'
       }
     }
   ]);
@@ -214,6 +215,28 @@ test('two calls at once each keep their own cause', async () => {
   assert.equal(fast.cause, second);
 });
 
+test('a redirect is not followed: the call fails with the status the server answered', async () => {
+  // What a server answers that is reached over http and wants https
+  const { drive, sent } = setup(
+    async (url) => new Response(null, { status: 308, headers: { location: url.replace('https:', 'http:') } })
+  );
+
+  for (const call of [
+    drive.getSpaces(),
+    drive.uploadFile({ spaceId: SPACE, parentId: null, name: 'a.md', content: 'a' }),
+    drive.downloadFile({ spaceId: SPACE, fileId: FILE })
+  ]) {
+    const error = await thrownBy(call);
+    assert.equal(error.code, 'BAD_RESPONSE');
+    assert.match(error.message, /with status 308 and no error code/);
+  }
+  // Every request says so itself: a fetch that is passed in is told too
+  assert.deepEqual(
+    sent.map(({ init }) => init.redirect),
+    ['manual', 'manual', 'manual']
+  );
+});
+
 test('an address that is not one, and a key that is missing or is not a key, fail when the drive is built', () => {
   assert.throws(() => createPocketmice({ url: 'drive.example.com', apiKey: KEY }), /address of the server/);
   assert.throws(() => createPocketmice({ url: '', apiKey: KEY }), /address of the server/);
@@ -272,7 +295,12 @@ test('uploadFile is a PUT of the content to the address of the content, as the q
   );
   // The content is handed to fetch as it is, which is what sends it with its length; and nothing but the key is
   // added to the request
-  assert.deepEqual(sent[0]?.init, { method: 'PUT', headers: { authorization: 'Bearer pm_test' }, body: content });
+  assert.deepEqual(sent[0]?.init, {
+    method: 'PUT',
+    headers: { authorization: 'Bearer pm_test' },
+    body: content,
+    redirect: 'manual'
+  });
   assert.equal(sent[0]?.init.body, content);
   assert.equal(sent[1]?.init.body, 'text');
 });
@@ -314,19 +342,19 @@ test('downloadFile is a GET, and answers with the version that was sent and its 
         origin: SERVER,
         pathname: '/api/content',
         query: { spaceId: SPACE, fileId: FILE },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined }
+        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined, redirect: 'manual' }
       },
       {
         origin: SERVER,
         pathname: '/api/content',
         query: { spaceId: SPACE, fileId: FILE, versionId: VERSION },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined }
+        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined, redirect: 'manual' }
       },
       {
         origin: SERVER,
         pathname: '/api/content',
         query: { spaceId: SPACE, fileId: FILE },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined }
+        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined, redirect: 'manual' }
       }
     ]
   );

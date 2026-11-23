@@ -88,7 +88,11 @@ export function createPocketmice(config: PocketmiceConfig): Pocketmice {
   // Taken out of the config and called on its own: a browser's fetch only runs as the window's
   const given = config.fetch;
   const send: Send = (url, init) => {
-    const keyed = { ...init, headers: { ...init.headers, authorization } };
+    // A redirect is not followed. An address that redirects is not the address of the server: the usual one is
+    // http where the server wants https. A fetch that follows a redirect to another origin drops the key on the
+    // way, and every call would come back UNAUTHENTICATED with a key that works. Not followed, the call fails
+    // with what was answered: the status of the redirect
+    const keyed = { ...init, headers: { ...init.headers, authorization }, redirect: 'manual' as const };
     return given ? given(url, keyed) : fetch(url, keyed);
   };
 

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { openAsBlob } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -188,6 +190,32 @@ test('what the server refuses is thrown with its code: by an operation and by th
   ]);
   const nowhere = createPocketmice({ url: 'http://127.0.0.1:1', apiKey: 'pm_any' });
   assert.deepEqual(await refused(nowhere.getSpaces()), ['UNREACHABLE', 'getSpaces']);
+});
+
+test('an address that redirects is not followed: the call fails with the status, not as if the key were wrong', async () => {
+  // What a server does that is reached over http and wants https: it redirects to another origin. A fetch that
+  // follows it there drops the key on the way, and every call is refused as UNAUTHENTICATED with a key that works
+  const { url, key, spaceId } = await start();
+  const redirecting = createServer((request, response) => {
+    response.writeHead(308, { location: `${url}${request.url}` }).end();
+  });
+  await new Promise<void>((resolve) => redirecting.listen(0, '127.0.0.1', resolve));
+  try {
+    const { port } = redirecting.address() as AddressInfo;
+    const drive = createPocketmice({ url: `http://127.0.0.1:${port}`, apiKey: key });
+
+    assert.deepEqual(await refused(drive.getSpaces()), ['BAD_RESPONSE', 'getSpaces']);
+    assert.deepEqual(await refused(drive.uploadFile({ spaceId, parentId: null, name: 'a.md', content: 'a' })), [
+      'BAD_RESPONSE',
+      'uploadFile'
+    ]);
+    // Nothing was written by the way
+    const { files } = await createPocketmice({ url, apiKey: key }).getFiles({ spaceId, parentId: null });
+    assert.deepEqual(files, []);
+  } finally {
+    redirecting.closeAllConnections();
+    redirecting.close();
+  }
 });
 
 test('what the SDK leaves out is refused by the server: a stream, sent by the fetch of Node, comes without a length', async () => {
