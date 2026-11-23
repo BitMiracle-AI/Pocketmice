@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+import { setImmediate } from 'node:timers/promises';
 import { createAuthClient } from '@pocketmice/client/auth';
 import { apiKeyAuthorization } from '@pocketmice/contract/domains/apiKey';
 import {
@@ -497,6 +498,16 @@ function newAddress() {
   return `grace-${++lastAccount}@example.com`;
 }
 
+/**
+ * Waits until the clock shows a later millisecond. The library tells which code of an address is the last one by
+ * the time each was made, written to the millisecond: of two made in the same millisecond, the earlier is the one
+ * that works. On a server the mail going out lies between two codes of one address; here nothing does.
+ */
+async function laterMillisecond(): Promise<void> {
+  const now = Date.now();
+  while (Date.now() === now) await setImmediate();
+}
+
 /** A code that is not this one */
 function otherThan(code: string): string {
   return code === '000000' ? '111111' : '000000';
@@ -580,6 +591,7 @@ test('a code works once, and only the last one sent to an address works', async 
   const email = newAddress();
 
   const first = await codeFor(email);
+  await laterMillisecond();
   const second = await codeFor(email);
   // Six digits: once in a million the two are the same
   if (first !== second) {

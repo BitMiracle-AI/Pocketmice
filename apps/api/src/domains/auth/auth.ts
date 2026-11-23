@@ -242,7 +242,10 @@ export function createAuth({
         method: 'emailCode',
         async sendCode(email) {
           // The library makes the code and keeps it. From here on the code this address was sent before does not
-          // work, also when this mail does not go out
+          // work, also when this mail does not go out.
+          // One case is left as it is: the library tells the last code by the time it was made, written to the
+          // millisecond. Two requests for one address that arrive together can make two codes in one millisecond,
+          // and then the earlier is the one that works. Both mails go out, and one of the two codes signs in
           const code = await auth.api.createVerificationOTP({ body: { email, type: 'sign-in' } });
           await sendEmail({
             to: email,
