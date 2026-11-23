@@ -8,10 +8,11 @@ import { type AdmissionDeps, admitCaller, admitMember, describeIssues, fail } fr
 
 // The events of the spaces: the address a caller hears at that something changed (its rules are in the contract,
 // domains/event.ts), and how what happened in one request reaches the channels that are open.
-// - Whoever changes something says so with tellSpace, in the transaction that changes it. What is said goes through
-//   the database (NOTIFY): it is handed on when the transaction is committed, and not at all when it is not, to
-//   every process of the api, this one included. So one process and several are the same thing, and nothing but
-//   the database is needed for it.
+// - Whoever changes something says so with tellSpace: in the transaction that changes it where there is one, and
+//   else right after the change, never before it. What is said goes through the database (NOTIFY): said in a
+//   transaction, it is handed on when that is committed, and not at all when it is not. It reaches every process
+//   of the api, this one included. So one process and several are the same thing, and nothing but the database
+//   is needed for it.
 // - Each process listens on one connection of its own, and hands what it hears to the channels open in it. Who is
 //   told is decided at that moment, by who can read the conversation then.
 // - Nothing is kept for a channel that is not open. A channel begins with open, and its caller reads what they hold
@@ -129,6 +130,8 @@ export function mountEvents(app: Hono, deps: EventsDeps): void {
         .where(eq(conversationMembers.conversationId, told.conversationId));
       readers = new Set([...members.map(({ userId }) => userId), ...(told.alsoUserIds ?? [])]);
     }
+    // Who can read the conversation, as admitToConversation says it for a call: its members, and the owner of the
+    // space
     for (const channel of channels) {
       if (readers === null || channel.owner || readers.has(channel.userId)) channel.send(event);
     }

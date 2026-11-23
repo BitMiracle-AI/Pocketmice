@@ -275,7 +275,8 @@ export async function admitMember(
 /**
  * What follows the second half for what belongs to a conversation: the conversation is one of the space, and it is
  * open to the caller. membership is what admitMember answered with for that space.
- * Who can read a conversation is written here and nowhere else: its members, and the owner of the space.
+ * Who can read a conversation is decided here: its members, and the owner of the space. It is said once more
+ * where events are handed out (domains/event/spaceEvents.ts), for every channel of a space at once.
  */
 export async function admitToConversation(
   c: Context,

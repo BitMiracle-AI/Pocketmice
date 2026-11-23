@@ -17,6 +17,9 @@ import { id } from '../id.ts';
 //   it is told: whoever listens reads what they hold once more when they hear it, on the first channel and on every
 //   one after. That is all it takes to have missed nothing, however long a caller was away.
 // - A caller is told about a conversation when they can read it: its members, and the owner of the space.
+// - What is told is what happens to a conversation. Someone who stops being a member of the space is out of its
+//   conversations with that, and of this nobody is told: the others find them gone from a conversation the next
+//   time they read it.
 // - The server writes a ping every EVENTS_PING_MS. A caller that has received no byte for EVENTS_SILENCE_MS takes
 //   the channel for broken and opens another: a laptop that sleeps and a network that drops tell nobody.
 // - A channel does not stay open for long: the server ends it after a few minutes, and the caller opens the next
