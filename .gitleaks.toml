@@ -1,0 +1,11 @@
+# What the scan for credentials may pass over. The scan is the gitleaks job in .github/workflows/ci.yml; to run it
+# on this machine: gitleaks git --redact .
+# Everything not listed here is judged by the rules gitleaks comes with.
+[extend]
+useDefault = true
+
+# The secret the tests of signing in sign their sessions with (apps/api/src/domains/auth/auth.test.ts): a fixed
+# string that protects nothing
+[[allowlists]]
+description = "The fixed secret in the tests of signing in"
+regexes = ['''test-secret-0123456789abcdef0123456789abcdef''']
