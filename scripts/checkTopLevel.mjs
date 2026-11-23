@@ -20,7 +20,8 @@ const TARGETS = [
     // the set a running server uses and migrate.ts is the command that applies migrations. db.test.ts tests
     // @pocketmice/db against a real database: the address of the database is the api's configuration, so the test
     // is here. sdk.test.ts tests @pocketmice/sdk against a running api, which a package cannot start: it does not
-    // import an app. The four folders are the only places any other code goes
+    // import an app. main.test.ts starts main.ts as a process and calls it over a real connection. The four folders
+    // are the only places any other code goes
     files: [
       'app.test.ts',
       'app.ts',
@@ -28,6 +29,7 @@ const TARGETS = [
       'env.test.ts',
       'env.ts',
       'instances.ts',
+      'main.test.ts',
       'main.ts',
       'migrate.ts',
       'sdk.test.ts'
