@@ -113,14 +113,14 @@ test('how long the caller takes over an event is not silence: what was written m
       read.push(event);
       // An agent that thinks about what it heard, for longer than the silence allowed
       if (event.type === 'open') await new Promise((resolve) => setTimeout(resolve, 200));
+      // The server ends the channel when the caller has what it wrote meanwhile. Not at a time of its own: once
+      // the caller reads again the silence is counted again, and a time set here would have to come before that
+      if (event.type === 'message') end();
     }
   })();
   write('data: {"type":"open"}\n\n');
   await new Promise((resolve) => setTimeout(resolve, 30));
   write(`data: {"type":"message","conversationId":"${CONVERSATION}","number":4}\n\n`);
-  // The server ends the channel once the caller is reading again
-  await new Promise((resolve) => setTimeout(resolve, 220));
-  end();
 
   await reading;
   assert.deepEqual(read, [{ type: 'open' }, { type: 'message', conversationId: CONVERSATION, number: 4 }]);
