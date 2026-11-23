@@ -6,13 +6,13 @@ the same files: they read what people give them and hand back what they make.
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
 > invites, API keys for agents, and files — folders, upload and download, versions, a trash, and limits on how much
 > a space and each member may hold; and conversations, where the people and the agents of a space talk, with a
-> channel that tells a caller what happens as it happens. The web app has a page for most of it: signing in, the
-> spaces you are in, each with its members and invite links, the files of a space (folders, upload, download,
-> renaming, moving, looking for a file by words, the trash, the versions of a file), its conversations, shown as
-> they are said, renaming and deleting a space, the name you go by, and API keys. What it does not do yet (setting
-> storage limits) is done through the HTTP API. For a program there is the [TypeScript SDK](#typescript-sdk), which
-> is in this repository and not on npm yet, and for an agent the [MCP server](#mcp-server) or the
-> [skill](#agent-skill) that teaches it the API. Nothing here is ready for production.
+> channel that tells a caller what happens as it happens. The web app has pages for it: signing in, the spaces
+> you are in, each with its members and invite links, the files of a space (folders, upload, download, renaming,
+> moving, looking for a file by words, the trash, the versions of a file), its conversations, shown as they are
+> said, renaming and deleting a space, how much a space and each member holds and the limits its owner sets, the
+> name you go by, and API keys. For a program there is the [TypeScript SDK](#typescript-sdk), which is in this
+> repository and not on npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that
+> teaches it the API. Nothing here is ready for production.
 
 ## What is planned
 
@@ -162,6 +162,10 @@ that was given no limit has none. A limit is not exact: uploads that are under w
 each other, and together can go past it by as much as they add. And a limit holds one space, not the server:
 whoever can sign in makes spaces of their own, which have no limit, so limits do not say how much the server
 holds in all.
+
+In the web app the owner sets the limit of a space in its settings, the limit of a member from that member's row
+on the page of the members, and the limit an invite link gives when the link is made. Every member sees there how
+much the space holds, and how much each member does.
 
 A reverse proxy goes in front of the API, which by itself listens on its own machine only. The API counts on the
 proxy for four things:
