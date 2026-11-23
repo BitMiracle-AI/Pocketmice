@@ -315,8 +315,9 @@ export const getFiles = operation({
 export const getFile = operation({
   name: 'getFile',
   description:
-    'One file or folder, by its id: its name, its description, its path, and for a file its content now ' +
-    '(version). NOT_FOUND: there is no such file.',
+    'One file or folder, by its id: its name, its description, its path, and for a file which version its ' +
+    'content is now (version: its id, its size, who wrote it and when). The content itself is not in the ' +
+    'answer. NOT_FOUND: there is no such file.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -475,7 +476,8 @@ export const deleteFile = operation({
   description:
     'Deletes for good a file that was put in the trash: every version of it, and with a folder everything in ' +
     'it. Nothing brings it back. NOT_FOUND: no such file was put in the trash. Only what is in the trash is ' +
-    'deleted: trash it first.',
+    'deleted: trash it first. A file that is in the trash only because a folder it is in was trashed is not ' +
+    'deleted on its own: it goes with the folder.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -502,7 +504,9 @@ export const getTrashedFiles = operation({
   description:
     'The files that were put in the trash in a space, the latest first. ' +
     PAGED +
-    ' What is inside a trashed folder is not listed: it comes back with the folder.',
+    ' A file that is there only because a folder it is in was trashed is not listed: it comes back with the ' +
+    'folder. Until restoreFile puts it back, what is in the trash does not exist for any other operation: ' +
+    'asked for by its id, it is NOT_FOUND.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',

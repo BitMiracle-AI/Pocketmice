@@ -72,13 +72,13 @@ const getFileContent = tool({
   name: 'getFileContent',
   description:
     'The content of a file, as text: of the version versionId, or its content now when versionId is null. Answers ' +
-    'with which version was read (versionId, which is the baseVersionId to write over the file with), how many ' +
-    'bytes all of it is (size) and nextCursor, and after that with the text itself, in a part of its own. A long ' +
-    'text comes a piece at a time: when nextCursor is not null there is more, and passing it back as cursor, as it ' +
-    'is, reads on, in the same version even if the file was written to since. A piece ends between two ' +
-    'characters, and may end in the middle of a line: the pieces put end to end are the text. Only text is read ' +
-    `this way: content that is not UTF-8 is refused, and is downloaded from ${FILE_CONTENT_PATH}. NOT_FOUND: there ` +
-    'is no such file, it is a folder, or it has no such version.',
+    'with which version was read (versionId), how many bytes all of it is (size) and nextCursor, and after that ' +
+    'with the text itself, in a part of its own. When the content now was read, that versionId is the ' +
+    'baseVersionId to write over the file with. A long text comes a piece at a time: when nextCursor is not null ' +
+    'there is more, and passing it back as cursor, as it is, reads on, in the same version even if the file was ' +
+    'written to since. A piece ends between two characters, and may end in the middle of a line: the pieces put ' +
+    'end to end are the text. Only text is read this way: content that is not UTF-8 is refused, and is downloaded ' +
+    `from ${FILE_CONTENT_PATH}. NOT_FOUND: there is no such file, it is a folder, or it has no such version.`,
   kind: 'read',
   input: z.object({ spaceId: id, fileId: id, versionId: id.nullable(), cursor: z.string().optional() }),
   run: async ({ spaceId, fileId, versionId, cursor }, send) => {
@@ -168,10 +168,10 @@ const updateFileContent = tool({
   name: 'updateFileContent',
   description:
     'Writes over a file: this text becomes its content, as a new version in place of baseVersionId, the version ' +
-    'that is current now (what getFileContent answered as versionId, or version.id of the file). The versions ' +
-    'before it stay. The text replaces all of the content, so send all of it. Answers with the file. NOT_FOUND: ' +
-    'there is no such file. CONFLICT: baseVersionId is not the current version of the file: somebody wrote to it ' +
-    'since it was read, or it is a folder. Read it again, then decide.',
+    'that is current now (version.id of the file, which is what getFileContent answers as versionId when it reads ' +
+    'the content now). The versions before it stay. The text replaces all of the content, so send all of it. ' +
+    'Answers with the file. NOT_FOUND: there is no such file. CONFLICT: baseVersionId is not the current version ' +
+    'of the file: somebody wrote to it since it was read, or it is a folder. Read it again, then decide.',
   kind: 'write',
   input: z.object({ spaceId: id, fileId: id, baseVersionId: id, content: z.string() }),
   run: ({ spaceId, fileId, baseVersionId, content }, send) => upload(send, { spaceId, fileId, baseVersionId }, content)
