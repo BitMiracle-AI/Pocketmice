@@ -355,6 +355,27 @@ test('content of no bytes is handed to fetch as empty text, and a Blob whose pie
   assert.equal(sent[3]?.init.body, onDisk);
 });
 
+test('a Blob of no bytes that cannot be read fails the upload, and nothing is sent: it is not stored as an empty file', async () => {
+  const { drive, sent } = setup(async () => json(200, { file: { id: FILE } }));
+
+  // What Bun gives for a path where there is no file: a Blob that says it has no bytes, and fails when it is read
+  const notThere = Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' });
+  class NotThereInBun extends Blob {
+    override text(): Promise<string> {
+      return Promise.reject(notThere);
+    }
+  }
+  const content = new NotThereInBun([]);
+
+  const error = await thrownBy(drive.uploadFile({ spaceId: SPACE, parentId: null, name: 'a.bin', content }));
+
+  assert.equal(error.code, 'UNEXPECTED');
+  assert.equal(error.message, 'The content uploadFile was given could not be read.');
+  assert.equal(error.operation, 'uploadFile');
+  assert.equal(error.cause, notThere);
+  assert.equal(sent.length, 0);
+});
+
 test('what is not content is refused, and nothing is sent: a stream would be stored as the text of its name', async () => {
   const { drive, sent } = setup(async () => json(200, { file: { id: FILE } }));
   const upload = { spaceId: SPACE, parentId: null, name: 'a.md' };

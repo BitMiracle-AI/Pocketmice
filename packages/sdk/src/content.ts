@@ -45,14 +45,16 @@ const PIECE_BYTES = 64 * 1024;
  * Two other runtimes do not take every content that way, both seen with real uploads (Bun 1.4, Deno 2.9):
  * - Bun puts the pieces of a file on disk together as a Blob of no bytes: the file would be stored empty, and
  *   nothing would say so. Where the pieces do not add up to the content, the content goes as it came.
- * - Deno sends a Blob of no bytes without a length, which the server refuses. Content of no bytes goes as empty
- *   text, which every fetch gives a length.
+ * - Deno sends a Blob of no bytes without a length, which the server refuses. Content of no bytes goes as text,
+ *   which every fetch gives a length. The text is read from it, and not taken to be empty: of a file on disk that
+ *   is not there, Bun says that it has no bytes, and only reading it fails. Taken at its word, a path that is
+ *   wrong would be stored as an empty file, and nothing would say so.
  */
-function inPieces(content: Content): Blob | '' {
+async function inPieces(content: Content): Promise<Blob | string> {
   // The types of a Blob take bytes over a buffer that is not shared only. Content does not ask a caller to say
   // which kind theirs is, and a Blob copies either
   const whole = content instanceof Blob ? content : new Blob([content as BlobPart]);
-  if (whole.size === 0) return '';
+  if (whole.size === 0) return whole.text();
 
   const pieces: Blob[] = [];
   for (let start = 0; start < whole.size; start += PIECE_BYTES) pieces.push(whole.slice(start, start + PIECE_BYTES));
@@ -133,7 +135,7 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
   async function request(
     name: string,
     query: Parameters<typeof fileContentPath>[0],
-    init: { method: string; body?: Blob | '' }
+    init: { method: string; body?: Blob | string }
   ): Promise<Response> {
     const url = new URL(fileContentPath(query), baseUrl).href;
     let response: Response;
@@ -157,7 +159,14 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
       throw new PocketmiceError('UNEXPECTED', `What ${name} was given as content is not text, bytes or a Blob.`, name);
     }
 
-    const response = await request(name, query, { method: 'PUT', body: inPieces(content) });
+    let body: Blob | string;
+    try {
+      body = await inPieces(content);
+    } catch (thrown) {
+      throw new PocketmiceError('UNEXPECTED', `The content ${name} was given could not be read.`, name, thrown);
+    }
+
+    const response = await request(name, query, { method: 'PUT', body });
     const text = await read(name, () => response.text());
     try {
       // Not checked against the definition, as the output of an operation is not: the server checked it
