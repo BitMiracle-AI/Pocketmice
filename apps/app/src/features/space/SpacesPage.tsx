@@ -47,7 +47,7 @@ export function SpacesPage() {
                 {spaceText.newSpace}
               </Button>
             </PageHead>
-            <ul aria-label={spaceText.spacesLabel} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ul aria-label={spaceText.spacesLabel} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {spaces.map((space) => (
                 <li key={space.id}>
                   <SpaceCard space={space} />
