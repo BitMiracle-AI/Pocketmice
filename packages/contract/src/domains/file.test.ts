@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from '../paging.ts';
 import {
   contentQuery,
   createFolder,
@@ -15,8 +16,6 @@ import {
   namesOfPath,
   newFileQuery,
   newVersionQuery,
-  PAGE_SIZE_DEFAULT,
-  PAGE_SIZE_MAX,
   pathOfNames,
   SEARCH_QUERY_MAX_LENGTH,
   searchQuery,

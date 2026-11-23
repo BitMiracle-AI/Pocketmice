@@ -1,5 +1,6 @@
-import { type getFile, getFiles, PAGE_SIZE_MAX } from '@pocketmice/contract/domains/file';
+import { type getFile, getFiles } from '@pocketmice/contract/domains/file';
 import type { OutputOf } from '@pocketmice/contract/operation';
+import { PAGE_SIZE_MAX } from '@pocketmice/contract/paging';
 import { queryOptions } from '@tanstack/react-query';
 import { ApiFailure, call } from '@/lib/api';
 import { language } from '@/lib/language/language';

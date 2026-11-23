@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { id } from '../id.ts';
 import { operation } from '../operation.ts';
+import { cursor, limit, nextCursor, PAGED } from '../paging.ts';
 
 // Files: what is in a space. This file has seven parts:
 // 1. the tree, and how something in it is named and found;
@@ -47,8 +48,7 @@ import { operation } from '../operation.ts';
 // description. Only what a file is called and how it is described is looked at: not what it holds, and not the
 // names of the folders it is in. What is in the trash is not found.
 //
-// 5. Pages. A list that can grow without limit comes a page at a time: at most limit entries, and nextCursor when
-// there are more. Pass nextCursor back as cursor, as it is, to get the next page.
+// 5. Pages. A list that can grow without limit comes a page at a time, by the rule every such list has (paging.ts).
 //
 // 6. The content address. Bytes do not go through operations, whose inputs and outputs are JSON. They go through
 // one address, FILE_CONTENT_PATH: PUT uploads and GET downloads, with what an operation would take as its input
@@ -205,26 +205,6 @@ const trashedFile = file.extend({
   /** When it was put there */
   trashedAt: z.iso.datetime()
 });
-
-/** A page has at most this many entries, whatever limit asks for */
-export const PAGE_SIZE_MAX = 1000;
-
-/** How many entries a page has when limit is left out */
-export const PAGE_SIZE_DEFAULT = 100;
-
-/** How many entries to answer with at most */
-const limit = z.number().int().min(1).max(PAGE_SIZE_MAX).default(PAGE_SIZE_DEFAULT);
-
-/** Where the page before ended: its nextCursor, as it was. Left out for the first page */
-const cursor = z.string().optional();
-
-/** What to pass as cursor to get the page after this one. Null when this page is the last */
-const nextCursor = z.string().nullable();
-
-/** How the description of an operation that answers with a page says so: the convention, in one sentence */
-const PAGED =
-  'It comes a page at a time: at most limit entries, and when nextCursor is not null there are more: pass it back ' +
-  'as cursor, as it is, to get the next page.';
 
 /**
  * The address the content of files goes through. It is not an operation: what is sent, or answered, is the bytes of
