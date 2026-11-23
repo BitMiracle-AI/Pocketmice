@@ -230,8 +230,9 @@ try {
   failed any other way. What was thrown underneath is the error's `cause`.
 - A method is one request. Writing to a path whose folders may be missing takes several: the
   [skill](#agent-skill) says which.
-- It uses no module of Node, so it should run wherever there is a `fetch`. It has been tried on Node, and in
-  Chrome from a web page the server allows (`WEB_ORIGINS`): the server answers no other page.
+- It uses no module of Node, so it should run wherever there is a `fetch`. It has been tried on Node 22, 24 and
+  26, on Bun and on Deno, and in Chrome from a web page the server allows (`WEB_ORIGINS`): the server answers no
+  other page.
 
 ## MCP server
 
