@@ -1,6 +1,6 @@
 import type { Db } from '@pocketmice/db';
+import type { FileStorage } from '../external/storage/fileStorage.ts';
 import type { Implementation } from '../http/operation.ts';
-import type { FileStorage } from '../storage/fileStorage.ts';
 import { createApiKey } from './apiKey/createApiKey.ts';
 import { deleteApiKey } from './apiKey/deleteApiKey.ts';
 import { getApiKeys } from './apiKey/getApiKeys.ts';

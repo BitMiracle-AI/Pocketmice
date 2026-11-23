@@ -34,8 +34,8 @@ const TARGETS = [
       'migrate.ts',
       'sdk.test.ts'
     ],
-    dirs: ['domains', 'external', 'http', 'storage'],
-    hint: 'Put it in domains/<domain>/ (one area of the product), http/ (how every request is received, checked and answered), storage/ (where the bytes of files are kept) or external/<service>/ (how a service outside the api is used, like mail).'
+    dirs: ['domains', 'external', 'http'],
+    hint: 'Put it in domains/<domain>/ (one area of the product), http/ (how every request is received, checked and answered), or external/<service>/ (how a service outside the api is used: mail, the storage of bytes).'
   },
   {
     dir: 'apps/api/src/domains',

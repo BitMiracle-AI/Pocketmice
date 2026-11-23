@@ -1,6 +1,6 @@
 import type { Db } from '@pocketmice/db';
 import { type SQL, sql } from 'drizzle-orm';
-import type { FileStorage } from '../../storage/fileStorage.ts';
+import type { FileStorage } from '../../external/storage/fileStorage.ts';
 import { removeContent } from './writeContent.ts';
 
 // Deleting for good: the one thing done to files that destroys content.

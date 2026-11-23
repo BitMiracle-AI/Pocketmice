@@ -10,9 +10,9 @@ import { createAuth } from './domains/auth/auth.ts';
 import { prepareSignIn } from './domains/prepareSignIn.ts';
 import { mailFromEnv, requireEnv, requireOrigins, storageFromEnv } from './env.ts';
 import { createSmtpMailer, printEmail } from './external/mail/mailer.ts';
+import { createFolderStorage } from './external/storage/folderStorage.ts';
+import { createS3Storage } from './external/storage/s3Storage.ts';
 import { logInternalError } from './http/errorLog.ts';
-import { createFolderStorage } from './storage/folderStorage.ts';
-import { createS3Storage } from './storage/s3Storage.ts';
 
 /**
  * A statement waits at most this many seconds, then fails. Without a limit, a statement on a connection that has

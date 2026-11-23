@@ -19,8 +19,8 @@ import { files, fileVersions } from '@pocketmice/db/schema/file';
 import { spaceInvites } from '@pocketmice/db/schema/invite';
 import { spaceMembers, spaces } from '@pocketmice/db/schema/space';
 import { eq, inArray } from 'drizzle-orm';
+import { MissingObject } from '../../external/storage/fileStorage.ts';
 import type { CurrentUser } from '../../http/operation.ts';
-import { MissingObject } from '../../storage/fileStorage.ts';
 import { NOBODY, useTestApi } from '../testing.ts';
 
 const api = useTestApi();

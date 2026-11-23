@@ -12,6 +12,7 @@ import { fileVersions } from '@pocketmice/db/schema/file';
 import { and, eq } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import type { z } from 'zod';
+import type { ByteRange, FileStorage } from '../../external/storage/fileStorage.ts';
 import {
   type AdmissionDeps,
   type AdmittedCaller,
@@ -22,7 +23,6 @@ import {
   describeIssues,
   fail
 } from '../../http/operation.ts';
-import type { ByteRange, FileStorage } from '../../storage/fileStorage.ts';
 import { assertStorageRoom } from '../space/storageLimit.ts';
 import { liveFile, toFile } from './findFile.ts';
 import {

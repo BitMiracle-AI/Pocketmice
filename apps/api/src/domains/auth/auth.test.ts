@@ -20,7 +20,7 @@ import { eq } from 'drizzle-orm';
 import { createApp } from '../../app.ts';
 import { requireEnv } from '../../env.ts';
 import type { Email } from '../../external/mail/mailer.ts';
-import type { FileStorage } from '../../storage/fileStorage.ts';
+import type { FileStorage } from '../../external/storage/fileStorage.ts';
 import { deleteAllApiKeys } from '../apiKey/deleteAllApiKeys.ts';
 import { identifyCaller } from '../apiKey/identifyCaller.ts';
 import { domainImplementations } from '../implementations.ts';

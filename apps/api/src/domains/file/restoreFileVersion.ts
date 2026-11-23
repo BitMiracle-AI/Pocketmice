@@ -3,8 +3,8 @@ import { restoreFileVersion as definition, pathOfNames } from '@pocketmice/contr
 import type { Db } from '@pocketmice/db';
 import { fileVersions } from '@pocketmice/db/schema/file';
 import { and, eq } from 'drizzle-orm';
+import type { FileStorage } from '../../external/storage/fileStorage.ts';
 import { ApiError, implement } from '../../http/operation.ts';
-import type { FileStorage } from '../../storage/fileStorage.ts';
 import { assertStorageRoom } from '../space/storageLimit.ts';
 import { liveFile, toFile } from './findFile.ts';
 import { addVersionRow, assertCanReplace, discardIfRefused } from './writeContent.ts';

@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { isOperation, type Operation } from '@pocketmice/contract/operation';
 import type { Db } from '@pocketmice/db';
-import type { FileStorage } from '../storage/fileStorage.ts';
+import type { FileStorage } from '../external/storage/fileStorage.ts';
 import { domainImplementations } from './implementations.ts';
 
 // The folder of the contract that holds the definitions. The path is not written out relative to this file: where

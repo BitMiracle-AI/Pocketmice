@@ -129,9 +129,9 @@
       }
     },
     {
-      // The storage keeps bytes and knows nothing of the product: it imports from neither of the other two folders,
-      // and reads no environment variable
-      "includes": ["apps/api/src/storage/**"],
+      // What is in external/ says how a service outside the api is used (mail, the storage of bytes) and knows
+      // nothing of the product: it imports from neither of the other two folders, and reads no environment variable
+      "includes": ["apps/api/src/external/**"],
       "linter": {
         "rules": {
           "style": {
@@ -142,11 +142,11 @@
                 "patterns": [
                   {
                     "group": ["../**/domains/**", "../**/http/**"],
-                    "message": "Code in storage/ must not import from domains/ or http/: it keeps bytes, and knows nothing of files or requests."
+                    "message": "Code in external/ must not import from domains/ or http/: it says how an outside service is used, and knows nothing of the product or of requests."
                   },
                   {
                     "group": ["../**/instances.ts", "../**/env.ts"],
-                    "message": "Code in storage/ does not read environment variables or import instances.ts. Take what you need as a parameter: main.ts passes it in."
+                    "message": "Code in external/ does not read environment variables or import instances.ts. Take what you need as a parameter: main.ts passes it in."
                   }
                 ]
               }

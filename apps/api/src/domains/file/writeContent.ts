@@ -3,8 +3,8 @@ import { Readable } from 'node:stream';
 import type { Db } from '@pocketmice/db';
 import { files, fileVersions } from '@pocketmice/db/schema/file';
 import { and, eq, isNull, sql } from 'drizzle-orm';
+import type { FileStorage } from '../../external/storage/fileStorage.ts';
 import { ApiError } from '../../http/operation.ts';
-import type { FileStorage } from '../../storage/fileStorage.ts';
 import { findPlace, liveFile } from './findFile.ts';
 import { unlessNameTaken } from './nameTaken.ts';
 
