@@ -74,6 +74,9 @@ export interface ContentMethods {
    * Makes a file with this content: in the folder parentId, or directly in the space when parentId is null. Answers
    * with the file.
    * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.
+   * The name answered is the name as it is kept, which may differ byte for byte from the one given: a character
+   * that can be written in two ways that look the same is kept one way (NFC), and macOS names its files the other.
+   * To compare a name with one from an answer, bring it to NFC first.
    */
   uploadFile: (
     input: Omit<NewFileQuery, 'parentId'> & { parentId: string | null; content: Content }
