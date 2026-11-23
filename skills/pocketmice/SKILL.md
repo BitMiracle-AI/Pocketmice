@@ -195,6 +195,8 @@ The answer is the new file, as `getFile` answers.
 - `NOT_FOUND` means there is no folder `parentId`. Folders are not made for you: see
   [Writing to a path](#writing-to-a-path).
 - A file is at most 1 GB.
+- `SPACE_STORAGE_LIMIT_EXCEEDED` or `MEMBER_STORAGE_LIMIT_EXCEEDED` means a storage limit would be passed, and
+  nothing was written: see [When there is no room](#when-there-is-no-room).
 
 ## Writing over a file
 
@@ -288,6 +290,29 @@ Trash a file only when the user asked for it to go. When they ask for it to be d
 them the rest is theirs: deleting for good is done by the owner of the space, signed in themselves, on what is
 already in the trash.
 
+## When there is no room
+
+The owner of a space can limit how much the space holds, and how much each member holds in it. Everything that is
+kept counts: every version of every file, the versions before the current one and what is in the trash too. What
+you write with a key counts as its person's.
+
+```sh
+pm getSpaceSize '{"spaceId":"<space>"}'   # {"storageSize":7340032,"storageLimit":10485760}
+pm getMembers   '{"spaceId":"<space>"}'   # each member has storageSize and storageLimit too
+```
+
+Both are in bytes, and a `storageLimit` of `null` is no limit. Which member you write as is `id` of `getProfile`.
+
+An upload, a write over a file or a `restoreFileVersion` that would pass a limit is refused before anything is
+written: `SPACE_STORAGE_LIMIT_EXCEEDED` when the space would hold too much, `MEMBER_STORAGE_LIMIT_EXCEEDED` when
+the space has room and the person you write as does not. `message` says how much is held, the limit, and how much
+you asked to add.
+
+Do not send it again, and do not try to make room yourself: you cannot. Trashing a file frees nothing, since the
+trash keeps it, and writing a shorter text over a file adds to what is held, since the version before stays. Room
+is made by deleting for good, and a limit is raised, by the owner of the space, signed in themselves. Tell the
+user which limit was reached, how much is held and how much you needed.
+
 ## Errors
 
 Each is the `code` of a failure, with its HTTP status:
@@ -295,6 +320,8 @@ Each is the `code` of a failure, with its HTTP status:
 - `INVALID_INPUT` (400): the request does not fit. A field is missing or misspelt, the body is not JSON, or
   `content-type` is missing. `message` names the field: fix the request.
 - `INPUT_TOO_LARGE` (413): a JSON body over 1 MB, or a file over 1 GB. It cannot be sent as it is.
+- `SPACE_STORAGE_LIMIT_EXCEEDED`, `MEMBER_STORAGE_LIMIT_EXCEEDED` (413): the space, or the person in it, may not
+  hold this much more. Only the owner of the space can help: see [When there is no room](#when-there-is-no-room).
 - `UNAUTHENTICATED` (401): no key, a wrong key, or a key that was deleted. Ask the user for a key that works.
 - `FORBIDDEN` (403): the key is read-only and this changes something; or the person's role in the space is too
   low; or this is one of the things only the person does. `message` says which. Do not try again: tell the user
@@ -312,27 +339,28 @@ Each is the `code` of a failure, with its HTTP status:
 Ids are lowercase UUIDs. `?` marks a field that may be left out. Reads work with any key; writes take a read-write
 key and, inside a space, the role `editor`. `updateSpace` alone takes the role `owner`.
 
-| Operation            | Kind  | Input                                                  | Answer                                            | Can also fail with      |
-| -------------------- | ----- | ------------------------------------------------------ | ------------------------------------------------- | ----------------------- |
-| `getServerInfo`      | read  | `{}` (needs no key)                                    | `{version, signInMethod}`                         |                         |
-| `getProfile`         | read  | `{}`                                                   | `{id, email, name}` of the person the key acts as |                         |
-| `getSpaces`          | read  | `{}`                                                   | `{spaces}`                                        |                         |
-| `getMembers`         | read  | `{spaceId}`                                            | `{members}`: `userId`, `name`, `role`             |                         |
-| `getFiles`           | read  | `{spaceId, parentId, limit?, cursor?}`                 | `{files, nextCursor}`                             | `NOT_FOUND`             |
-| `getFile`            | read  | `{spaceId, fileId}`                                    | `{file}`                                          | `NOT_FOUND`             |
-| `getFileByPath`      | read  | `{spaceId, path}`                                      | `{file}`                                          | `NOT_FOUND`             |
-| `getMatchingFiles`   | read  | `{spaceId, folderId, query, kind?, limit?, cursor?}`   | `{files, nextCursor}`                             | `NOT_FOUND`             |
-| `getFileVersions`    | read  | `{spaceId, fileId, limit?, cursor?}`                   | `{versions, nextCursor}`                          | `NOT_FOUND`             |
-| `getTrashedFiles`    | read  | `{spaceId, limit?, cursor?}`                           | `{files, nextCursor}`                             |                         |
-| `createSpace`        | write | `{name}`                                               | `{space}`: the person owns it                     |                         |
-| `updateSpace`        | write | `{spaceId, name}`: the new name of the space           | `{space}`                                         |                         |
-| `updateProfile`      | write | `{name}`: the name the person goes by                  | `{id, email, name}`                               |                         |
-| `createFolder`       | write | `{spaceId, parentId, name, description?}`              | `{file}`                                          | `NOT_FOUND`, `CONFLICT` |
-| `updateFile`         | write | `{spaceId, fileId, name?, description?}`: one at least | `{file}`                                          | `NOT_FOUND`, `CONFLICT` |
-| `moveFile`           | write | `{spaceId, fileId, parentId}`                          | `{file}`                                          | `NOT_FOUND`, `CONFLICT` |
-| `trashFile`          | write | `{spaceId, fileId}`                                    | `{}`                                              | `NOT_FOUND`             |
-| `restoreFile`        | write | `{spaceId, fileId}`                                    | `{file}`                                          | `NOT_FOUND`, `CONFLICT` |
-| `restoreFileVersion` | write | `{spaceId, fileId, versionId, baseVersionId}`          | `{file}`                                          | `NOT_FOUND`, `CONFLICT` |
+| Operation            | Kind  | Input                                                  | Answer                                                               | Can also fail with      |
+| -------------------- | ----- | ------------------------------------------------------ | -------------------------------------------------------------------- | ----------------------- |
+| `getServerInfo`      | read  | `{}` (needs no key)                                    | `{version, signInMethod}`                                            |                         |
+| `getProfile`         | read  | `{}`                                                   | `{id, email, name}` of the person the key acts as                    |                         |
+| `getSpaces`          | read  | `{}`                                                   | `{spaces}`                                                           |                         |
+| `getSpaceSize`       | read  | `{spaceId}`                                            | `{storageSize, storageLimit}`: bytes; `null` is no limit             |                         |
+| `getMembers`         | read  | `{spaceId}`                                            | `{members}`: `userId`, `name`, `role`, `storageSize`, `storageLimit` |                         |
+| `getFiles`           | read  | `{spaceId, parentId, limit?, cursor?}`                 | `{files, nextCursor}`                                                | `NOT_FOUND`             |
+| `getFile`            | read  | `{spaceId, fileId}`                                    | `{file}`                                                             | `NOT_FOUND`             |
+| `getFileByPath`      | read  | `{spaceId, path}`                                      | `{file}`                                                             | `NOT_FOUND`             |
+| `getMatchingFiles`   | read  | `{spaceId, folderId, query, kind?, limit?, cursor?}`   | `{files, nextCursor}`                                                | `NOT_FOUND`             |
+| `getFileVersions`    | read  | `{spaceId, fileId, limit?, cursor?}`                   | `{versions, nextCursor}`                                             | `NOT_FOUND`             |
+| `getTrashedFiles`    | read  | `{spaceId, limit?, cursor?}`                           | `{files, nextCursor}`                                                |                         |
+| `createSpace`        | write | `{name}`                                               | `{space}`: the person owns it                                        |                         |
+| `updateSpace`        | write | `{spaceId, name}`: the new name of the space           | `{space}`                                                            |                         |
+| `updateProfile`      | write | `{name}`: the name the person goes by                  | `{id, email, name}`                                                  |                         |
+| `createFolder`       | write | `{spaceId, parentId, name, description?}`              | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `updateFile`         | write | `{spaceId, fileId, name?, description?}`: one at least | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `moveFile`           | write | `{spaceId, fileId, parentId}`                          | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `trashFile`          | write | `{spaceId, fileId}`                                    | `{}`                                                                 | `NOT_FOUND`             |
+| `restoreFile`        | write | `{spaceId, fileId}`                                    | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `restoreFileVersion` | write | `{spaceId, fileId, versionId, baseVersionId}`          | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
 
 And the address the content goes through, `/api/content`:
 
@@ -341,6 +369,10 @@ And the address the content goes through, `/api/content`:
 | `GET`, `HEAD` | read  | `spaceId, fileId, versionId?`    | The content; `etag` is the version sent | `NOT_FOUND`             |
 | `PUT`         | write | `spaceId, parentId?, name`       | `{file}`: a new file                    | `NOT_FOUND`, `CONFLICT` |
 | `PUT`         | write | `spaceId, fileId, baseVersionId` | `{file}`: a new version of the file     | `NOT_FOUND`, `CONFLICT` |
+
+`restoreFileVersion` and both kinds of `PUT` add to what the space holds, so each can also fail with
+`SPACE_STORAGE_LIMIT_EXCEEDED` or `MEMBER_STORAGE_LIMIT_EXCEEDED`: see
+[When there is no room](#when-there-is-no-room).
 
 ## Working in a drive other people use
 

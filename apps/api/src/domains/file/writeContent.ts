@@ -16,6 +16,9 @@ import { unlessNameTaken } from './nameTaken.ts';
 // 2. One short transaction writes the row of the version and points the file at it. Whether the write is still
 //    allowed (the name is free, the version to replace is still the current one) is decided here, by the database.
 // 3. If the write is refused in step 2, the bytes stored in step 1 are removed again (see discardIfRefused).
+// Before step 1 the write is asked whether it can work at all, so that one that cannot is refused without its
+// bytes: whether the place and the name are free (assertCanCreate, assertCanReplace), and whether the space and
+// the writer may hold that much more (assertStorageRoom in domains/space/storageLimit.ts).
 // A process that dies between 1 and 2, or a step 2 that fails without saying whether it was done, leaves bytes that
 // no row points at. That is known, and left as it is: they take up room and nothing else, and nothing ever reads
 // them.
@@ -187,8 +190,9 @@ export async function createFileRow(db: Db, target: NewFile, stored: Stored, wri
         values (${fileId}, ${target.spaceId}, ${target.parentId}, ${target.name}, 'file', ${stored.versionId},
                 ${writer.userId})
       )
-      insert into ${fileVersions} (id, file_id, size, sha256, user_id, key_id)
-      values (${stored.versionId}, ${fileId}, ${stored.size}, ${stored.sha256}, ${writer.userId}, ${writer.apiKeyId})
+      insert into ${fileVersions} (id, file_id, space_id, size, sha256, user_id, key_id)
+      values (${stored.versionId}, ${fileId}, ${target.spaceId}, ${stored.size}, ${stored.sha256}, ${writer.userId},
+              ${writer.apiKeyId})
     `)
   );
   return fileId;
@@ -218,6 +222,7 @@ export async function addVersionRow(db: Db, target: NewVersion, stored: Stored, 
     await tx.insert(fileVersions).values({
       id: stored.versionId,
       fileId: target.fileId,
+      spaceId: target.spaceId,
       size: stored.size,
       sha256: stored.sha256,
       userId: writer.userId,

@@ -1,9 +1,9 @@
 import { updateMember as definition } from '@pocketmice/contract/domains/space';
 import type { Db } from '@pocketmice/db';
-import { profiles } from '@pocketmice/db/schema/profile';
 import { spaceMembers } from '@pocketmice/db/schema/space';
 import { and, eq, ne } from 'drizzle-orm';
 import { ApiError, implement } from '../../http/operation.ts';
+import { findMembers } from './findMembers.ts';
 
 export function updateMember({ db }: { db: Db }) {
   return implement(definition, async ({ input, user }) => {
@@ -22,13 +22,13 @@ export function updateMember({ db }: { db: Db }) {
           ne(spaceMembers.role, 'owner')
         )
       )
-      .returning({ role: spaceMembers.role });
+      .returning({ userId: spaceMembers.userId });
     if (!updated) throw new ApiError('NOT_FOUND', `Space ${input.spaceId} has no member ${input.userId}.`);
 
-    const [profile] = await db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, input.userId));
-    // A member has signed in, and whoever has signed in has a profile (see ensureProfile)
-    if (!profile) throw new Error(`User ${input.userId} is a member of a space but has no profile.`);
+    const [member] = await findMembers(db, input.spaceId, input.userId);
+    // Gone in the moment since: removed, or they left
+    if (!member) throw new ApiError('NOT_FOUND', `Space ${input.spaceId} has no member ${input.userId}.`);
 
-    return { member: { userId: input.userId, name: profile.name, role: updated.role } };
+    return { member };
   });
 }

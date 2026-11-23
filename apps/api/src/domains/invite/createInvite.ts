@@ -11,11 +11,17 @@ export function createInvite({ db }: { db: Db }) {
       .values({
         spaceId: input.spaceId,
         role: input.role,
+        storageLimit: input.storageLimit,
         userId: user.id,
         // By the database's clock, the one that later decides whether the invite still works
         expiresAt: sql`now() + make_interval(days => ${INVITE_LIFETIME_DAYS})`
       })
-      .returning({ id: spaceInvites.id, role: spaceInvites.role, expiresAt: spaceInvites.expiresAt });
+      .returning({
+        id: spaceInvites.id,
+        role: spaceInvites.role,
+        storageLimit: spaceInvites.storageLimit,
+        expiresAt: spaceInvites.expiresAt
+      });
     if (!invite) throw new Error('The invite was not created.');
 
     return { invite: { ...invite, expiresAt: invite.expiresAt.toISOString() } };

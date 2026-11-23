@@ -85,6 +85,9 @@ export const zhHans: typeof en = {
   versionRestored: (when) => `已恢复 ${when} 的版本`,
   versionConflict: '这期间有人写过这个文件。看一眼现在的版本，再恢复。',
   versionGone: '这个版本，或者这个文件，已经不在了。',
+  versionSpaceFull: '空间已满。恢复会保留旧版本，再加一个同样大的版本。空间的所有者可以腾出地方，或者调高上限。',
+  versionMemberFull:
+    '你在这个空间里的存储上限已用完。恢复会保留旧版本，再加一个同样大的版本。空间的所有者可以调高你的上限。',
 
   folderTitle: '新建文件夹',
   nameLabel: '名称',

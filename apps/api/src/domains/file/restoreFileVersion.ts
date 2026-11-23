@@ -5,6 +5,7 @@ import { fileVersions } from '@pocketmice/db/schema/file';
 import { and, eq } from 'drizzle-orm';
 import { ApiError, implement } from '../../http/operation.ts';
 import type { FileStorage } from '../../storage/fileStorage.ts';
+import { assertStorageRoom } from '../space/storageLimit.ts';
 import { liveFile, toFile } from './findFile.ts';
 import { addVersionRow, assertCanReplace, discardIfRefused } from './writeContent.ts';
 
@@ -28,6 +29,8 @@ export function restoreFileVersion({ db, storage, reportError }: Deps) {
       // A version of its own, with bytes of its own: the old version is not pointed at twice, so each version can
       // be removed without asking what else uses its bytes
       const stored = { versionId: randomUUID(), size: old.size, sha256: old.sha256 };
+      // The copy is kept beside the old version, so it adds its whole size to what the space and the caller hold
+      await assertStorageRoom(db, input.spaceId, user.id, old.size);
       await storage.copy(old.id, stored.versionId);
       await discardIfRefused(storage, stored, reportError, () =>
         addVersionRow(db, input, stored, { userId: user.id, apiKeyId })

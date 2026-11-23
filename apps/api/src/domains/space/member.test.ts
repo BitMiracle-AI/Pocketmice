@@ -44,9 +44,9 @@ test('getMembers lists who is in the space with their name and role, in the orde
   await add(spaceId, linus, 'viewer');
 
   const expected = [
-    { userId: ada.id, name: 'Ada', role: 'owner' },
-    { userId: grace.id, name: 'Grace', role: 'editor' },
-    { userId: linus.id, name: 'Linus', role: 'viewer' }
+    { userId: ada.id, name: 'Ada', role: 'owner', storageSize: 0, storageLimit: null },
+    { userId: grace.id, name: 'Grace', role: 'editor', storageSize: 0, storageLimit: null },
+    { userId: linus.id, name: 'Linus', role: 'viewer', storageSize: 0, storageLimit: null }
   ];
   // Nothing else about a member is told: no email address
   assert.deepEqual(await membersOf(spaceId, ada), expected);
@@ -88,12 +88,12 @@ test('updateMember changes the role of a member and answers with the member as t
 
   assert.deepEqual(await api.as(ada)(updateMember, { spaceId, userId: grace.id, role: 'viewer' }), {
     ok: true,
-    data: { member: { userId: grace.id, name: 'Grace', role: 'viewer' } }
+    data: { member: { userId: grace.id, name: 'Grace', role: 'viewer', storageSize: 0, storageLimit: null } }
   });
 
   assert.deepEqual(await membersOf(spaceId, grace), [
-    { userId: ada.id, name: 'Ada', role: 'owner' },
-    { userId: grace.id, name: 'Grace', role: 'viewer' }
+    { userId: ada.id, name: 'Ada', role: 'owner', storageSize: 0, storageLimit: null },
+    { userId: grace.id, name: 'Grace', role: 'viewer', storageSize: 0, storageLimit: null }
   ]);
 });
 
@@ -111,8 +111,8 @@ test('the role of the owner does not change, and nobody is made an owner', async
   assert.equal(!promoted.ok && promoted.code, 'INVALID_INPUT');
 
   assert.deepEqual(await membersOf(spaceId, ada), [
-    { userId: ada.id, name: 'Ada', role: 'owner' },
-    { userId: grace.id, name: 'Grace', role: 'editor' }
+    { userId: ada.id, name: 'Ada', role: 'owner', storageSize: 0, storageLimit: null },
+    { userId: grace.id, name: 'Grace', role: 'editor', storageSize: 0, storageLimit: null }
   ]);
 });
 
@@ -126,7 +126,9 @@ test('removeMember takes a member out: the space no longer exists for them', asy
 
   assert.equal(await membersOf(spaceId, grace), 'UNKNOWN_SPACE');
   assert.deepEqual(await api.as(grace)(getSpaces, {}), { ok: true, data: { spaces: [] } });
-  assert.deepEqual(await membersOf(spaceId, ada), [{ userId: ada.id, name: 'Ada', role: 'owner' }]);
+  assert.deepEqual(await membersOf(spaceId, ada), [
+    { userId: ada.id, name: 'Ada', role: 'owner', storageSize: 0, storageLimit: null }
+  ]);
 });
 
 test('the owner cannot be removed, and cannot leave', async () => {
@@ -138,7 +140,9 @@ test('the owner cannot be removed, and cannot leave', async () => {
 
   assert.equal(!removed.ok && removed.code, 'CONFLICT');
   assert.equal(!left.ok && left.code, 'CONFLICT');
-  assert.deepEqual(await membersOf(spaceId, ada), [{ userId: ada.id, name: 'Ada', role: 'owner' }]);
+  assert.deepEqual(await membersOf(spaceId, ada), [
+    { userId: ada.id, name: 'Ada', role: 'owner', storageSize: 0, storageLimit: null }
+  ]);
 });
 
 test('changing or removing someone who is not a member of this space is NOT_FOUND, and touches no other space', async () => {
@@ -159,8 +163,8 @@ test('changing or removing someone who is not a member of this space is NOT_FOUN
   }
 
   assert.deepEqual(await membersOf(hers, grace), [
-    { userId: grace.id, name: 'Grace', role: 'owner' },
-    { userId: linus.id, name: 'Linus', role: 'editor' }
+    { userId: grace.id, name: 'Grace', role: 'owner', storageSize: 0, storageLimit: null },
+    { userId: linus.id, name: 'Linus', role: 'editor', storageSize: 0, storageLimit: null }
   ]);
 });
 
@@ -184,9 +188,9 @@ test('only the owner changes or removes members: an editor and a viewer are FORB
   }
 
   assert.deepEqual(await membersOf(spaceId, ada), [
-    { userId: ada.id, name: 'Ada', role: 'owner' },
-    { userId: grace.id, name: 'Grace', role: 'editor' },
-    { userId: linus.id, name: 'Linus', role: 'viewer' }
+    { userId: ada.id, name: 'Ada', role: 'owner', storageSize: 0, storageLimit: null },
+    { userId: grace.id, name: 'Grace', role: 'editor', storageSize: 0, storageLimit: null },
+    { userId: linus.id, name: 'Linus', role: 'viewer', storageSize: 0, storageLimit: null }
   ]);
 });
 
@@ -206,7 +210,9 @@ test('leaveSpace: an editor and a viewer leave on their own, and the space no lo
     assert.equal(!again.ok && again.code, 'UNKNOWN_SPACE');
   }
 
-  assert.deepEqual(await membersOf(spaceId, ada), [{ userId: ada.id, name: 'Ada', role: 'owner' }]);
+  assert.deepEqual(await membersOf(spaceId, ada), [
+    { userId: ada.id, name: 'Ada', role: 'owner', storageSize: 0, storageLimit: null }
+  ]);
 });
 
 test('leaveSpace leaves that one space: the person stays in the others they are in', async () => {

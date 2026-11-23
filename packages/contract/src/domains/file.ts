@@ -29,6 +29,9 @@ import { operation } from '../operation.ts';
 // write goes over a version its writer has not seen.
 // A version records who wrote it, and through which API key when an agent did. Bringing an old version back
 // (restoreFileVersion) adds a version with the same content, so the history only ever grows.
+// Every version is kept, so every version takes up room: all of them count towards what the space holds, and
+// towards what whoever wrote them holds in it, which the owner of the space can limit (see "Storage limits" in
+// space.ts). A write that would pass a limit is refused before its bytes are taken.
 //
 // 3. The trash. trashFile does not remove anything: it puts the file in the trash, and what is in a trashed folder
 // goes with it. What is in the trash does not exist for any operation but these: getTrashedFiles lists it,
@@ -264,14 +267,18 @@ export function fileContentPath(query: NewFileQuery | NewVersionQuery | ContentQ
 /**
  * The query of an upload that makes a file: in the folder parentId, or directly in the space when parentId is left
  * out. (A query cannot say null, so here leaving it out is how "directly in the space" is said.)
- * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.
+ * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there. SPACE_STORAGE_LIMIT_EXCEEDED: the
+ * space may not hold this much more. MEMBER_STORAGE_LIMIT_EXCEEDED: the space may, and the caller may not (see
+ * "Storage limits" in space.ts).
  */
 export const newFileQuery = z.strictObject({ spaceId: id, parentId: id.optional(), name: fileName });
 
 /**
  * The query of an upload that writes over a file: the content becomes a new version, in place of baseVersionId.
  * NOT_FOUND: there is no such file. CONFLICT: baseVersionId is not the current version of the file: somebody wrote
- * to it since the caller read it, or it is a folder, which has no content.
+ * to it since the caller read it, or it is a folder, which has no content. SPACE_STORAGE_LIMIT_EXCEEDED and
+ * MEMBER_STORAGE_LIMIT_EXCEEDED: as for a new file. The version written over stays, so the whole of the new
+ * content is added to what is held.
  */
 export const newVersionQuery = z.strictObject({ spaceId: id, fileId: id, baseVersionId: id });
 
@@ -466,14 +473,17 @@ export const restoreFileVersion = operation({
     'same content is added, written by the caller, in place of baseVersionId, the version that is current ' +
     'now. Answers with the file. Asked to bring back the version that is current already, it changes nothing. ' +
     'NOT_FOUND: there is no such file, or it has no such version. CONFLICT: baseVersionId is not the current ' +
-    'version of the file: somebody wrote to it in the meantime.',
+    'version of the file: somebody wrote to it in the meantime. SPACE_STORAGE_LIMIT_EXCEEDED: the new version ' +
+    'is as large as the old one, and the space may not hold that much more (see getSpaceSize). ' +
+    'MEMBER_STORAGE_LIMIT_EXCEEDED: the space may, and the caller may not (see getMembers). For both, only the ' +
+    'owner of the space can help.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
   minRole: 'editor',
   input: z.object({ spaceId: id, fileId: id, versionId: id, baseVersionId: id }),
   output: z.object({ file }),
-  errors: ['NOT_FOUND', 'CONFLICT']
+  errors: ['NOT_FOUND', 'CONFLICT', 'SPACE_STORAGE_LIMIT_EXCEEDED', 'MEMBER_STORAGE_LIMIT_EXCEEDED']
 });
 
 export const deleteFile = operation({

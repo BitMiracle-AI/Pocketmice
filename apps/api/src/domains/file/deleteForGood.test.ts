@@ -207,7 +207,7 @@ test('deleteSpace deletes the space for good: its files and their bytes, its mem
   const spaceId = await makeSpace(ada);
   const keptSpaceId = await makeSpace(ada, 'Kept');
   await api.db.insert(spaceMembers).values({ spaceId, userId: grace.id, role: 'editor' });
-  assert.equal((await api.as(ada)(createInvite, { spaceId, role: 'viewer' })).ok, true);
+  assert.equal((await api.as(ada)(createInvite, { spaceId, role: 'viewer', storageLimit: null })).ok, true);
   const folder = await makeFolder(ada, spaceId, null, 'Reports');
   const first = await write(ada, spaceId, { parentId: folder.id, name: 'notes.md' }, 'one');
   const second = await write(grace, spaceId, first, 'two');

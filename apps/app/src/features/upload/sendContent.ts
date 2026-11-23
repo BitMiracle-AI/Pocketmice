@@ -4,7 +4,7 @@ import { apiAddress, heardFailure } from '@/lib/api';
 import type { Target, UploadFailure } from './uploadQueue';
 
 /** The codes the content address refuses an upload with, besides the ones any request may get */
-const REFUSALS = ['NOT_FOUND', 'CONFLICT'] as const;
+const REFUSALS = ['NOT_FOUND', 'CONFLICT', 'SPACE_STORAGE_LIMIT_EXCEEDED', 'MEMBER_STORAGE_LIMIT_EXCEEDED'] as const;
 
 /**
  * Sends the content of a file to the address the content goes through (see FILE_CONTENT_PATH in the contract): a

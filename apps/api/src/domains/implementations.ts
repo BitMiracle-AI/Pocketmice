@@ -30,11 +30,14 @@ import { getServerInfo } from './server/getServerInfo.ts';
 import { createSpace } from './space/createSpace.ts';
 import { deleteSpace } from './space/deleteSpace.ts';
 import { getMembers } from './space/getMembers.ts';
+import { getSpaceSize } from './space/getSpaceSize.ts';
 import { getSpaces } from './space/getSpaces.ts';
 import { leaveSpace } from './space/leaveSpace.ts';
 import { removeMember } from './space/removeMember.ts';
 import { updateMember } from './space/updateMember.ts';
+import { updateMemberStorageLimit } from './space/updateMemberStorageLimit.ts';
 import { updateSpace } from './space/updateSpace.ts';
+import { updateSpaceStorageLimit } from './space/updateSpaceStorageLimit.ts';
 
 /** What the implementations need from outside. main.ts passes it in; a test passes its own */
 export interface DomainDeps {
@@ -65,8 +68,11 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     getSpaces(deps),
     createSpace(deps),
     updateSpace(deps),
+    getSpaceSize(deps),
+    updateSpaceStorageLimit(deps),
     getMembers(deps),
     updateMember(deps),
+    updateMemberStorageLimit(deps),
     removeMember(deps),
     leaveSpace(deps),
     deleteSpace(deps),

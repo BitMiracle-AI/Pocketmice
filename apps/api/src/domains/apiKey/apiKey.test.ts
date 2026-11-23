@@ -139,7 +139,7 @@ test('no key decides who can get in: keys, members and invites are FORBIDDEN to 
   const grace = await api.addPerson('Grace');
   const spaceId = await makeSpace(ada);
   await api.db.insert(spaceMembers).values({ spaceId, userId: grace.id, role: 'editor' });
-  const invited = await api.as(ada)(createInvite, { spaceId, role: 'viewer' });
+  const invited = await api.as(ada)(createInvite, { spaceId, role: 'viewer', storageLimit: null });
   assert.ok(invited.ok);
   const inviteId = invited.data.invite.id;
 
@@ -153,7 +153,7 @@ test('no key decides who can get in: keys, members and invites are FORBIDDEN to 
       await agent(createApiKey, { name: 'Another', permission: 'write' }),
       await agent(getApiKeys, {}),
       await agent(deleteApiKey, { apiKeyId: mine.apiKey.id }),
-      await agent(createInvite, { spaceId, role: 'editor' }),
+      await agent(createInvite, { spaceId, role: 'editor', storageLimit: null }),
       await agent(getInvites, { spaceId }),
       await agent(deleteInvite, { spaceId, inviteId }),
       await agent(updateMember, { spaceId, userId: grace.id, role: 'viewer' }),

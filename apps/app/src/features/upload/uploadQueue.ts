@@ -17,10 +17,17 @@ import { freeName } from './freeName.ts';
 // first so that the bytes are not sent for nothing; either way the upload ends up taken, and waits.
 
 /**
- * Why an upload failed: a code the api answered with (the two the content address has of its own, or one any
+ * Why an upload failed: a code the api answered with (the four the content address has of its own, or one any
  * request may get), one this side arrived at, or that the file is larger than a file may be
  */
-export type UploadFailure = UniversalErrorCode | ClientErrorCode | 'NOT_FOUND' | 'CONFLICT' | 'TOO_LARGE';
+export type UploadFailure =
+  | UniversalErrorCode
+  | ClientErrorCode
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'SPACE_STORAGE_LIMIT_EXCEEDED'
+  | 'MEMBER_STORAGE_LIMIT_EXCEEDED'
+  | 'TOO_LARGE';
 
 /** What a folder holds under a name: a file, with the version its content is now; or a folder, which has none */
 export interface Entry {

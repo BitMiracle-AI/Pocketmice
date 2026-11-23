@@ -26,7 +26,8 @@ export async function makeInvite(
   spaceId: string,
   role: Invite['role']
 ): Promise<{ invite: Invite } | { problem: string }> {
-  const result = await call(createInvite, { spaceId, role });
+  // No storage limit: the page does not ask for one yet, so whoever joins is held by the limit of the space alone
+  const result = await call(createInvite, { spaceId, role, storageLimit: null });
   if (!result.ok) return { problem: failureText(result.code, {}) };
   spaceChanged(spaceId);
   return { invite: result.data.invite };

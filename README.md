@@ -4,13 +4,14 @@
 the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
-> invites, API keys for agents, and files — folders, upload and download, versions, a trash. The web app has a
-> page for most of it: signing in, spaces with their members and invite links, the files of a space (folders,
-> upload, download, renaming, moving, the trash, the versions of a file) and API keys. What it does not do yet
-> (looking for a file by words, renaming or deleting a space, changing the name you go by) is done through the
-> HTTP API. For a program there is the [TypeScript SDK](#typescript-sdk), which is in this repository and not on
-> npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it the API.
-> Nothing here is ready for production.
+> invites, API keys for agents, and files — folders, upload and download, versions, a trash, and limits on how
+> much a space and each member may hold. The web app has a page for most of it: signing in, spaces with their
+> members and invite links, the files of a space (folders, upload, download, renaming, moving, the trash, the
+> versions of a file) and API keys. What it does not do yet (looking for a file by words, setting storage
+> limits, renaming or deleting a space, changing the name you go by) is done through the HTTP API. For a program
+> there is the [TypeScript SDK](#typescript-sdk), which is in this repository and not on npm yet, and for an
+> agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it the API. Nothing here is ready
+> for production.
 
 ## What is planned
 
@@ -53,16 +54,18 @@ Every operation is a `POST` to `/api/<name>`, and its name is a verb followed by
 is written down once, in `packages/contract`:
 
 ```ts
-export const getMembers = operation({
-  name: 'getMembers',
-  description: 'The members of a space, in the order they became members, each with their role there.',
+export const getFileByPath = operation({
+  name: 'getFileByPath',
+  description:
+    'One file or folder, by its path: the names from the top of the space down to it, like ' +
+    '/Reports/2026/summary.md. NOT_FOUND: there is nothing at the path.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
   minRole: 'viewer',
-  input: z.object({ spaceId: id }),
-  output: z.object({ members: z.array(member) }),
-  errors: []
+  input: z.object({ spaceId: id, path: filePath }),
+  output: z.object({ file }),
+  errors: ['NOT_FOUND']
 });
 ```
 
@@ -117,6 +120,16 @@ curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<fi
 ```
 
 A file is at most 1 GB.
+
+The owner of a space can limit how much the space holds (`updateSpaceStorageLimit`), and how much each member
+holds in it (`updateMemberStorageLimit`; an invite gives a limit to whoever joins with it). Everything that is
+kept counts: every version of every file, the versions before the current one and what is in the trash too. What
+an agent writes counts as its person's, so a limit on a member holds that member's agents. An upload that would
+pass a limit is refused before its bytes are taken, with `SPACE_STORAGE_LIMIT_EXCEEDED` or
+`MEMBER_STORAGE_LIMIT_EXCEEDED`; `getSpaceSize` and `getMembers` say how much is held. Only the owner sets a
+limit, signed in themselves, and only the owner makes room, by deleting for good: no API key does either. A space
+that was given no limit has none. A limit is not exact: uploads that are under way at the same time do not count
+each other, and together can go past it by as much as they add.
 
 A reverse proxy goes in front of the API, which by itself listens on its own machine only. The API counts on the
 proxy for four things:

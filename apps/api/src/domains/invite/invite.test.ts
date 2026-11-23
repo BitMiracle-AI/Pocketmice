@@ -23,8 +23,13 @@ async function make(owner: CurrentUser, name = 'Research notes') {
 }
 
 /** Makes an invite to the space as its owner and returns it */
-async function invite(owner: CurrentUser, spaceId: string, role: 'editor' | 'viewer' = 'editor') {
-  const result = await api.as(owner)(createInvite, { spaceId, role });
+async function invite(
+  owner: CurrentUser,
+  spaceId: string,
+  role: 'editor' | 'viewer' = 'editor',
+  storageLimit: number | null = null
+) {
+  const result = await api.as(owner)(createInvite, { spaceId, role, storageLimit });
   assert.ok(result.ok, `createInvite should have worked: ${JSON.stringify(result)}`);
   return result.data.invite;
 }
@@ -96,6 +101,32 @@ test('someone who is a member already stays in the role they have, whatever the 
   assert.equal(asEditor.ok && asEditor.data.space.role, 'editor');
   assert.equal(asOwner.ok && asOwner.data.space.role, 'owner');
   assert.deepEqual(await rolesIn(spaceId, ada), { Ada: 'owner', Grace: 'editor' });
+});
+
+test('an invite gives its storage limit to whoever joins with it; someone who is a member already keeps the limit they have', async () => {
+  const ada = await api.addPerson('Ada');
+  const grace = await api.addPerson('Grace');
+  const linus = await api.addPerson('Linus');
+  const spaceId = await make(ada);
+  const limited = await invite(ada, spaceId, 'editor', 1000);
+  const unlimited = await invite(ada, spaceId, 'editor');
+  assert.deepEqual([limited.storageLimit, unlimited.storageLimit], [1000, null]);
+  const listed = await api.as(ada)(getInvites, { spaceId });
+  assert.deepEqual(listed.ok && listed.data.invites.map((made) => made.storageLimit), [1000, null]);
+
+  assert.equal((await api.as(grace)(joinSpace, { inviteId: limited.id })).ok, true);
+  assert.equal((await api.as(linus)(joinSpace, { inviteId: unlimited.id })).ok, true);
+  // Each opens the other invite, and the owner opens the one with a limit: nobody's limit moves
+  assert.equal((await api.as(grace)(joinSpace, { inviteId: unlimited.id })).ok, true);
+  assert.equal((await api.as(linus)(joinSpace, { inviteId: limited.id })).ok, true);
+  assert.equal((await api.as(ada)(joinSpace, { inviteId: limited.id })).ok, true);
+
+  const members = await api.as(ada)(getMembers, { spaceId });
+  assert.deepEqual(members.ok && members.data.members.map((member) => [member.name, member.storageLimit]), [
+    ['Ada', null],
+    ['Grace', 1000],
+    ['Linus', null]
+  ]);
 });
 
 test('getInvites lists the invites to the space that still work, the oldest first', async () => {
@@ -186,7 +217,7 @@ test('only the owner makes, sees and deletes invites: other members are FORBIDDE
     [grace, 'FORBIDDEN'],
     [linus, 'UNKNOWN_SPACE']
   ] as const) {
-    const created = await api.as(person)(createInvite, { spaceId, role: 'viewer' });
+    const created = await api.as(person)(createInvite, { spaceId, role: 'viewer', storageLimit: null });
     const listed = await api.as(person)(getInvites, { spaceId });
     const deleted = await api.as(person)(deleteInvite, { spaceId, inviteId: made.id });
 

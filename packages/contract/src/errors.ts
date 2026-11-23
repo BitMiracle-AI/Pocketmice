@@ -45,7 +45,19 @@ export const DECLARED_ERROR_STATUS = {
   /** This was asked for too often, from where this request comes from or for the same thing. Later it works again */
   TOO_MANY_REQUESTS: 429,
   /** A sign-in code was to be sent, and the mail did not go out. Asking again may work */
-  CODE_NOT_SENT: 503
+  CODE_NOT_SENT: 503,
+  /**
+   * What was sent would be kept, and the space may hold no more of it: its storage limit would be passed. Sending
+   * it again does not help until the owner of the space makes room or raises the limit.
+   * The status of the two below is the one of INPUT_TOO_LARGE, and not one that says the server has no room
+   * (507): to a proxy and to an alert that would be the server failing, and this is a limit somebody set.
+   */
+  SPACE_STORAGE_LIMIT_EXCEEDED: 413,
+  /**
+   * The same for the caller alone: the space has room, and the limit the owner set for this member would be
+   * passed
+   */
+  MEMBER_STORAGE_LIMIT_EXCEEDED: 413
 } as const;
 
 export type UniversalErrorCode = keyof typeof UNIVERSAL_ERROR_STATUS;

@@ -147,7 +147,9 @@ const createFile = tool({
   description:
     'Makes a file with this text as its content, in the folder parentId or directly in the space when parentId is ' +
     `null. Answers with the file. Only text is written this way: anything else is uploaded to ${FILE_CONTENT_PATH}. ` +
-    'NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.',
+    'NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there. SPACE_STORAGE_LIMIT_EXCEEDED: ' +
+    'the space may not hold this much more (see getSpaceSize). MEMBER_STORAGE_LIMIT_EXCEEDED: the space may, and ' +
+    'the caller may not (see getMembers). For both, only the owner of the space can help.',
   kind: 'write',
   input: z.strictObject({ spaceId: id, parentId: id.nullable(), name: fileName, content: z.string() }),
   run: ({ spaceId, parentId, name, content }, send) => upload(send, { spaceId, parentId, name }, content)
@@ -160,7 +162,9 @@ const updateFileContent = tool({
     'that is current now (version.id of the file, which is what getFileContent answers as versionId when it reads ' +
     'the content now). The versions before it stay. The text replaces all of the content, so send all of it. ' +
     'Answers with the file. NOT_FOUND: there is no such file. CONFLICT: baseVersionId is not the current version ' +
-    'of the file: somebody wrote to it since it was read, or it is a folder. Read it again, then decide.',
+    'of the file: somebody wrote to it since it was read, or it is a folder. Read it again, then decide. ' +
+    'SPACE_STORAGE_LIMIT_EXCEEDED and MEMBER_STORAGE_LIMIT_EXCEEDED: as for createFile. The version written over ' +
+    'stays, so all of the new text is added to what is held.',
   kind: 'write',
   input: z.strictObject({ spaceId: id, fileId: id, baseVersionId: id, content: z.string() }),
   run: ({ spaceId, fileId, baseVersionId, content }, send) => upload(send, { spaceId, fileId, baseVersionId }, content)

@@ -3,7 +3,7 @@ import { readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { createApiKey } from '@pocketmice/contract/domains/apiKey';
 import { createFolder, fileContentPath, getFile, getFileVersions } from '@pocketmice/contract/domains/file';
-import { createSpace } from '@pocketmice/contract/domains/space';
+import { createSpace, updateMemberStorageLimit, updateSpaceStorageLimit } from '@pocketmice/contract/domains/space';
 import { isOperation } from '@pocketmice/contract/operation';
 import { callTool, connectMcp } from '../../http/mcpClient.testing.ts';
 import type { CurrentUser } from '../../http/operation.ts';
@@ -200,6 +200,38 @@ test('createFile is refused as an upload is: a name that is taken, a folder that
   });
   assert.equal(nowhere.isError, true);
   assert.match(nowhere.texts[0] ?? '', /^NOT_FOUND: /);
+});
+
+test('the tools that write are held by the storage limits as an upload is, by the bytes of the text: refused, and nothing written', async () => {
+  const { ada, spaceId, client } = await setup();
+  const first = await written(client, 'createFile', { spaceId, parentId: null, name: 'notes.txt', content: 'one' });
+  // Four bytes may still be added: é is two of them
+  assert.equal((await api.as(ada)(updateSpaceStorageLimit, { spaceId, storageLimit: 7 })).ok, true);
+
+  const created = await callTool(client, 'createFile', { spaceId, parentId: null, name: 'b.txt', content: 'éée' });
+  assert.equal(created.isError, true);
+  assert.match(
+    created.texts[0] ?? '',
+    /^SPACE_STORAGE_LIMIT_EXCEEDED: .* holds 3 bytes and may hold 7: 5 more do not fit/
+  );
+  const over = { spaceId, fileId: first.id, baseVersionId: first.version.id };
+  const updated = await callTool(client, 'updateFileContent', { ...over, content: 'three' });
+  assert.equal(updated.isError, true);
+  assert.match(updated.texts[0] ?? '', /^SPACE_STORAGE_LIMIT_EXCEEDED: /);
+
+  // The limit of the member the key belongs to, with room left in the space
+  assert.equal((await api.as(ada)(updateSpaceStorageLimit, { spaceId, storageLimit: null })).ok, true);
+  assert.equal((await api.as(ada)(updateMemberStorageLimit, { spaceId, userId: ada.id, storageLimit: 7 })).ok, true);
+  const mine = await callTool(client, 'updateFileContent', { ...over, content: 'three' });
+  assert.equal(mine.isError, true);
+  assert.match(mine.texts[0] ?? '', /^MEMBER_STORAGE_LIMIT_EXCEEDED: /);
+
+  const versions = await api.as(ada)(getFileVersions, { spaceId, fileId: first.id });
+  assert.equal(versions.ok && versions.data.versions.length, 1);
+  // What fits is written, and an agent asks how much room there is with the tool of the operation
+  await written(client, 'updateFileContent', { ...over, content: 'four' });
+  const size = await callTool(client, 'getSpaceSize', { spaceId });
+  assert.deepEqual(JSON.parse(size.texts[0] ?? ''), { storageSize: 7, storageLimit: null });
 });
 
 test('updateFileContent adds a version in place of the one that was read, and the versions before it stay', async () => {

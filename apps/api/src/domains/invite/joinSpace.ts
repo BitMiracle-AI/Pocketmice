@@ -8,18 +8,18 @@ import { ApiError, implement } from '../../http/operation.ts';
 export function joinSpace({ db }: { db: Db }) {
   return implement(definition, async ({ input, user }) => {
     const [invite] = await db
-      .select({ spaceId: spaceInvites.spaceId, role: spaceInvites.role })
+      .select({ spaceId: spaceInvites.spaceId, role: spaceInvites.role, storageLimit: spaceInvites.storageLimit })
       .from(spaceInvites)
       .where(and(eq(spaceInvites.id, input.inviteId), gt(spaceInvites.expiresAt, sql`now()`)));
     // An invite that never was, one that was deleted and one past its time get one answer: whoever tries ids
     // learns nothing from the difference
     if (!invite) throw new ApiError('NOT_FOUND', 'There is no such invite, or it has expired.');
 
-    // Someone who is a member already keeps the row they have: an invite never changes a role, so opening a link
-    // twice does nothing, and the owner opening their own link stays the owner
+    // Someone who is a member already keeps the row they have: an invite never changes a role or a storage limit,
+    // so opening a link twice does nothing, and the owner opening their own link stays the owner
     await db
       .insert(spaceMembers)
-      .values({ spaceId: invite.spaceId, userId: user.id, role: invite.role })
+      .values({ spaceId: invite.spaceId, userId: user.id, role: invite.role, storageLimit: invite.storageLimit })
       .onConflictDoNothing();
 
     const [space] = await db

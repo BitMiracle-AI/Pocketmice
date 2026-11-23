@@ -7,7 +7,12 @@ import { implement } from '../../http/operation.ts';
 export function getInvites({ db }: { db: Db }) {
   return implement(definition, async ({ input }) => {
     const rows = await db
-      .select({ id: spaceInvites.id, role: spaceInvites.role, expiresAt: spaceInvites.expiresAt })
+      .select({
+        id: spaceInvites.id,
+        role: spaceInvites.role,
+        storageLimit: spaceInvites.storageLimit,
+        expiresAt: spaceInvites.expiresAt
+      })
       .from(spaceInvites)
       .where(and(eq(spaceInvites.spaceId, input.spaceId), gt(spaceInvites.expiresAt, sql`now()`)))
       // The oldest first; invites made at the same moment go by id, so the order is the same every time

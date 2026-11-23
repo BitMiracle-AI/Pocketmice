@@ -82,7 +82,10 @@ export interface ContentMethods {
   /**
    * Makes a file with this content: in the folder parentId, or directly in the space when parentId is null. Answers
    * with the file.
-   * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.
+   * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there. SPACE_STORAGE_LIMIT_EXCEEDED: the
+   * space may not hold this much more (getSpaceSize says how much it holds, and the most it may).
+   * MEMBER_STORAGE_LIMIT_EXCEEDED: the space may, and the person the key belongs to may not (getMembers says the
+   * same of each member). For both, nothing was written, and only the owner of the space can help.
    * The name answered is the name as it is kept, which may differ byte for byte from the one given: a character
    * that can be written in two ways that look the same is kept one way (NFC), and macOS names its files the other.
    * To compare a name with one from an answer, bring it to NFC first.
@@ -95,6 +98,8 @@ export interface ContentMethods {
    * the new content was made from. Answers with the file.
    * NOT_FOUND: there is no such file. CONFLICT: baseVersionId is not the current version of the file, because
    * somebody wrote to it since, or the file is a folder. Nothing was written: download it again, then decide.
+   * SPACE_STORAGE_LIMIT_EXCEEDED and MEMBER_STORAGE_LIMIT_EXCEEDED: as for uploadFile. The version written over
+   * stays, so all of the new content is added to what is held.
    */
   uploadFileVersion: (input: NewVersionQuery & { content: Content }) => Promise<FileAnswer>;
   /**

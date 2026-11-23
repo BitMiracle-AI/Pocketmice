@@ -23,6 +23,7 @@ import {
   fail
 } from '../../http/operation.ts';
 import type { ByteRange, FileStorage } from '../../storage/fileStorage.ts';
+import { assertStorageRoom } from '../space/storageLimit.ts';
 import { liveFile, toFile } from './findFile.ts';
 import {
   addVersionRow,
@@ -43,7 +44,8 @@ import {
 //   http/operation.ts): the web page, the sign-in or the API key, what the key may do, the membership and the role.
 //   An upload is a write that takes an editor; a download is a read that takes a viewer.
 // - A failure is the same error body as an operation's, with the same codes.
-// - An upload that cannot work is refused before its bytes are taken (see assertCanCreate, assertCanReplace).
+// - An upload that cannot work is refused before its bytes are taken (see assertCanCreate, assertCanReplace), and
+//   so is one that would take the space, or the caller in it, past a storage limit (see assertStorageRoom).
 // - A download is always answered as a file to save, never as a page to show: content somebody uploaded must not
 //   run as a page of this address, where it would act as whoever opened it. The etag is the id of the version that
 //   was sent, which is what a caller that downloaded "the content now" needs in order to write over it.
@@ -94,8 +96,9 @@ async function admit(
  * Refuses a body that is too large, by the length the request declares: that what is sent is as long as what was
  * declared is guaranteed by the HTTP server. As with an operation, the body is not touched to find out, and a body
  * sent in chunks, which declares no length, is not accepted.
+ * Returns the length declared: how many bytes this upload adds to what is kept.
  */
-function assertSize(c: Context): void {
+function assertSize(c: Context): number {
   if (c.req.header('transfer-encoding') !== undefined) {
     throw new ApiError('INVALID_INPUT', 'Send the content with a content-length header, not in chunks.');
   }
@@ -106,6 +109,7 @@ function assertSize(c: Context): void {
   if (Number(declared) > MAX_FILE_BYTES) {
     throw new ApiError('INPUT_TOO_LARGE', `The content of a file is at most ${MAX_FILE_BYTES} bytes.`);
   }
+  return Number(declared);
 }
 
 /** What an upload is to write, read from its query: where it goes, and the two steps that differ between the two kinds */
@@ -140,13 +144,14 @@ function writeOf(c: Context, db: Db): Write {
 }
 
 async function upload(c: Context, deps: FileContentDeps): Promise<Response> {
-  assertSize(c);
+  const size = assertSize(c);
   const caller = await admitCaller(c, { access: 'authenticated', kind: 'write' }, deps);
   if (caller instanceof Response) return caller;
   const write = writeOf(c, deps.db);
   const user = await admit(c, caller, write.spaceId, 'editor', deps);
   if (user instanceof Response) return user;
   await write.check();
+  await assertStorageRoom(deps.db, write.spaceId, user.id, size);
 
   // A request that says its body has no bytes may come without a body at all: an empty file
   const stored = await storeContent(deps.storage, c.req.raw.body);

@@ -97,6 +97,10 @@ export const en = {
   versionRestored: (when: string) => `Restored the version of ${when}`,
   versionConflict: 'The file was written to in the meantime. Look at its versions again, then restore.',
   versionGone: 'That version, or the file, is no longer here.',
+  versionSpaceFull:
+    'The space is full. Restoring keeps the old version and adds one as large. The owner of the space can make room or raise its limit.',
+  versionMemberFull:
+    'You have reached your storage limit in this space. Restoring keeps the old version and adds one as large. The owner of the space can raise your limit.',
 
   folderTitle: 'New folder',
   nameLabel: 'Name',

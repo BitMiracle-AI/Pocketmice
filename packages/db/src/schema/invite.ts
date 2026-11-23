@@ -1,4 +1,5 @@
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { bigint, check, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { users } from './auth.ts';
 import { spaces } from './space.ts';
 
@@ -24,6 +25,11 @@ export const spaceInvites = pgTable(
       .references(() => spaces.id, { onDelete: 'cascade' }),
     /** The role it gives to whoever joins with it */
     role: text('role', { enum: INVITE_ROLES }).notNull(),
+    /**
+     * The storage limit it gives to whoever joins with it, in bytes: what their row in spaceMembers starts with.
+     * Null for none
+     */
+    storageLimit: bigint('storage_limit', { mode: 'number' }),
     /** Who made it. An invite goes with the user who made it: that takes access away, and never gives any */
     userId: uuid('user_id')
       .notNull()
@@ -31,6 +37,9 @@ export const spaceInvites = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
   },
-  // "The invites to this space" looks up by space
-  (table) => [index('space_invites_space_id_idx').on(table.spaceId)]
+  (table) => [
+    // "The invites to this space" looks up by space
+    index('space_invites_space_id_idx').on(table.spaceId),
+    check('space_invites_storage_limit_check', sql`${table.storageLimit} >= 0`)
+  ]
 );

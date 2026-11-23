@@ -17,7 +17,9 @@ function failureSentence(failure: UploadFailure): string {
   return failureText(failure, {
     TOO_LARGE: tooLarge,
     NOT_FOUND: uploadText.folderGone,
-    CONFLICT: uploadText.changedMeanwhile
+    CONFLICT: uploadText.changedMeanwhile,
+    SPACE_STORAGE_LIMIT_EXCEEDED: uploadText.spaceFull,
+    MEMBER_STORAGE_LIMIT_EXCEEDED: uploadText.memberFull
   });
 }
 

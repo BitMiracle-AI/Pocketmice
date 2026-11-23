@@ -1,30 +1,40 @@
 import { sql } from 'drizzle-orm';
-import { index, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, check, index, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { users } from './auth.ts';
 
 /**
  * A space: the container everything in the drive belongs to. An operation of a space finds it by its id, and who
  * may get in is decided by spaceMembers alone.
  */
-export const spaces = pgTable('spaces', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  /** The name. Two spaces may have the same one */
-  name: text('name').notNull(),
-  /**
-   * Who made the space. It never changes: who owns the space now is read from the role in the member's row, not
-   * from here.
-   * What happens when the user is deleted is not written, so the database refuses to delete a user who made a
-   * space: a space and what is in it are not carried away silently.
-   */
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date())
-});
+export const spaces = pgTable(
+  'spaces',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    /** The name. Two spaces may have the same one */
+    name: text('name').notNull(),
+    /**
+     * Who made the space. It never changes: who owns the space now is read from the role in the member's row, not
+     * from here.
+     * What happens when the user is deleted is not written, so the database refuses to delete a user who made a
+     * space: a space and what is in it are not carried away silently.
+     */
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    /**
+     * The most the space may hold, in bytes. Null when its owner has set no limit.
+     * How much it holds is written nowhere: it is the sizes of the versions of its files, added up when asked for
+     * (see fileVersions, and storageLimit.ts in the api).
+     */
+    storageLimit: bigint('storage_limit', { mode: 'number' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date())
+  },
+  (table) => [check('spaces_storage_limit_check', sql`${table.storageLimit} >= 0`)]
+);
 
 /**
  * The roles a member of a space can have. Whoever makes a space is its owner, and a space has exactly one.
@@ -48,6 +58,12 @@ export const spaceMembers = pgTable(
       .notNull()
       .references(() => users.id),
     role: text('role', { enum: SPACE_ROLES }).notNull(),
+    /**
+     * The most this member may hold in the space, in bytes: the versions they wrote, themselves or through an API
+     * key of theirs. Null when the owner has set no limit for them, and then only the limit of the space holds
+     * them.
+     */
+    storageLimit: bigint('storage_limit', { mode: 'number' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
@@ -61,6 +77,7 @@ export const spaceMembers = pgTable(
     index('space_members_user_id_idx').on(table.userId),
     // At most one owner in a space, guaranteed by the database: no mistake in code that writes roles can make a
     // second one
-    uniqueIndex('space_members_one_owner_idx').on(table.spaceId).where(sql`${table.role} = 'owner'`)
+    uniqueIndex('space_members_one_owner_idx').on(table.spaceId).where(sql`${table.role} = 'owner'`),
+    check('space_members_storage_limit_check', sql`${table.storageLimit} >= 0`)
   ]
 );

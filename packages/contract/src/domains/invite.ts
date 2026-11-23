@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { id } from '../id.ts';
 import { operation } from '../operation.ts';
 import { grantableRole } from '../spaceRole.ts';
-import { space } from './space.ts';
+import { space, storageLimit } from './space.ts';
 
 // Invites: how someone becomes a member of a space they did not make.
-// The owner of a space makes an invite, which says what role it gives, and hands its link to the people they want
-// in. Whoever is signed in and has the link can join, as many people as have it, until the invite expires or the
+// The owner of a space makes an invite, which says what role it gives and what storage limit (see space.ts), and
+// hands its link to the people they want in. Whoever is signed in and has the link can join, as many people as have it, until the invite expires or the
 // owner deletes it. Nothing is emailed, and nobody is put into a space without doing something themselves.
 // The link carries the id of the invite, and the id is all it takes to join: an invite's id is a secret between
 // the owner and the people the link was given to.
@@ -22,6 +22,8 @@ const invite = z.object({
   id: z.string(),
   /** The role it gives to whoever joins with it */
   role: grantableRole,
+  /** The storage limit it gives them: the most they may hold in the space, in bytes. Null for no limit */
+  storageLimit,
   /** When it stops working: an ISO 8601 time in UTC */
   expiresAt: z.iso.datetime()
 });
@@ -29,13 +31,15 @@ const invite = z.object({
 export const createInvite = operation({
   name: 'createInvite',
   description:
-    'Makes an invite to a space, which gives the role it names to whoever joins with it. Answers with the ' +
-    'invite, which says when it stops working.',
+    'Makes an invite to a space, which gives the role it names to whoever joins with it, and the storage limit ' +
+    'it names: the most they may hold in the space, in bytes, or null for no limit. The limit can be changed ' +
+    'for each of them later (updateMemberStorageLimit). Answers with the invite, which says when it stops ' +
+    'working.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
   minRole: 'owner',
-  input: z.object({ spaceId: id, role: grantableRole }),
+  input: z.object({ spaceId: id, role: grantableRole, storageLimit }),
   output: z.object({ invite }),
   errors: []
 });
@@ -69,9 +73,9 @@ export const deleteInvite = operation({
 export const joinSpace = operation({
   name: 'joinSpace',
   description:
-    'The caller joins the space an invite is to, in the role the invite gives. Answers with the space. ' +
-    'Someone who is a member already stays in the role they have. NOT_FOUND: there is no such invite, or it ' +
-    'has expired.',
+    'The caller joins the space an invite is to, in the role the invite gives and with the storage limit it ' +
+    'gives. Answers with the space. Someone who is a member already stays in the role they have, with the ' +
+    'limit they have. NOT_FOUND: there is no such invite, or it has expired.',
   kind: 'write',
   access: 'session',
   belongsTo: 'none',

@@ -37,7 +37,12 @@ export async function restoreVersion(spaceId: string, file: DriveFile, version: 
       ? { title: fileText.versionRestored(formatMoment(version.createdAt)) }
       : {
           type: 'error',
-          title: failureText(result.code, { CONFLICT: fileText.versionConflict, NOT_FOUND: fileText.versionGone })
+          title: failureText(result.code, {
+            CONFLICT: fileText.versionConflict,
+            NOT_FOUND: fileText.versionGone,
+            SPACE_STORAGE_LIMIT_EXCEEDED: fileText.versionSpaceFull,
+            MEMBER_STORAGE_LIMIT_EXCEEDED: fileText.versionMemberFull
+          })
         }
   );
 }
