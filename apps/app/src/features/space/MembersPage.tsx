@@ -2,7 +2,6 @@ import { ArrowDown01Icon, UserRemove01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { grantableRole } from '@pocketmice/contract/spaceRole';
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Page, PageHead } from '@/components/Page';
 import { PersonAvatar } from '@/components/PersonAvatar';
@@ -37,7 +36,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLastGiven } from '@/hooks/useLastGiven';
 import { useCurrentSpace } from './CurrentSpaceProvider';
 import { changeRole, type GrantableRole, leave, type Member, membersQuery, removeFromSpace } from './members';
-import { noLongerIn } from './spaces';
+import { useNoLongerIn } from './spaces';
 import { spaceText } from './text';
 
 // Who is in a space, and what each may do there. Every member sees the list. The owner changes the role of
@@ -53,7 +52,7 @@ type Asking = { member: Member } | 'leave' | null;
 export function MembersPage() {
   const space = useCurrentSpace();
   const user = useCurrentUser();
-  const navigate = useNavigate();
+  const noLongerIn = useNoLongerIn();
   const { members } = useSuspenseQuery(membersQuery(space.id)).data;
   // The member whose role is being changed: their row waits until the api has answered
   const [changing, setChanging] = useState<string | null>(null);
@@ -76,11 +75,8 @@ export function MembersPage() {
     setConfirming(true);
     const problem = asking === 'leave' ? await leave(space.id) : await removeFromSpace(space.id, asking.member.userId);
     if (problem === null && asking === 'leave') {
-      // This space is no longer the person's: they go to the start, where the ones that are theirs are. The page
-      // leaves the space before the space leaves the list: a page of a space that is not on the list says "no
-      // such space", which is not what happened here
-      await navigate({ to: '/', replace: true });
-      noLongerIn(space.id);
+      // This space is no longer the person's: they go to the start, where the ones that are theirs are
+      await noLongerIn(space.id);
       toast.add({ title: spaceText.left(space.name) });
       return;
     }

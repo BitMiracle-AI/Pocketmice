@@ -1,6 +1,7 @@
 import { createSpace, deleteSpace, getSpaces, spaceName, updateSpace } from '@pocketmice/contract/domains/space';
 import type { OutputOf } from '@pocketmice/contract/operation';
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { call, failureText, queryClient, readQuery } from '@/lib/api';
 import { spaceText } from './text';
 
@@ -81,7 +82,7 @@ export async function renameSpace(spaceId: string, name: string): Promise<string
 /**
  * Deletes a space for good. Null when it is gone, or the sentence that says why it is not. A space that turns out
  * to be gone already is gone, which is what was asked for.
- * The list of spaces still has it: the page that asked is one of that space, and leaves it first (noLongerIn).
+ * The list of spaces still has it: the page that asked is one of that space, and leaves it first (useNoLongerIn).
  */
 export async function removeSpace(spaceId: string): Promise<string | null> {
   const result = await call(deleteSpace, { spaceId });
@@ -90,12 +91,18 @@ export async function removeSpace(spaceId: string): Promise<string | null> {
 }
 
 /**
- * The person is no longer in a space: they left it, or deleted it. It is taken out of the list at once, and the
- * list asked for again.
+ * For a page of a space, once the person is no longer in that space: they left it, or deleted it. What it hands
+ * out takes the person to the start, and then takes the space out of the list, which is asked for again.
+ * In that order, and so in one place: a page of a space that is not on the list says "no such space" (SpaceShell),
+ * which is true of a space someone else took the person out of, and is not what happened here.
  */
-export function noLongerIn(spaceId: string): void {
-  queryClient.setQueryData(spacesQuery.queryKey, (old) =>
-    old ? { spaces: old.spaces.filter((each) => each.id !== spaceId) } : old
-  );
-  void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
+export function useNoLongerIn(): (spaceId: string) => Promise<void> {
+  const navigate = useNavigate();
+  return async (spaceId) => {
+    await navigate({ to: '/', replace: true });
+    queryClient.setQueryData(spacesQuery.queryKey, (old) =>
+      old ? { spaces: old.spaces.filter((each) => each.id !== spaceId) } : old
+    );
+    void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
+  };
 }

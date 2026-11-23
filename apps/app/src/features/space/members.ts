@@ -55,7 +55,7 @@ export async function removeFromSpace(spaceId: string, userId: string): Promise<
 /**
  * The person leaves a space. Null when they are out of it, or the sentence that says why they are not. Someone
  * who turns out to be no member any more (the owner removed them a moment ago) is out too.
- * The list of spaces still has it: the page that asked is one of that space, and leaves it first (noLongerIn).
+ * The list of spaces still has it: the page that asked is one of that space, and leaves it first (useNoLongerIn).
  */
 export async function leave(spaceId: string): Promise<string | null> {
   const result = await call(leaveSpace, { spaceId });

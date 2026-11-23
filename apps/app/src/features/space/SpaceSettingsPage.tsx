@@ -1,5 +1,4 @@
 import { SPACE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/space';
-import { useNavigate } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
 import { Page, PageHead } from '@/components/Page';
 import { SavedField } from '@/components/SavedField';
@@ -19,7 +18,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { MainBar } from '@/features/shell/MainBar';
 import { useCurrentSpace } from './CurrentSpaceProvider';
-import { noLongerIn, removeSpace, renameSpace, type Space } from './spaces';
+import { removeSpace, renameSpace, type Space, useNoLongerIn } from './spaces';
 import { spaceText } from './text';
 
 // The settings of a space: what it is called, and the end of it. Both are the owner's alone, so the sidebar
@@ -94,7 +93,7 @@ export function SpaceSettingsPage() {
 
 /** What the dialog holds. busy says the api is being asked: the page keeps it, to keep the dialog open meanwhile */
 function DeleteSpaceForm({ space, busy, onBusy }: { space: Space; busy: boolean; onBusy: (busy: boolean) => void }) {
-  const navigate = useNavigate();
+  const noLongerIn = useNoLongerIn();
   const [typed, setTyped] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -109,10 +108,7 @@ function DeleteSpaceForm({ space, busy, onBusy }: { space: Space; busy: boolean;
       onBusy(false);
       return setProblem(failed);
     }
-    // The page leaves the space before the space leaves the list: a page of a space that is not on the list says
-    // "no such space", which is not what happened here
-    await navigate({ to: '/', replace: true });
-    noLongerIn(space.id);
+    await noLongerIn(space.id);
     toast.add({ title: spaceText.deletedSpace(space.name) });
   };
 
