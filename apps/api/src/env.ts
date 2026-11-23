@@ -40,6 +40,14 @@ export function portFromEnv(name: string, fallback: number): number {
   return port;
 }
 
+/**
+ * Reads the optional address to listen on: fallback when it is not set. It is not checked here: listening on an
+ * address this machine does not have fails when the server starts, and the process exits with that error.
+ */
+export function hostFromEnv(name: string, fallback: string): string {
+  return process.env[name] || fallback;
+}
+
 /** Where the bytes of files are kept: a folder on this machine, or a bucket of an S3-compatible service */
 export type StorageConfig =
   | { kind: 'folder'; dir: string }

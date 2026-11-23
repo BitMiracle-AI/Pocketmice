@@ -102,8 +102,19 @@ curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<fi
   -H 'authorization: Bearer pm_...'
 ```
 
-A file is at most 1 GB. Behind a reverse proxy, raise its limit on the size of a request body to match (nginx
-allows 1 MB unless told otherwise). Uploading through a proxy has not been tried yet.
+A file is at most 1 GB.
+
+The API listens on its own machine only, so a reverse proxy goes in front of it. The API counts on the proxy for
+three things:
+
+- The limit on the size of a request body is raised to 1 GB (nginx allows 1 MB unless told otherwise).
+- `X-Forwarded-For` is set to the address each request came from, in place of whatever the client sent: the limit
+  on sign-in attempts counts by it.
+- A connection that goes silent is ended (nginx does so by itself, after a minute). The API gives an upload as
+  long as its bytes take to arrive, and ends nothing for being slow.
+
+Tried behind nginx, both holding a request body until all of it has arrived (its default) and passing it on as it
+comes.
 
 ## Development
 

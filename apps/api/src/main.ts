@@ -7,7 +7,7 @@ import { identifyCaller } from './domains/apiKey/identifyCaller.ts';
 import { identifyBySession } from './domains/auth/auth.ts';
 import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
-import { portFromEnv } from './env.ts';
+import { hostFromEnv, portFromEnv } from './env.ts';
 import { logInternalError } from './http/errorLog.ts';
 import { auth, db, storage, webOrigins } from './instances.ts';
 
@@ -36,11 +36,15 @@ const server = createAdaptorServer({ fetch: app.fetch }) as Server;
 // reverse proxy to limit: it is the one that talks to the outside
 server.requestTimeout = 0;
 
-// Listens on this machine only: requests from outside come in through a reverse proxy. The proxy must set
-// x-forwarded-for to the address each request came from: the limit on sign-in attempts counts by it (see rateLimit
-// in domains/auth/auth.ts).
-server.listen({ port, host: '127.0.0.1' }, () => {
-  console.log(`api listening on http://localhost:${port}`);
+// Listens on this machine only, unless HOST says otherwise: requests from outside come in through a reverse proxy.
+// A proxy on another machine cannot reach 127.0.0.1, and to a container every other container is another machine:
+// the image sets HOST to 0.0.0.0, every address the container has (see Dockerfile), and who can reach the container
+// is for the network around it to limit.
+// The proxy must set x-forwarded-for to the address each request came from: the limit on sign-in attempts counts by
+// it (see rateLimit in domains/auth/auth.ts).
+const host = hostFromEnv('HOST', '127.0.0.1');
+server.listen({ port, host }, () => {
+  console.log(`api listening on http://${host}:${port}`);
 });
 
 /**

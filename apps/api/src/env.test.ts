@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { portFromEnv, requireEnv, requireOrigins, storageFromEnv } from './env.ts';
+import { hostFromEnv, portFromEnv, requireEnv, requireOrigins, storageFromEnv } from './env.ts';
 
 test('a variable that must be set and is missing or empty is an error that names it', () => {
   delete process.env.TEST_REQUIRED;
@@ -46,6 +46,17 @@ test('a port set to something that is not a port number is an error', () => {
 
     assert.throws(() => portFromEnv('TEST_PORT', 11210), /TEST_PORT.*port number/, `"${wrong}" should fail`);
   }
+});
+
+test('an address to listen on that is not set, or is empty, is the fallback; one that is set is used', () => {
+  delete process.env.TEST_HOST;
+  assert.equal(hostFromEnv('TEST_HOST', '127.0.0.1'), '127.0.0.1');
+
+  process.env.TEST_HOST = '';
+  assert.equal(hostFromEnv('TEST_HOST', '127.0.0.1'), '127.0.0.1');
+
+  process.env.TEST_HOST = '0.0.0.0';
+  assert.equal(hostFromEnv('TEST_HOST', '127.0.0.1'), '0.0.0.0');
 });
 
 /** Runs with exactly these storage settings in the environment, and puts back what was there */
