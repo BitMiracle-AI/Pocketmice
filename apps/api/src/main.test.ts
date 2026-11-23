@@ -17,6 +17,7 @@ import { createSpace } from '@pocketmice/contract/domains/space';
 import { createTestDb, type TestDb } from '@pocketmice/db/testing';
 import { requireEnv } from './env.ts';
 import { describeError } from './http/errorLog.ts';
+import { callTool, connectMcp } from './http/mcpClient.testing.ts';
 
 // The process as it runs: main.ts, started the way `pnpm start` starts it, on a temporary database and a temporary
 // folder, and called over a real connection.
@@ -167,6 +168,31 @@ test('a person signs up and makes a key, and an agent uploads a file with it and
   assert.equal(downloaded.status, 200);
   assert.equal(downloaded.headers.get('etag'), `"${file.version.id}"`);
   assert.equal(await downloaded.text(), 'what the agent wrote');
+});
+
+test('an agent whose host speaks MCP connects with the same key, and reads the file with a tool', {
+  timeout: TEST_MS
+}, async () => {
+  const agent = await newAgent();
+  const file = await upload(agent, 'notes.md', 'what the agent wrote');
+
+  // The client of the protocol's own SDK, over the connection
+  const client = await connectMcp((path, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set('authorization', agent.headers.authorization);
+    return fetch(`${base}${path}`, { ...init, headers });
+  });
+  const called = await callTool(client, 'getFileContent', {
+    spaceId: agent.spaceId,
+    fileId: file.id,
+    versionId: null
+  });
+  await client.close();
+
+  assert.deepEqual(called, {
+    texts: [JSON.stringify({ versionId: file.version.id, size: 20, nextCursor: null }), 'what the agent wrote'],
+    isError: false
+  });
 });
 
 // The last test of the file: it stops the process the others call
