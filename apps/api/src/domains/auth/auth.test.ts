@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+import { createAuthClient } from '@pocketmice/client/auth';
 import { apiKeyAuthorization } from '@pocketmice/contract/domains/apiKey';
 import {
   CODE_SIGN_IN_PATH,
@@ -756,3 +757,123 @@ test('what every signed-in person must have cannot be made ready after a code: n
   assert.equal(signedIn.status, 200);
   assert.notEqual(await working.profile(sessionCookie(signedIn)), 'UNAUTHENTICATED');
 });
+
+// From here down: the code a web page signs in with (@pocketmice/client/auth), against the library for real. It
+// reads the library's refusals by their codes, and these tests are what ties the codes it knows to the ones the
+// library answers with.
+
+/**
+ * What a web page signs in with, its requests sent to this api the way a page sends them. The cookie the server
+ * sets is kept and sent along, as a browser does; cookie() is the one held now.
+ */
+function page(api: ReturnType<typeof setup>) {
+  let cookie: string | null = null;
+  const auth = createAuthClient({
+    baseUrl: 'http://localhost:11210',
+    fetch: async (url, init) => {
+      const response = await api.post(new URL(url).pathname, init.body, { cookie });
+      if (response.headers.getSetCookie().some((value) => value.startsWith(`${SESSION_COOKIE}=`))) {
+        cookie = sessionCookie(response);
+      }
+      return response;
+    },
+    reportError: (error) => {
+      throw error;
+    }
+  });
+  return { auth, cookie: () => cookie };
+}
+
+test('a page signs up, out and in with a password, and is told what went wrong by the code', async () => {
+  const api = setup();
+  const { auth, cookie } = page(api);
+  const account = newAccount();
+
+  assert.deepEqual(await auth.signUp(account), { ok: true });
+  assert.deepEqual(await api.profile(cookie()), { id: await userId(account.email), email: account.email, name: 'Ada' });
+
+  const taken = await auth.signUp(account);
+  assert.equal(!taken.ok && taken.code, 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL');
+
+  assert.deepEqual(await auth.signOut(), { ok: true });
+  assert.equal(cookie(), null);
+
+  const wrong = await auth.signIn({ email: account.email, password: 'not the password' });
+  assert.equal(!wrong.ok && wrong.code, 'INVALID_EMAIL_OR_PASSWORD');
+  const nobody = await auth.signIn({ email: 'nobody@example.com', password: account.password });
+  assert.equal(!nobody.ok && nobody.code, 'INVALID_EMAIL_OR_PASSWORD');
+  assert.equal(cookie(), null);
+
+  assert.deepEqual(await auth.signIn({ email: account.email, password: account.password }), { ok: true });
+  assert.notEqual(await api.profile(cookie()), 'UNAUTHENTICATED');
+
+  // What the server refuses before the library sees it
+  const noAddress = await auth.signIn({ email: 'not an address', password: account.password });
+  assert.equal(!noAddress.ok && noAddress.code, 'INVALID_INPUT');
+  // The way this server does not sign people in
+  const byCode = await auth.signInWithCode({ email: account.email, code: '123456' });
+  assert.equal(!byCode.ok && byCode.code, 'UNKNOWN_OPERATION');
+});
+
+test('a page signs in with a code, and is told a wrong one, a spent one and an expired one apart', async () => {
+  const api = setup({ mail: true });
+  const { auth, cookie } = page(api);
+  const email = newAddress();
+
+  const code = await api.codeFor(email);
+  const wrong = await auth.signInWithCode({ email, code: otherThan(code) });
+  assert.equal(!wrong.ok && wrong.code, 'INVALID_OTP');
+  assert.equal(cookie(), null);
+  assert.deepEqual(await auth.signInWithCode({ email, code }), { ok: true });
+  assert.notEqual(await api.profile(cookie()), 'UNAUTHENTICATED');
+
+  const next = await api.codeFor(email);
+  for (let tries = 0; tries < SIGN_IN_CODE_WRONG_TRIES; tries++) {
+    await auth.signInWithCode({ email, code: otherThan(next) });
+  }
+  const spent = await auth.signInWithCode({ email, code: next });
+  assert.equal(!spent.ok && spent.code, 'TOO_MANY_ATTEMPTS');
+
+  const late = await api.codeFor(email);
+  await db
+    .update(verifications)
+    .set({ expiresAt: new Date(Date.now() - 1000) })
+    .where(eq(verifications.identifier, `sign-in-otp-${email}`));
+  const expired = await auth.signInWithCode({ email, code: late });
+  assert.equal(!expired.ok && expired.code, 'OTP_EXPIRED');
+
+  // The way this server does not sign people in
+  const byPassword = await auth.signIn({ email, password: 'correct horse battery' });
+  assert.equal(!byPassword.ok && byPassword.code, 'UNKNOWN_OPERATION');
+});
+
+test('a page that signs in too often is told so', async () => {
+  const { auth } = page(setup());
+  const attempt = () => auth.signIn({ email: 'nobody@example.com', password: 'x' });
+
+  for (let tries = 0; tries < SIGN_IN_ATTEMPT_LIMIT; tries++) await attempt();
+  const refused = await attempt();
+
+  assert.equal(!refused.ok && refused.code, 'TOO_MANY_REQUESTS');
+});
+
+test('a page the server does not allow is refused: FORBIDDEN', async () => {
+  const api = setup();
+  const auth = createAuthClient({
+    baseUrl: 'http://localhost:11210',
+    fetch: async (url, init) => api.post(new URL(url).pathname, init.body, { origin: 'https://evil.example.com' }),
+    reportError: (error) => {
+      throw error;
+    }
+  });
+
+  const refused = await auth.signIn({ email: 'nobody@example.com', password: 'correct horse battery' });
+
+  assert.equal(!refused.ok && refused.code, 'FORBIDDEN');
+});
+
+/** The id of the user who signs in with this address */
+async function userId(email: string): Promise<string | undefined> {
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
+  return user?.id;
+}
