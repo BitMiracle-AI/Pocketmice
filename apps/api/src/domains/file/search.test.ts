@@ -13,7 +13,7 @@ import {
 import { createSpace } from '@pocketmice/contract/domains/space';
 import { files } from '@pocketmice/db/schema/file';
 import { spaceMembers } from '@pocketmice/db/schema/space';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { CurrentUser } from '../../http/operation.ts';
 import { NOBODY, useTestApi } from '../testing.ts';
 
@@ -174,21 +174,34 @@ test('what is in the trash is not found: neither a trashed file nor anything in 
   const spaceId = await makeSpace(ada);
   const archive = await makeFolder(ada, spaceId, null, 'Archive');
   const year = await makeFolder(ada, spaceId, archive.id, '2025');
-  const deep = await makeFile(ada, spaceId, year.id, 'report-deep.md');
+  const quarter = await makeFolder(ada, spaceId, year.id, 'Q4');
+  const deep = await makeFile(ada, spaceId, quarter.id, 'report-deep.md');
+  const beside = await makeFile(ada, spaceId, archive.id, 'report-beside.md');
   const alone = await makeFile(ada, spaceId, null, 'report-alone.md');
   const kept = await makeFile(ada, spaceId, null, 'report-kept.md');
-  await changedInThisOrder(kept, alone, deep);
+  await changedInThisOrder(kept, alone, beside, deep);
 
   await trash(ada, spaceId, alone.id);
-  await trash(ada, spaceId, archive.id);
+  // The folder that goes is inside one that stays: the trash begins below the top of the space
+  await trash(ada, spaceId, year.id);
 
-  // Only the folder was marked: the file two folders down has no mark of its own, and is not found either
-  assert.deepEqual(await found(ada, spaceId, 'report'), ['/report-kept.md']);
+  // Only that folder was marked. The folder in it and the file two folders down have no mark of their own, and
+  // are not found either; what is beside the trashed folder still is
+  assert.deepEqual(await found(ada, spaceId, 'report'), ['/Archive/report-beside.md', '/report-kept.md']);
   assert.deepEqual(await found(ada, spaceId, '2025'), []);
+  assert.deepEqual(await found(ada, spaceId, 'q4'), []);
+  // The same when looking in the folder the trashed one is directly in
+  assert.deepEqual(await found(ada, spaceId, 'report', { folderId: archive.id }), ['/Archive/report-beside.md']);
+  assert.deepEqual(await found(ada, spaceId, 'q4', { folderId: archive.id }), []);
 
-  const back = await api.as(ada)(restoreFile, { spaceId, fileId: archive.id });
+  const back = await api.as(ada)(restoreFile, { spaceId, fileId: year.id });
   assert.ok(back.ok);
-  assert.deepEqual(await found(ada, spaceId, 'report'), ['/Archive/2025/report-deep.md', '/report-kept.md']);
+  assert.deepEqual(await found(ada, spaceId, 'report'), [
+    '/Archive/2025/Q4/report-deep.md',
+    '/Archive/report-beside.md',
+    '/report-kept.md'
+  ]);
+  assert.deepEqual(await found(ada, spaceId, 'q4', { folderId: archive.id }), ['/Archive/2025/Q4']);
 });
 
 test('a page is as long as asked while there is more to find, however much of the trash lies in between', async () => {
@@ -315,6 +328,25 @@ test('files changed in the same millisecond are each on one page, and on no othe
   } while (cursor !== undefined);
 
   assert.deepEqual(seen.toSorted(), ['copy-1', 'copy-2', 'copy-3', 'copy-4']);
+});
+
+test('when a file was made and when it last changed are kept to the millisecond, which is as fine as a cursor says a time', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  // Made by the api and not changed since: these times are the ones the database gave, not ones a test wrote
+  for (const name of ['one', 'two', 'three']) await makeFolder(ada, spaceId, null, name);
+
+  // A time finer than the cursor writes it would not come back from the cursor as it was: the page after would
+  // leave out what changed in the same millisecond as the last file of the page before
+  const finer = await api.db
+    .select({ name: files.name })
+    .from(files)
+    .where(
+      sql`${files.updatedAt} <> date_trunc('milliseconds', ${files.updatedAt})
+        or ${files.createdAt} <> date_trunc('milliseconds', ${files.createdAt})`
+    );
+
+  assert.deepEqual(finer, []);
 });
 
 test('a new name, a new description, a new place and new content bring a file to the front; the trash does not', async () => {
