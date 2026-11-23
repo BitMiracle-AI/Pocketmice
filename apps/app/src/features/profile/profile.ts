@@ -16,7 +16,9 @@ export async function changeName(name: string): Promise<string | null> {
   const result = await call(updateProfile, { name: checked.data });
   if (!result.ok) return failureText(result.code, {});
 
-  queryClient.setQueryData(currentUserQuery.queryKey, result.data);
+  // Only the name is taken from the answer: whatever else is known about who is signed in stays as it was read
+  const { name: taken } = result.data;
+  queryClient.setQueryData(currentUserQuery.queryKey, (old) => (old ? { ...old, name: taken } : old));
   void queryClient.invalidateQueries();
   return null;
 }
