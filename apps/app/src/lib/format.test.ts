@@ -54,9 +54,16 @@ const NOON = new Date(2026, 10, 23, 12, 0).getTime();
 test('a day is headed Today or Yesterday, and before that by its date, whatever the hour', () => {
   assert.equal(formatDay(at(2026, 11, 23, 0, 1), NOON), 'Today');
   assert.equal(formatDay(at(2026, 11, 23, 23, 59), NOON), 'Today');
-  // Less than a day ago, and still yesterday
   assert.equal(formatDay(at(2026, 11, 22, 23, 59), NOON), 'Yesterday');
   assert.equal(formatDay(at(2026, 11, 21, 12), NOON), 'Nov 21, 2026');
+  // By the calendar and not by the hours between: forty minutes ago was yesterday just after midnight, and
+  // twenty-three hours ago is today just before it
+  const afterMidnight = new Date(2026, 10, 23, 0, 30).getTime();
+  const beforeMidnight = new Date(2026, 10, 23, 23, 30).getTime();
+  assert.equal(formatDay(at(2026, 11, 22, 23, 50), afterMidnight), 'Yesterday');
+  assert.equal(formatDay(at(2026, 11, 23, 0, 10), beforeMidnight), 'Today');
+  assert.match(formatBrief(at(2026, 11, 23, 0, 10), beforeMidnight), /^12:10\s?AM$/);
+  assert.equal(formatBrief(at(2026, 11, 22, 23, 50), afterMidnight), 'Yesterday');
   assert.equal(formatDay(at(2026, 11, 22, 9), NOON, 'zh-hans'), '昨天');
   assert.equal(formatDay(at(2026, 11, 23, 9), NOON, 'zh-hans'), '今天');
 });
