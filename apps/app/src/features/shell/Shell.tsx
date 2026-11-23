@@ -10,7 +10,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarProvider
+  SidebarProvider,
+  useSidebar
 } from '@/components/ui/sidebar';
 import { UploadPanel } from '@/features/upload/UploadPanel';
 import { UserMenu } from './UserMenu';
@@ -64,6 +65,8 @@ export function Shell({
 /**
  * A row of the sidebar that leads to a page. link is the link itself, with nothing in it (a Link of the router
  * with its address): the row puts the icon and the label inside. active says the page being shown is this one.
+ * On a phone the sidebar is a sheet over the page, and the pages of one frame share it: the row that was tapped
+ * closes it, or it would stay over the page it led to.
  */
 export function NavRow({
   link,
@@ -76,9 +79,10 @@ export function NavRow({
   label: string;
   active: boolean;
 }) {
+  const { setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton render={link} isActive={active}>
+      <SidebarMenuButton render={link} isActive={active} onClick={() => setOpenMobile(false)}>
         <HugeiconsIcon icon={icon} strokeWidth={2} />
         <span>{label}</span>
       </SidebarMenuButton>
