@@ -157,9 +157,23 @@ Keep the database, and every backup of it, the way you keep a credential. It hol
 hash of it: that is how the person who made a key copies it again whenever they are signed in. So whoever can read
 the database can call the API as every person who has a key.
 
-A server that has just started has nobody in it. The first account, its API key and a first space are made with
-curl for now: [The first steps, by hand](#the-first-steps-by-hand), with the address of your server in place of
-`http://localhost:11210`.
+A server that has just started has nobody in it. The first account, its API key and a first space are made in the
+web app, when you run that too, or with curl: [The first steps, by hand](#the-first-steps-by-hand), with the
+address of your server in place of `http://localhost:11210`.
+
+## Running the web app in a container
+
+`apps/app/Dockerfile` builds an image of the web app: the pages, built into static files, and nginx handing them
+out on port 11211. The address of the API, as browsers reach it, is written into the pages when they are built. So
+it is given to the build, and an image talks to that one API:
+
+```sh
+docker build -f apps/app/Dockerfile --build-arg VITE_API_URL=https://api.example.com -t pocketmice-app .
+```
+
+A container takes no configuration. What has to agree with it is in the configuration of the API: `WEB_ORIGINS`
+names the address people open the web app at, or the API refuses what the pages send. The two addresses are under
+one registrable domain, like `app.example.com` and `api.example.com`, or browsers do not send the sign-in cookie.
 
 ## TypeScript SDK
 
@@ -279,9 +293,9 @@ curl -X POST http://localhost:11210/api/getServerInfo -H 'content-type: applicat
 ### The first steps, by hand
 
 With `pnpm dev` these steps are done in the web app, at `http://localhost:11211`: sign up, make a space, and make
-the API key an agent calls with, under "API keys". A server that runs the API alone, as the container image does,
-has no web app, and there they are done with curl. With `.env` as copied from the example, people sign in with a
-password. Signing up signs you in, and the cookie that says so goes into `cookies.txt`:
+the API key an agent calls with, under "API keys". A server that runs the API alone has no web app, and there they
+are done with curl. With `.env` as copied from the example, people sign in with a password. Signing up signs you
+in, and the cookie that says so goes into `cookies.txt`:
 
 ```sh
 curl -c cookies.txt -X POST http://localhost:11210/api/auth/sign-up/email \
