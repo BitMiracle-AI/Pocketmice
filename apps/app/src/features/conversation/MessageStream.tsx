@@ -129,6 +129,7 @@ export function MessageStream({
               )}
               <MessageRow
                 spaceId={space.id}
+                conversationId={conversation.id}
                 message={message}
                 head={head}
                 // What the person typed themselves, and not what an agent sent with a key of theirs

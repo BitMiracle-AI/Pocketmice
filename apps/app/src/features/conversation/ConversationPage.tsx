@@ -1,15 +1,9 @@
-import {
-  ArrowLeft01Icon,
-  Delete02Icon,
-  Logout03Icon,
-  MoreHorizontalIcon,
-  PencilEdit02Icon,
-  UserMultiple02Icon
-} from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, SidebarRightIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { PersonAvatar } from '@/components/PersonAvatar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,25 +14,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { Button, buttonVariants } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader } from '@/components/ui/empty';
 import { MessageScrollerProvider } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useIsWide } from '@/hooks/useIsWide';
 import { useLastGiven } from '@/hooks/useLastGiven';
 import { thrownText } from '@/lib/api';
 import { commonText } from '@/lib/text';
 import { Composer } from './Composer';
+import { ConversationAbout } from './ConversationAbout';
+import { ConversationFilePane } from './ConversationFilePane';
 import { ConversationGonePage } from './ConversationGonePage';
-import { ConversationMembersDialog } from './ConversationMembersDialog';
 import {
   addToConversation,
   type Conversation,
@@ -54,13 +46,37 @@ import { earlierStart, firstUnreadNumber, windowStart } from './messageLayout';
 import { RenameConversationDialog } from './RenameConversationDialog';
 import { conversationText } from './text';
 
+// The page of one conversation: what was said, and the field to say something in; and beside it, when the
+// address asks for it, a pane: a file a message points at (?file=<id>), shown as the files show what is picked,
+// or what the conversation is and who is in it (?about=true). Which of the two is shown is in the address and
+// nowhere else, so a step back closes it.
+// Where there is room the pane stands beside the conversation; where there is not, it comes up over it. The
+// conversation stays as it is under it either way: where the person was reading, and what they were writing.
+
+/** How wide the place of a conversation has to be for the pane to stand beside it, in pixels */
+const PANE_BESIDE_PX = 672;
+
+/** How many members the top of a conversation shows by their avatars: the rest are counted */
+const AVATARS_SHOWN = 3;
+
+/** What the pane beside a conversation shows: a file, or the conversation itself. Null when there is none */
+type Pane = 'file' | 'about' | null;
+
 /**
- * The page of one conversation: what it is called and who is in it, what was said, and the field to say something
- * in. Its route has made sure the person can read it.
+ * The page. Its route has made sure the person can read the conversation. fileId is the file the address says is
+ * shown beside it, or null; about says the address asks for what the conversation is.
  * A conversation can be gone for the person while the page is open: it was deleted, or they were taken out of it.
  * The page hears of it, asks, and says so in place of the conversation.
  */
-export function ConversationPage({ conversationId }: { conversationId: string }) {
+export function ConversationPage({
+  conversationId,
+  fileId,
+  about
+}: {
+  conversationId: string;
+  fileId: string | null;
+  about: boolean;
+}) {
   const space = useCurrentSpace();
   const found = useSuspenseQuery(conversationQuery(space.id, conversationId));
   // The person is leaving or deleting it themselves, and the api has not answered yet: the page goes elsewhere when
@@ -75,6 +91,8 @@ export function ConversationPage({ conversationId }: { conversationId: string })
       key={conversation.id}
       conversation={conversation}
       members={members}
+      fileId={fileId}
+      pane={fileId !== null ? 'file' : about ? 'about' : null}
       going={going}
       onGoing={setGoing}
     />
@@ -87,11 +105,15 @@ type Asking = 'leave' | 'delete' | null;
 function OpenConversation({
   conversation,
   members,
+  fileId,
+  pane,
   going,
   onGoing
 }: {
   conversation: Conversation;
   members: readonly ConversationMember[];
+  fileId: string | null;
+  pane: Pane;
   going: boolean;
   onGoing: (going: boolean) => void;
 }) {
@@ -104,8 +126,11 @@ function OpenConversation({
   // stays, whatever they read and whatever arrives from then on
   const [firstUnread] = useState(() => firstUnreadNumber(conversation));
   const [renaming, setRenaming] = useState(false);
-  const [showingMembers, setShowingMembers] = useState(false);
   const [asking, setAsking] = useState<Asking>(null);
+  const [room, beside] = useIsWide<HTMLDivElement>(PANE_BESIDE_PX);
+  // What the pane last showed, for the moment it takes to go
+  const shownPane = useLastGiven(pane);
+  const shownFile = useLastGiven(fileId);
   const [joining, setJoining] = useState(false);
   const asked = useLastGiven(asking);
   // While earlier messages are on their way, the ones there are stay
@@ -116,6 +141,13 @@ function OpenConversation({
   const isMember = conversation.lastReadNumber !== null;
 
   const toList = () => navigate({ to: '/spaces/$spaceId/conversations', params: { spaceId: space.id }, replace: true });
+  /** Shows the conversation with what the conversation is beside it, or with nothing beside it */
+  const show = (about: boolean) =>
+    navigate({
+      to: '/spaces/$spaceId/conversations/$conversationId',
+      params: { spaceId: space.id, conversationId: conversation.id },
+      search: { about: about ? true : undefined }
+    });
 
   const confirm = async () => {
     if (!asking || going) return;
@@ -149,118 +181,128 @@ function OpenConversation({
     if (problem !== null) toast.add({ type: 'error', title: problem });
   };
 
+  const paneContent =
+    shownPane === 'file' && shownFile !== null ? (
+      <ConversationFilePane fileId={shownFile} />
+    ) : (
+      <ConversationAbout
+        conversation={conversation}
+        members={members}
+        onRename={() => setRenaming(true)}
+        onAsk={setAsking}
+      />
+    );
+
   return (
-    <MessageScrollerProvider autoScroll>
-      <header className="flex h-12 shrink-0 items-center gap-1 px-3">
-        {/* Where the list has no room next to the conversation, this is the way back to it */}
-        <Link
-          to="/spaces/$spaceId/conversations"
-          params={{ spaceId: space.id }}
-          aria-label={conversationText.backToList}
-          title={conversationText.backToList}
-          className={buttonVariants({
-            variant: 'ghost',
-            size: 'icon-sm',
-            className: 'text-muted-foreground @3xl:hidden'
-          })}
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-        </Link>
-        <h1 className="min-w-0 flex-1 truncate px-1 text-sm font-medium">{conversation.title}</h1>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={conversationText.membersCount(members.length)}
-          title={conversationText.membersCount(members.length)}
-          onClick={() => setShowingMembers(true)}
-          className="text-muted-foreground tabular-nums"
-        >
-          <HugeiconsIcon icon={UserMultiple02Icon} strokeWidth={2} data-icon="inline-start" />
-          {members.length}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={conversationText.more}
-                className="text-muted-foreground"
-              />
-            }
-          >
-            <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={2} />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-48">
-            <DropdownMenuItem onClick={() => setRenaming(true)}>
-              <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} />
-              {conversationText.rename}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setShowingMembers(true)}>
-              <HugeiconsIcon icon={UserMultiple02Icon} strokeWidth={2} />
-              {conversationText.membersTitle}
-            </DropdownMenuItem>
-            {(isMember || isOwner) && <DropdownMenuSeparator />}
-            {isMember && (
-              <DropdownMenuItem onClick={() => setAsking('leave')}>
-                <HugeiconsIcon icon={Logout03Icon} strokeWidth={2} />
-                {conversationText.leave}
-              </DropdownMenuItem>
-            )}
-            {/* What cannot be undone is the owner's alone */}
-            {isOwner && (
-              <DropdownMenuItem variant="destructive" onClick={() => setAsking('delete')}>
-                <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-                {conversationText.deleteConversation}
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
+    <div ref={room} className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <MessageScrollerProvider autoScroll>
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+            {/* Where the list has no room next to the conversation, this is the way back to it */}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="@3xl:hidden"
+              aria-label={conversationText.backToList}
+              title={conversationText.backToList}
+              nativeButton={false}
+              render={<Link to="/spaces/$spaceId/conversations" params={{ spaceId: space.id }} />}
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
+            </Button>
+            {/* The page is the conversations of the space, which the bar of the list says: this is one of them */}
+            <h2 className="min-w-0 flex-1 truncate text-base font-medium">{conversation.title}</h2>
+            <AvatarGroup title={conversationText.membersCount(members.length)} className="max-sm:hidden">
+              {members.slice(0, AVATARS_SHOWN).map((member) => (
+                <PersonAvatar key={member.userId} name={member.name} size="sm" />
+              ))}
+              {members.length > AVATARS_SHOWN && (
+                <AvatarGroupCount>{conversationText.moreMembers(members.length - AVATARS_SHOWN)}</AvatarGroupCount>
+              )}
+            </AvatarGroup>
+            <Button
+              variant={pane === 'about' ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              aria-label={conversationText.about}
+              title={conversationText.about}
+              aria-pressed={pane === 'about'}
+              onClick={() => show(pane !== 'about')}
+            >
+              <HugeiconsIcon icon={SidebarRightIcon} strokeWidth={2} />
+            </Button>
+          </header>
 
-      {held.data === undefined ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center text-sm">
-          {held.isError ? (
-            <>
-              <p role="alert" className="text-muted-foreground">
-                {thrownText(held.error)}
-              </p>
-              <Button variant="outline" onClick={() => held.refetch()}>
-                {commonText.tryAgain}
-              </Button>
-            </>
+          {held.data === undefined ? (
+            <Empty>
+              {held.isError ? (
+                <>
+                  <EmptyHeader>
+                    <EmptyDescription role="alert">{thrownText(held.error)}</EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button variant="outline" onClick={() => held.refetch()}>
+                      {commonText.tryAgain}
+                    </Button>
+                  </EmptyContent>
+                </>
+              ) : (
+                <Spinner />
+              )}
+            </Empty>
           ) : (
-            <Spinner />
+            <MessageStream
+              conversation={conversation}
+              members={members}
+              messages={held.data}
+              firstUnread={firstUnread}
+              earlier={
+                // The first message the page holds says whether there are earlier ones. What it holds may still be
+                // the messages it had, while the earlier ones asked for are on their way
+                (held.data[0]?.number ?? 1) > 1
+                  ? { busy: held.isPlaceholderData, show: () => setAfter(earlierStart(after)) }
+                  : undefined
+              }
+            />
           )}
-        </div>
-      ) : (
-        <MessageStream
-          conversation={conversation}
-          members={members}
-          messages={held.data}
-          firstUnread={firstUnread}
-          earlier={
-            // The first message the page holds says whether there are earlier ones. What it holds may still be the
-            // messages it had, while the earlier ones asked for are on their way
-            (held.data[0]?.number ?? 1) > 1
-              ? { busy: held.isPlaceholderData, show: () => setAfter(earlierStart(after)) }
-              : undefined
-          }
-        />
-      )}
 
-      {isMember ? (
-        <Composer spaceId={space.id} conversationId={conversation.id} members={members} />
-      ) : (
-        <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pb-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-dashed py-2.5 pr-2.5 pl-4 text-sm">
-            <p className="min-w-0 flex-1 text-pretty text-muted-foreground">{conversationText.readingAsOwner}</p>
-            <Button variant="outline" disabled={joining} onClick={join}>
-              {joining && <Spinner data-icon="inline-start" />}
-              {conversationText.join}
+          {isMember ? (
+            <Composer spaceId={space.id} conversationId={conversation.id} members={members} />
+          ) : (
+            <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 border-t p-4 text-sm text-muted-foreground">
+              {conversationText.readingAsOwner}
+              <Button size="sm" disabled={joining} onClick={join}>
+                {joining && <Spinner data-icon="inline-start" />}
+                {conversationText.join}
+              </Button>
+            </div>
+          )}
+        </MessageScrollerProvider>
+      </div>
+
+      {pane !== null && beside && (
+        <aside
+          aria-label={pane === 'about' ? conversationText.about : undefined}
+          className="flex min-h-0 w-80 shrink-0 flex-col border-l @7xl:w-96"
+        >
+          <div className="flex h-14 shrink-0 items-center border-b px-2">
+            <Button variant="ghost" size="sm" onClick={() => show(false)}>
+              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
+              {conversationText.closePane}
             </Button>
           </div>
-        </div>
+          {paneContent}
+        </aside>
+      )}
+      {!beside && (
+        <Drawer open={pane !== null} onOpenChange={(open) => !open && void show(false)}>
+          <DrawerContent>
+            <DrawerHeader className="sr-only">
+              <DrawerTitle>{conversation.title}</DrawerTitle>
+              <DrawerDescription>{conversationText.about}</DrawerDescription>
+            </DrawerHeader>
+            {paneContent}
+          </DrawerContent>
+        </Drawer>
       )}
 
       <RenameConversationDialog
@@ -268,12 +310,6 @@ function OpenConversation({
         conversation={conversation}
         open={renaming}
         onOpenChange={setRenaming}
-      />
-      <ConversationMembersDialog
-        open={showingMembers}
-        onOpenChange={setShowingMembers}
-        conversation={conversation}
-        members={members}
       />
       <AlertDialog open={asking !== null} onOpenChange={(open) => !open && !going && setAsking(null)}>
         <AlertDialogContent size="sm">
@@ -300,6 +336,6 @@ function OpenConversation({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </MessageScrollerProvider>
+    </div>
   );
 }

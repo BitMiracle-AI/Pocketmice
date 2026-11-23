@@ -7,9 +7,11 @@ import { type ReactNode, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MainBar } from '@/features/shell/MainBar';
+import { PageBar } from '@/features/shell/PageBar';
 import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -22,7 +24,7 @@ import { NewConversationDialog } from './NewConversationDialog';
 import { conversationText } from './text';
 
 // What every page of the conversations of a space is inside of: the list of the conversations on the left, and on
-// the right the conversation that is open (children). Where there is no room for both, the list is the page until
+// the right the conversation that is open (children), which may have a pane of its own to its right. Where there is no room for both, the list is the page until
 // a conversation is opened, and the conversation is the page from then on. Room is the width of the frame, not of
 // the window: the sidebar may be open or away.
 // A list with nothing in it says so where there is room: next to the list when both are shown, in the place of the
@@ -55,63 +57,63 @@ export function ConversationsFrame({ openId, children }: { openId: string | null
           openId !== null && '@max-3xl:hidden'
         )}
       >
-        <MainBar trail={[]} title={shellText.conversations}>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={conversationText.start}
-            title={conversationText.start}
-            onClick={() => setStarting(true)}
-          >
-            <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
-          </Button>
-        </MainBar>
+        <PageBar
+          title={shellText.conversations}
+          actions={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={conversationText.start}
+              title={conversationText.start}
+              onClick={() => setStarting(true)}
+            >
+              <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />
+            </Button>
+          }
+        />
 
         {isOwner && (
-          <div className="flex flex-col gap-2 px-3 pb-2">
+          <div className="flex flex-col gap-2 p-2">
             <Tabs value={all ? 'all' : 'mine'} onValueChange={(value) => setEveryone(value === 'all')}>
               <TabsList className="w-full">
                 <TabsTrigger value="mine">{conversationText.mine}</TabsTrigger>
                 <TabsTrigger value="all">{conversationText.all}</TabsTrigger>
               </TabsList>
             </Tabs>
-            {all && <p className="px-1 text-xs text-pretty text-muted-foreground">{conversationText.allHint}</p>}
+            {all && <p className="px-2 text-xs text-pretty text-muted-foreground">{conversationText.allHint}</p>}
           </div>
         )}
 
-        <nav aria-label={conversationText.listLabel} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-3">
-          {conversations === undefined ? (
-            list.isError ? (
-              <p role="alert" className="px-3 py-6 text-center text-sm text-muted-foreground">
-                {thrownText(list.error)}{' '}
-                <button type="button" className="underline underline-offset-3" onClick={() => list.refetch()}>
-                  {commonText.tryAgain}
-                </button>
-              </p>
+        {conversations === undefined ? (
+          <Empty>
+            {list.isError ? (
+              <>
+                <EmptyHeader>
+                  <EmptyDescription role="alert">{thrownText(list.error)}</EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button variant="outline" size="sm" onClick={() => list.refetch()}>
+                    {commonText.tryAgain}
+                  </Button>
+                </EmptyContent>
+              </>
             ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <Spinner />
-              </div>
-            )
-          ) : conversations.length === 0 ? (
-            // Where the list is the page, it says what a conversation is and starts the first; where something is
-            // next to it, only that there are none
-            <>
-              {openId === null && (
-                <NoConversations className="pb-24 @3xl:hidden" all={all} onStart={() => setStarting(true)} />
-              )}
-              <p
-                className={cn(
-                  'px-3 py-6 text-center text-sm text-muted-foreground',
-                  openId === null && '@max-3xl:hidden'
-                )}
-              >
-                {all ? conversationText.noneInSpace : conversationText.noneTitle}
-              </p>
-            </>
-          ) : (
-            <>
-              <ul className="flex flex-col gap-0.5">
+              <Spinner />
+            )}
+          </Empty>
+        ) : conversations.length === 0 ? (
+          // Where the list is the page, it says what a conversation is and starts the first; where something is
+          // next to it, only that there are none
+          <>
+            {openId === null && <NoConversations className="@3xl:hidden" all={all} onStart={() => setStarting(true)} />}
+            <p className={cn('p-6 text-center text-sm text-muted-foreground', openId === null && '@max-3xl:hidden')}>
+              {all ? conversationText.noneInSpace : conversationText.noneTitle}
+            </p>
+          </>
+        ) : (
+          <ScrollArea className="min-h-0 flex-1">
+            <SidebarGroup>
+              <SidebarMenu aria-label={conversationText.listLabel}>
                 {conversations.map((conversation) => (
                   <ConversationRow
                     key={conversation.id}
@@ -120,7 +122,7 @@ export function ConversationsFrame({ openId, children }: { openId: string | null
                     open={conversation.id === openId}
                   />
                 ))}
-              </ul>
+              </SidebarMenu>
               {list.hasNextPage && (
                 <div className="flex justify-center pt-3">
                   <Button
@@ -134,9 +136,9 @@ export function ConversationsFrame({ openId, children }: { openId: string | null
                   </Button>
                 </div>
               )}
-            </>
-          )}
-        </nav>
+            </SidebarGroup>
+          </ScrollArea>
+        )}
       </aside>
 
       <section className={cn('flex min-h-0 min-w-0 flex-1 flex-col', openId === null && '@max-3xl:hidden')}>
@@ -188,48 +190,49 @@ function ConversationRow({
   const last = conversation.lastMessage;
 
   return (
-    <li>
-      <Link
-        to="/spaces/$spaceId/conversations/$conversationId"
-        params={{ spaceId, conversationId: conversation.id }}
-        aria-current={open ? 'page' : undefined}
-        className={cn(
-          'flex flex-col gap-0.5 rounded-xl px-3 py-2 text-sm outline-none hover:bg-muted/70 focus-visible:ring-3 focus-visible:ring-ring/30',
-          open && 'bg-muted'
-        )}
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        size="lg"
+        isActive={open}
+        render={
+          <Link
+            to="/spaces/$spaceId/conversations/$conversationId"
+            params={{ spaceId, conversationId: conversation.id }}
+          />
+        }
       >
-        <span className="flex items-baseline gap-2">
-          <span className={cn('min-w-0 flex-1 truncate', unread > 0 ? 'font-semibold' : 'font-medium')}>
-            {conversation.title}
-          </span>
-          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-            {formatBrief(conversation.lastMessageAt ?? conversation.createdAt)}
-          </span>
-        </span>
-        <span className="flex h-5 items-center gap-2">
-          <span className={cn('min-w-0 flex-1 truncate text-muted-foreground', (!last || last.deletedAt) && 'italic')}>
-            {!last
-              ? conversationText.noMessages
-              : last.deletedAt !== null
-                ? conversationText.deletedMessage
-                : conversationText.preview(
-                    last.apiKey ? last.apiKey.name : last.user.id === user.id ? conversationText.you : last.user.name,
-                    last.text.slice(0, PREVIEW_LENGTH)
-                  )}
-          </span>
-          {unread > 0 && (
-            <Badge aria-label={conversationText.unread(unread)} className="h-5 min-w-5 px-1.5 tabular-nums">
-              {unread > 99 ? '99+' : unread}
-            </Badge>
-          )}
-          {conversation.lastReadNumber === null && (
-            <span title={conversationText.notAMember} className="shrink-0 text-muted-foreground">
-              <HugeiconsIcon icon={ViewIcon} strokeWidth={2} aria-hidden="true" className="size-4" />
-              <span className="sr-only">{conversationText.notAMember}</span>
+        <div className="grid min-w-0 flex-1 gap-0.5 text-left text-sm leading-tight">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={cn('truncate', unread > 0 ? 'font-semibold' : 'font-medium')}>{conversation.title}</span>
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+              {formatBrief(conversation.lastMessageAt ?? conversation.createdAt)}
             </span>
-          )}
-        </span>
-      </Link>
-    </li>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={cn('truncate text-xs text-muted-foreground', (!last || last.deletedAt) && 'italic')}>
+              {!last
+                ? conversationText.noMessages
+                : last.deletedAt !== null
+                  ? conversationText.deletedMessage
+                  : conversationText.preview(
+                      last.apiKey ? last.apiKey.name : last.user.id === user.id ? conversationText.you : last.user.name,
+                      last.text.slice(0, PREVIEW_LENGTH)
+                    )}
+            </span>
+            {unread > 0 && (
+              <Badge aria-label={conversationText.unread(unread)} className="ml-auto tabular-nums">
+                {unread > 99 ? '99+' : unread}
+              </Badge>
+            )}
+            {conversation.lastReadNumber === null && (
+              <span title={conversationText.notAMember} className="ml-auto shrink-0 text-muted-foreground">
+                <HugeiconsIcon icon={ViewIcon} strokeWidth={2} aria-hidden="true" />
+                <span className="sr-only">{conversationText.notAMember}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }

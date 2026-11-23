@@ -25,9 +25,11 @@ import { conversationText } from './text';
  * API key it sent through and the person it spoke as.
  * head says that the message begins a run, and is shown with who sent it and when. nameOf names a member that is
  * mentioned. onDelete is there when the person may delete the message.
+ * A file the message points at opens beside the conversation, where it is read next to what is said about it.
  */
 export function MessageRow({
   spaceId,
+  conversationId,
   message,
   head,
   mine,
@@ -35,6 +37,7 @@ export function MessageRow({
   onDelete
 }: {
   spaceId: string;
+  conversationId: string;
   message: Message;
   head: boolean;
   mine: boolean;
@@ -125,7 +128,13 @@ export function MessageRow({
                     </AttachmentContent>
                     <AttachmentTrigger
                       aria-label={conversationText.openFile(file.name)}
-                      render={<Link to="/spaces/$spaceId/files/$fileId" params={{ spaceId, fileId: id }} />}
+                      render={
+                        <Link
+                          to="/spaces/$spaceId/conversations/$conversationId"
+                          params={{ spaceId, conversationId }}
+                          search={{ file: id }}
+                        />
+                      }
                     />
                   </Attachment>
                 ) : (

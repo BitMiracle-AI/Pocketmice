@@ -43,7 +43,6 @@ export const en = {
   someNotAdded: 'Not everyone could be added. Add them from the members of the conversation.',
   cancel: 'Cancel',
 
-  more: 'More about this conversation',
   rename: 'Rename',
   renameTitle: 'Rename conversation',
   membersTitle: 'Members',
@@ -109,5 +108,14 @@ export const en = {
 
   /** Said in place of the field to the owner of the space, reading a conversation they are not in */
   readingAsOwner: 'You are reading this as the owner of the space. Join it to say something.',
-  join: 'Join conversation'
+  join: 'Join conversation',
+
+  /** The pane beside a conversation: what it is called, who is in it, and what can be done with it */
+  about: 'About this conversation',
+  /** How many members there are beyond the ones whose avatars are shown */
+  moreMembers: (count: number) => `+${count}`,
+  /** The way from the pane beside a conversation back to what is said in it */
+  closePane: 'Back to the conversation',
+  /** Said in the pane of a file a message points at, when it has gone since */
+  fileGoneHint: 'It was moved to the trash, or deleted for good, after the message was sent.'
 };

@@ -1,7 +1,7 @@
 import { BubbleChatIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Link } from '@tanstack/react-router';
-import { buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { conversationText } from './text';
@@ -23,13 +23,13 @@ export function ConversationGonePage() {
       </EmptyHeader>
       {/* Where the list is next to this, it is the way on; where it is not, this is */}
       <EmptyContent className="@3xl:hidden">
-        <Link
-          to="/spaces/$spaceId/conversations"
-          params={{ spaceId: space.id }}
-          className={buttonVariants({ variant: 'outline' })}
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/spaces/$spaceId/conversations" params={{ spaceId: space.id }} />}
         >
           {conversationText.toList}
-        </Link>
+        </Button>
       </EmptyContent>
     </Empty>
   );

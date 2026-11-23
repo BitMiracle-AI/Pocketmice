@@ -38,7 +38,6 @@ export const zhHans: typeof en = {
   someNotAdded: '有人没能加进来。请在对话的成员里再加一次。',
   cancel: '取消',
 
-  more: '这个对话的更多操作',
   rename: '改标题',
   renameTitle: '改对话的标题',
   membersTitle: '成员',
@@ -97,5 +96,10 @@ export const zhHans: typeof en = {
   mentionOrFileGone: '你 @ 的人已退出对话，或者你指到的文件已不在了。把它去掉再发一次。',
 
   readingAsOwner: '你是以空间所有者的身份在读。加入对话后才能发言。',
-  join: '加入对话'
+  join: '加入对话',
+
+  about: '关于这个对话',
+  moreMembers: (count) => `+${count}`,
+  closePane: '回到对话',
+  fileGoneHint: '消息发出之后，它被移到了回收站，或者被彻底删除了。'
 };
