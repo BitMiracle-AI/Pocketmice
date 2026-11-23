@@ -4,6 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { cn } from 'cn';
 import type * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { commonText } from '@/lib/text';
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -63,7 +64,7 @@ function SheetContent({
             render={<Button variant="ghost" className="absolute top-4 right-4 bg-secondary" size="icon-sm" />}
           >
             <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{commonText.ui.close}</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>

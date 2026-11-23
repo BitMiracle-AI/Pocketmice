@@ -6,6 +6,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'cn';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { commonText } from '@/lib/text';
 
 const codeBlockVariants = cva(
   'group/code-block relative flex w-full min-w-0 flex-col overflow-hidden rounded-2xl text-sm has-[>[data-slot=code-block-content]:focus-visible]:ring-3 has-[>[data-slot=code-block-content]:focus-visible]:ring-ring/30 data-[size=sm]:rounded-xl data-[size=sm]:text-xs',
@@ -105,7 +106,7 @@ function CodeBlockCopyButton({
         data-copied={copied || undefined}
         variant={variant}
         size={size}
-        aria-label={copied ? 'Copied' : 'Copy'}
+        aria-label={copied ? commonText.ui.copied : commonText.ui.copy}
         className={cn('hover:bg-foreground/5 dark:hover:bg-foreground/10', className)}
         onClick={(event) => {
           onClick?.(event);
@@ -123,7 +124,7 @@ function CodeBlockCopyButton({
         )}
       </Button>
       <span aria-live="polite" className="sr-only">
-        {copied ? 'Copied' : ''}
+        {copied ? commonText.ui.copied : ''}
       </span>
     </>
   );

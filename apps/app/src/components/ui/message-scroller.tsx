@@ -9,6 +9,7 @@ import {
 import { cn } from 'cn';
 import type * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { commonText } from '@/lib/text';
 
 function MessageScrollerProvider(props: React.ComponentProps<typeof MessageScrollerPrimitive.Provider>) {
   return <MessageScrollerPrimitive.Provider {...props} />;
@@ -95,7 +96,9 @@ function MessageScrollerButton({
       {children ?? (
         <>
           <HugeiconsIcon icon={ArrowDown02Icon} strokeWidth={2} />
-          <span className="sr-only">{direction === 'end' ? 'Scroll to end' : 'Scroll to start'}</span>
+          <span className="sr-only">
+            {direction === 'end' ? commonText.ui.scrollToEnd : commonText.ui.scrollToStart}
+          </span>
         </>
       )}
     </MessageScrollerPrimitive.Button>

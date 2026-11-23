@@ -4,9 +4,10 @@ import { ArrowRight01Icon, MoreHorizontalCircle01Icon } from '@hugeicons/core-fr
 import { HugeiconsIcon } from '@hugeicons/react';
 import { cn } from 'cn';
 import type * as React from 'react';
+import { commonText } from '@/lib/text';
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<'nav'>) {
-  return <nav aria-label="breadcrumb" data-slot="breadcrumb" className={cn(className)} {...props} />;
+  return <nav aria-label={commonText.ui.breadcrumb} data-slot="breadcrumb" className={cn(className)} {...props} />;
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<'ol'>) {
@@ -79,7 +80,7 @@ function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<'span'
       {...props}
     >
       <HugeiconsIcon icon={MoreHorizontalCircle01Icon} strokeWidth={2} />
-      <span className="sr-only">More</span>
+      <span className="sr-only">{commonText.ui.more}</span>
     </span>
   );
 }

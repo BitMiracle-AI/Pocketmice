@@ -4,6 +4,7 @@ import { cn } from 'cn';
 import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { commonText } from '@/lib/text';
 
 type CarouselApi = UseEmblaCarouselType[1];
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;
@@ -118,7 +119,7 @@ function Carousel({
         onKeyDownCapture={handleKeyDown}
         className={cn('relative', className)}
         role="region"
-        aria-roledescription="carousel"
+        aria-roledescription={commonText.ui.carousel}
         data-slot="carousel"
         {...props}
       >
@@ -145,7 +146,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<'div'>) {
     // biome-ignore lint/a11y/useSemanticElements: only the meaning "this is a group" is wanted. A fieldset would bring its own border and layout
     <div
       role="group"
-      aria-roledescription="slide"
+      aria-roledescription={commonText.ui.slide}
       data-slot="carousel-item"
       className={cn('min-w-0 shrink-0 grow-0 basis-full', orientation === 'horizontal' ? 'pl-4' : 'pt-4', className)}
       {...props}
@@ -176,7 +177,7 @@ function CarouselPrevious({
       {...props}
     >
       <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-      <span className="sr-only">Previous slide</span>
+      <span className="sr-only">{commonText.ui.previousSlide}</span>
     </Button>
   );
 }
@@ -204,7 +205,7 @@ function CarouselNext({
       {...props}
     >
       <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
-      <span className="sr-only">Next slide</span>
+      <span className="sr-only">{commonText.ui.nextSlide}</span>
     </Button>
   );
 }

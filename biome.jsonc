@@ -243,8 +243,7 @@
       // is the same in every language: the name of the product.
       // What the rule does not see: a word in an attribute (aria-label="…"), and one a plain function returns.
       // Those two are kept out by whoever writes the code.
-      // The components of shadcn are not covered yet: a few of them say a word of their own, in English.
-      "includes": ["apps/app/src/**", "!apps/app/src/components/ui/**"],
+      "includes": ["apps/app/src/**"],
       "linter": {
         "rules": {
           "style": {

@@ -13,6 +13,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { cn } from 'cn';
 import type * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { commonText } from '@/lib/text';
 
 const toast = ToastPrimitive.createToastManager();
 
@@ -110,7 +111,7 @@ function ToastClose({
   return (
     <ToastPrimitive.Close
       data-slot="toast-close"
-      aria-label="Close toast"
+      aria-label={commonText.ui.close}
       render={render}
       className={cn(
         "relative shrink-0 text-muted-foreground after:absolute after:-inset-2 after:content-[''] hover:text-foreground",
