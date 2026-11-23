@@ -124,7 +124,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* antialiased: macOS draws type heavier than it is by default, and Inter at 500 reads as bold. This turns that
+     off. Windows and Linux are not affected. */
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
   }
 }
