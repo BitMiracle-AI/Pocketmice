@@ -322,7 +322,8 @@ conversations the person is in. What you say there is said as that person, and m
   its `lastMessage`. `getConversation` answers with one of them and its members.
 - The messages of a conversation are numbered from 1. `getMessages` answers with the ones after `afterNumber`,
   the oldest first: to read on, pass the number of the last one you have. `lastMessageNumber` on the conversation
-  says how far it has come, so `afterNumber: lastMessageNumber - 20` reads the latest twenty.
+  says how far it has come, so `afterNumber: lastMessageNumber - 20` reads the latest twenty. Pass `0` when that
+  is below 0: a negative `afterNumber` is `INVALID_INPUT`.
 - `createMessage` sends one: plain text, at most 10000 characters. It can say whom it is for and what it is about:
   `mentionedUserIds` are members of the conversation (their `userId` in `getConversation`), `fileIds` are files or
   folders of the space. Point at a file by its id, and do not paste its path or its content: whoever reads the

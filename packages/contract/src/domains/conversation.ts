@@ -277,7 +277,8 @@ export const getMessages = operation({
     'The messages of a conversation after the one numbered afterNumber, in the order they were sent, at most ' +
     'limit of them. Left out, afterNumber is 0: from the first message on. To read on, pass the number of the ' +
     'last message you were given; fewer messages than limit means there are no more for now. To read only the ' +
-    "latest, start from the conversation's lastMessageNumber less as many as you want. " +
+    "latest, start from the conversation's lastMessageNumber less as many as you want, or from 0 when that is " +
+    'below 0: afterNumber is never negative. ' +
     A_MESSAGE +
     ' A message that was deleted is there under its number, with an empty text.',
   kind: 'read',
