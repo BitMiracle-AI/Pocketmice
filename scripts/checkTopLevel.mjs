@@ -19,8 +19,19 @@ const TARGETS = [
     // main.ts starts the process, app.ts mounts every route, env.ts reads the configuration, instances.ts builds
     // the set a running server uses and migrate.ts is the command that applies migrations. db.test.ts tests
     // @pocketmice/db against a real database: the address of the database is the api's configuration, so the test
-    // is here. The four folders are the only places any other code goes
-    files: ['app.test.ts', 'app.ts', 'db.test.ts', 'env.test.ts', 'env.ts', 'instances.ts', 'main.ts', 'migrate.ts'],
+    // is here. sdk.test.ts tests @pocketmice/sdk against a running api, which a package cannot start: it does not
+    // import an app. The four folders are the only places any other code goes
+    files: [
+      'app.test.ts',
+      'app.ts',
+      'db.test.ts',
+      'env.test.ts',
+      'env.ts',
+      'instances.ts',
+      'main.ts',
+      'migrate.ts',
+      'sdk.test.ts'
+    ],
     dirs: ['domains', 'external', 'http', 'storage'],
     hint: 'Put it in domains/<domain>/ (one area of the product), http/ (how every request is received, checked and answered), storage/ (where the bytes of files are kept) or external/<service>/ (how a service outside the api is used, like mail).'
   },

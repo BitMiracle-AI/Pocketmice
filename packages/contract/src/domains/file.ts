@@ -180,6 +180,27 @@ export const FILE_CONTENT_PATH = '/api/content';
 export const MAX_FILE_BYTES = 1024 * 1024 * 1024;
 
 /**
+ * What a caller hands to fileContentPath for each of the three queries below. For a new file parentId may be null,
+ * which is how every operation says "directly in the space"; in the query itself it is left out.
+ */
+export type NewFileQuery = Omit<z.input<typeof newFileQuery>, 'parentId'> & { parentId?: string | null };
+export type NewVersionQuery = z.input<typeof newVersionQuery>;
+export type ContentQuery = z.input<typeof contentQuery>;
+
+/**
+ * The address of one request to the content, after the host: FILE_CONTENT_PATH with its query. Every caller builds
+ * it here, so that a name is written into a query the one way that is right, and "none" is said the one way a
+ * query can say it: a field that is null, or left out, is not written.
+ */
+export function fileContentPath(query: NewFileQuery | NewVersionQuery | ContentQuery): string {
+  const written = new URLSearchParams();
+  for (const [field, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null) written.set(field, value);
+  }
+  return `${FILE_CONTENT_PATH}?${written}`;
+}
+
+/**
  * The query of an upload that makes a file: in the folder parentId, or directly in the space when parentId is left
  * out. (A query cannot say null, so here leaving it out is how "directly in the space" is said.)
  * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.

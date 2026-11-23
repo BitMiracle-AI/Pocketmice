@@ -62,7 +62,7 @@ export function createApiClient(config: ApiClientConfig) {
     const name = operation.name;
     const unexpected = (thrown: unknown): Failure => {
       config.reportError(thrown, name);
-      return { ok: false, code: 'UNEXPECTED', message: `Calling ${name} failed before a response arrived.` };
+      return unexpectedFailure(name);
     };
 
     // Writing the input as JSON is a step of its own, apart from sending the request: an input that JSON cannot
@@ -82,15 +82,13 @@ export function createApiClient(config: ApiClientConfig) {
       status = response.status;
       text = await response.text();
     } catch (thrown) {
-      // fetch throws a TypeError when it cannot connect, or when the body breaks off half way. Any other error is
-      // not the network and must not be reported as one: it is a bug on this side.
-      if (!(thrown instanceof TypeError)) return unexpected(thrown);
-      return { ok: false, code: 'UNREACHABLE', message: `Could not reach the server: ${thrown.message}` };
+      const failure = failureOfThrown(thrown, name);
+      if (failure.code === 'UNEXPECTED') config.reportError(thrown, name);
+      return failure;
     }
 
-    const answer = parseJson(text);
-
     if (status >= 200 && status < 300) {
+      const answer = parseJson(text);
       if (!isObject(answer)) {
         return {
           ok: false,
@@ -104,30 +102,62 @@ export function createApiClient(config: ApiClientConfig) {
       return { ok: true, data: answer as OutputOf<Op> };
     }
 
-    const parsed = errorBody.safeParse(answer);
-    if (!parsed.success) {
-      // A proxy's own 502 page, for example
-      return {
-        ok: false,
-        code: 'BAD_RESPONSE',
-        message: `The server answered ${name} with status ${status} and no error code.`
-      };
-    }
-
-    const { code, message } = parsed.data.error;
-    if (isUniversalErrorCode(code) || isDeclared(operation, code)) return { ok: false, code, message };
-
-    // The code is not in this side's definition: this side is older than the server. It is not passed off as a code
-    // this side knows, so the branches a caller wrote for "the codes I know" cannot miss a case.
-    return {
-      ok: false,
-      code: 'BAD_RESPONSE',
-      message: `The server answered ${name} with an error code this client does not know: ${code}. ${message}`
-    };
+    return failureOf(name, status, text, operation.errors);
   };
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>;
+
+// The two functions below are how a call reads a failure. They are exported for a caller that sends a request
+// which is not an operation, to the address the content of files goes through, and reads its failures the same way.
+
+/**
+ * What it means that something was thrown while a request was sent, or while its answer was read. name is what was
+ * being called, for the message.
+ * fetch throws a TypeError when it cannot connect, or when the body breaks off half way: UNREACHABLE. Any other
+ * error is not the network and must not be reported as one: it is a bug on this side, UNEXPECTED.
+ */
+export function failureOfThrown(thrown: unknown, name: string): Failure {
+  if (!(thrown instanceof TypeError)) return unexpectedFailure(name);
+  return { ok: false, code: 'UNREACHABLE', message: `Could not reach the server: ${thrown.message}` };
+}
+
+/**
+ * What an answer that is not a success says went wrong: its status and its body, as text. name is what was called,
+ * for the message. declared are the codes this side knows that the answer may carry, besides the ones any
+ * operation may answer with.
+ */
+export function failureOf<Code extends string>(
+  name: string,
+  status: number,
+  text: string,
+  declared: readonly Code[]
+): Failure<Code> {
+  const parsed = errorBody.safeParse(parseJson(text));
+  if (!parsed.success) {
+    // A proxy's own 502 page, for example
+    return {
+      ok: false,
+      code: 'BAD_RESPONSE',
+      message: `The server answered ${name} with status ${status} and no error code.`
+    };
+  }
+
+  const { code, message } = parsed.data.error;
+  if (isUniversalErrorCode(code) || isDeclared(declared, code)) return { ok: false, code, message };
+
+  // The code is not in this side's definition: this side is older than the server. It is not passed off as a code
+  // this side knows, so the branches a caller wrote for "the codes I know" cannot miss a case.
+  return {
+    ok: false,
+    code: 'BAD_RESPONSE',
+    message: `The server answered ${name} with an error code this client does not know: ${code}. ${message}`
+  };
+}
+
+function unexpectedFailure(name: string): Failure {
+  return { ok: false, code: 'UNEXPECTED', message: `Calling ${name} failed before a response arrived.` };
+}
 
 function parseJson(text: string): unknown {
   try {
@@ -141,6 +171,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isDeclared<Op extends Operation>(operation: Op, code: string): code is CodeOf<Op> {
-  return operation.errors.some((declared) => declared === code);
+function isDeclared<Code extends string>(declared: readonly Code[], code: string): code is Code {
+  return declared.some((one) => one === code);
 }

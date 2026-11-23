@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@pocketmice/client": "workspace:*",
+    "@pocketmice/sdk": "workspace:*",
     "@types/node": "^26.6.6",
     "auth": "^1.7.18"
   }

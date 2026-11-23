@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  contentQuery,
   createFolder,
   FILE_DESCRIPTION_MAX_LENGTH,
   FILE_NAME_MAX_LENGTH,
   FILE_PATH_MAX_LENGTH,
+  fileContentPath,
   fileDescription,
   fileName,
   filePath,
@@ -116,4 +118,33 @@ test('the query of an upload says a new file or a new version, and refuses a par
   assert.equal(newVersionQuery.safeParse({ spaceId: SPACE, fileId: FILE, baseVersionId: FILE }).success, true);
   // Writing over a file without saying which version is replaced is not a query
   assert.equal(newVersionQuery.safeParse({ spaceId: SPACE, fileId: FILE }).success, false);
+});
+
+test('the address of a request to the content is read back by the query it was written for', () => {
+  /** The query of an address, as the server reads it */
+  const queryOf = (path: string) => Object.fromEntries(new URL(path, 'https://api.example.com').searchParams);
+
+  // A name with what a query gives a meaning of its own (a space, &, =, +, #, ?) and with another script
+  const name = 'Q3 报告 & notes = a+b #1?.md';
+  const newFile = fileContentPath({ spaceId: SPACE, parentId: FILE, name });
+  assert.equal(newFile.startsWith('/api/content?'), true);
+  assert.deepEqual(newFileQuery.parse(queryOf(newFile)), { spaceId: SPACE, parentId: FILE, name });
+
+  // Directly in the space is null, as in every operation, or left out: neither is written into the query
+  for (const parentId of [null, undefined]) {
+    assert.deepEqual(queryOf(fileContentPath({ spaceId: SPACE, parentId, name: 'a.md' })), {
+      spaceId: SPACE,
+      name: 'a.md'
+    });
+  }
+
+  const newVersion = { spaceId: SPACE, fileId: FILE, baseVersionId: FILE };
+  assert.deepEqual(newVersionQuery.parse(queryOf(fileContentPath(newVersion))), newVersion);
+
+  const download = { spaceId: SPACE, fileId: FILE };
+  assert.deepEqual(contentQuery.parse(queryOf(fileContentPath(download))), download);
+  assert.deepEqual(contentQuery.parse(queryOf(fileContentPath({ ...download, versionId: FILE }))), {
+    ...download,
+    versionId: FILE
+  });
 });

@@ -51,6 +51,9 @@ importers:
       '@pocketmice/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@pocketmice/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -178,6 +181,19 @@ importers:
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
+
+  packages/sdk:
+    dependencies:
+      '@pocketmice/client':
+        specifier: workspace:*
+        version: link:../client
+      '@pocketmice/contract':
+        specifier: workspace:*
+        version: link:../contract
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
 
 packages:
 

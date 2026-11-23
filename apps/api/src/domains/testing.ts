@@ -3,9 +3,11 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
+import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, afterEach, before } from 'node:test';
+import { createAdaptorServer } from '@hono/node-server';
 import { type ApiClient, createApiClient } from '@pocketmice/client/api';
 import { apiKeyAuthorization } from '@pocketmice/contract/domains/apiKey';
 import { connectDb, type Db } from '@pocketmice/db';
@@ -53,6 +55,13 @@ export interface TestApi {
    */
   send: (who: CurrentUser | { key: string } | null, path: string, init?: RequestInit) => Promise<Response>;
   /**
+   * Listens on a port of this machine, one the system picks, and returns the address: http://127.0.0.1:<port>. For
+   * a caller that sends its requests over a real connection, like the SDK; the other ways of calling here hand the
+   * request to the app without one. Called again it returns the same address, and the port is given back when the
+   * file is done.
+   */
+  listen: () => Promise<string>;
+  /**
    * What the server reported about itself since the last call. A test that expects the server to fail takes the
    * reports here; a report nobody took fails the test it happened in.
    */
@@ -68,6 +77,8 @@ export function useTestApi(): TestApi {
   let db: Db | undefined;
   let stored: { storage: FileStorage; dir: string } | undefined;
   let app: ReturnType<typeof createApp> | undefined;
+  let server: Server | undefined;
+  let listening: Promise<string> | undefined;
   let reported: { error: unknown; where: string }[] = [];
 
   before(async () => {
@@ -115,6 +126,9 @@ export function useTestApi(): TestApi {
   });
 
   after(async () => {
+    // A connection a caller left open is closed with the server: waiting for it would hold the file up
+    server?.closeAllConnections();
+    server?.close();
     // Disconnect first, then drop: a database someone is connected to cannot be dropped
     await db?.$client.end();
     await testDb?.drop();
@@ -183,6 +197,22 @@ export function useTestApi(): TestApi {
           app.request(url, { ...init, headers: { ...init.headers, authorization: apiKeyAuthorization(key) } }),
         reportError: (error, name) => assert.fail(`the client reported ${describeError(error)} calling ${name}`)
       });
+    },
+
+    listen() {
+      const { app } = ready();
+      listening ??= new Promise<string>((resolve, reject) => {
+        // Typed as possibly an HTTP/2 server; given no HTTP/2 options, what it builds is a plain HTTP server
+        const started = createAdaptorServer({ fetch: app.fetch }) as Server;
+        server = started;
+        started.once('error', reject);
+        started.listen(0, '127.0.0.1', () => {
+          const address = started.address();
+          if (address === null || typeof address === 'string') reject(new Error('The test server has no port.'));
+          else resolve(`http://127.0.0.1:${address.port}`);
+        });
+      });
+      return listening;
     },
 
     takeReported() {

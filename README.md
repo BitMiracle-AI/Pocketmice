@@ -4,9 +4,10 @@
 the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
-> invites, API keys for agents, and files — folders, upload and download, versions, a trash. There is no web app,
-> no SDK and no MCP server yet: the way in is the HTTP API, and for an agent the [skill](#agent-skill) that teaches
-> it. Nothing here is ready for production.
+> invites, API keys for agents, and files — folders, upload and download, versions, a trash. There is no web app
+> and no MCP server yet: the way in is the HTTP API, for a program the [TypeScript SDK](#typescript-sdk), which is
+> in this repository and not on npm yet, and for an agent the [skill](#agent-skill) that teaches it. Nothing here
+> is ready for production.
 
 ## What is planned
 
@@ -36,6 +37,7 @@ apps/api            the API server (Hono on Node)
 apps/app            the web app (Vite and React). It has its UI components and no page yet
 packages/contract   the definition of every operation: its input, its output, its error codes
 packages/client     the code every caller shares to call the API
+packages/sdk        the TypeScript SDK: the drive, for a program that holds an API key
 packages/db         the database: tables, connection and migrations (Drizzle on Postgres)
 skills/pocketmice   the agent skill: one file that teaches an agent with a shell to use the drive
 scripts/            checks of the repository's structure, run by `pnpm check`
@@ -139,6 +141,47 @@ A container applies the migrations that have not run yet and then starts the API
 the container has. It takes its configuration from the environment, with the variables of
 [`apps/api/.env.example`](apps/api/.env.example). When the files are kept in a folder, mount a volume at `/data`
 and set `STORAGE_DIR=/data/storage`: without a volume the files are gone with the container.
+
+## TypeScript SDK
+
+A program that holds an API key uses the drive through `packages/sdk`. It is not on npm yet: for now it is used
+from inside this repository.
+
+```ts
+import { createPocketmice, PocketmiceError } from '@pocketmice/sdk';
+
+const drive = createPocketmice({ url: 'http://localhost:11210', apiKey: 'pm_...' });
+
+const { space } = await drive.createSpace({ name: 'Research' });
+const spaceId = space.id;
+
+const { file } = await drive.uploadFile({ spaceId, parentId: null, name: 'report.md', content: '# Report' });
+
+const download = await drive.downloadFile({ spaceId, fileId: file.id });
+const text = await download.text();
+
+try {
+  // Names the version the new content was made from: CONFLICT if somebody wrote to the file in between
+  const baseVersionId = download.versionId;
+  await drive.uploadFileVersion({ spaceId, fileId: file.id, baseVersionId, content: `${text}\nMore.` });
+} catch (error) {
+  if (error instanceof PocketmiceError && error.code === 'CONFLICT') {
+    // Download it again, then decide
+  }
+}
+```
+
+- Every operation an API key may call is a method of the same name, taking the operation's input and returning its
+  output. The methods are made from the definitions in `packages/contract`, not written a second time. What only
+  the person does, like making a key or deleting for good, is not there.
+- The content of files has three methods: `uploadFile`, `uploadFileVersion` and `downloadFile`. Content is text,
+  bytes or a `Blob`, and not a stream: the server takes no upload without a length. For a file on disk, Node has
+  `openAsBlob`.
+- A method that fails throws a `PocketmiceError`, and nothing else. Decide what to do by its `code`, which is the
+  error code the server answered with, or `UNREACHABLE` when the server was not reached.
+- A method is one request. Writing to a path whose folders may be missing takes several: the
+  [skill](#agent-skill) says which.
+- It uses no module of Node, so it should run wherever there is a `fetch`. It has been tried on Node only.
 
 ## Agent skill
 

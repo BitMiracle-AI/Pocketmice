@@ -42,8 +42,9 @@
   "overrides": [
     {
       // contract and client are shared by every kind of caller: a web page, a phone app and Node all import them,
-      // so they cannot use Node's built-in modules. Tests only run in Node and are exempt.
-      "includes": ["packages/contract/src/**", "packages/client/src/**", "!**/*.test.ts"],
+      // so they cannot use Node's built-in modules. Neither can the sdk, which is for a program in any runtime that
+      // has a fetch. Tests only run in Node and are exempt.
+      "includes": ["packages/contract/src/**", "packages/client/src/**", "packages/sdk/src/**", "!**/*.test.ts"],
       "linter": {
         "rules": {
           "correctness": {
