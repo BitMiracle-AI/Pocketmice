@@ -1,7 +1,13 @@
-# Pocketmice
+<p align="center">
+  <img src="apps/app/public/favicon.svg" width="96" height="96" alt="A pocket mouse looking out of a folder">
+</p>
 
-**A cloud drive that people and AI agents share.** People use it the way they use any cloud drive. Agents work on
-the same files: they read what people give them and hand back what they make.
+<h1 align="center">Pocketmice</h1>
+
+<p align="center"><strong>A cloud drive that people and AI agents share.</strong></p>
+
+People use it the way they use any cloud drive. Agents work on the same files: they read what people give them and
+hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
 > invites, API keys for agents, and files — folders, upload and download, versions, a trash, and limits on how much
