@@ -240,7 +240,7 @@
     {
       // The pages are in more than one language, so the words a person reads are in the text files (see
       // apps/app/src/lib/language/text.ts): a word written between two tags is reported. Let through is only what
-      // is the same in every language: the name of the product.
+      // is the same in every language: the name of the product, and two signs.
       // What the rule does not see: a word in an attribute (aria-label="…"), and one a plain function returns.
       // Those two are kept out by whoever writes the code.
       "includes": ["apps/app/src/**"],
@@ -250,7 +250,7 @@
             "noJsxLiterals": {
               "level": "error",
               "options": {
-                "allowedStrings": ["Pocketmice"]
+                "allowedStrings": ["Pocketmice", "·", "%"]
               }
             }
           }

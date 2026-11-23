@@ -1,0 +1,26 @@
+import { type getFile, namesOfPath, pathOfNames } from '@pocketmice/contract/domains/file';
+import type { OutputOf } from '@pocketmice/contract/operation';
+
+// What a folder page works out from what the api answered, with nothing of the browser in it.
+
+type DriveFile = OutputOf<typeof getFile>['file'];
+
+/**
+ * The order a folder is shown in: the folders first, then the files, each by name. Two names the comparison takes
+ * for equal (it may ignore what a person would) keep one order, by how they are written.
+ */
+export function inOrder(files: readonly DriveFile[], compare: (a: string, b: string) => number): DriveFile[] {
+  return [...files].sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'folder' ? -1 : 1;
+    return compare(a.name, b.name) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  });
+}
+
+/**
+ * The folders above a folder, from the top of the space down: each with its name and its path. They are read from
+ * the path of the folder, which every answer carries; the api does not say what their ids are.
+ */
+export function foldersAbove(path: string): { name: string; path: string }[] {
+  const names = namesOfPath(path) ?? [];
+  return names.slice(0, -1).map((name, index) => ({ name, path: pathOfNames(names.slice(0, index + 1)) }));
+}

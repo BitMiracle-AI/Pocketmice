@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarProvider
 } from '@/components/ui/sidebar';
+import { UploadPanel } from '@/features/upload/UploadPanel';
 import { UserMenu } from './UserMenu';
 
 // The frame every signed-in page sits in: the sidebar on the left, and the page as a card on the sidebar's colour.
@@ -51,6 +52,7 @@ export function Shell({
       {/* As high as the window and no higher: a page scrolls inside the card, and the sidebar stays where it is */}
       <SidebarInset className="h-svh min-w-0 overflow-hidden md:h-[calc(100svh-(--spacing(4)))] md:border">
         {children}
+        <UploadPanel />
       </SidebarInset>
     </SidebarProvider>
   );

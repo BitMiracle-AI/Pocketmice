@@ -15,6 +15,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppSpacesSpaceIdRouteImport } from './routes/_app/spaces/$spaceId'
 import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app/spaces/$spaceId/index'
+import { Route as AppSpacesSpaceIdFilesFileIdRouteImport } from './routes/_app/spaces/$spaceId/files/$fileId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -45,6 +46,12 @@ const AppSpacesSpaceIdIndexRoute = AppSpacesSpaceIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSpacesSpaceIdRoute,
 } as any)
+const AppSpacesSpaceIdFilesFileIdRoute =
+  AppSpacesSpaceIdFilesFileIdRouteImport.update({
+    id: '/files/$fileId',
+    path: '/files/$fileId',
+    getParentRoute: () => AppSpacesSpaceIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -52,12 +59,14 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
+  '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/': typeof AppIndexRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
+  '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -67,13 +76,24 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
+  '/_app/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/login' | '/signup' | '/spaces/$spaceId' | '/spaces/$spaceId/'
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/spaces/$spaceId'
+    | '/spaces/$spaceId/'
+    | '/spaces/$spaceId/files/$fileId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/signup' | '/' | '/spaces/$spaceId'
+  to:
+    | '/login'
+    | '/signup'
+    | '/'
+    | '/spaces/$spaceId'
+    | '/spaces/$spaceId/files/$fileId'
   id:
     | '__root__'
     | '/_app'
@@ -82,6 +102,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/spaces/$spaceId'
     | '/_app/spaces/$spaceId/'
+    | '/_app/spaces/$spaceId/files/$fileId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -134,15 +155,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSpacesSpaceIdIndexRouteImport
       parentRoute: typeof AppSpacesSpaceIdRoute
     }
+    '/_app/spaces/$spaceId/files/$fileId': {
+      id: '/_app/spaces/$spaceId/files/$fileId'
+      path: '/files/$fileId'
+      fullPath: '/spaces/$spaceId/files/$fileId'
+      preLoaderRoute: typeof AppSpacesSpaceIdFilesFileIdRouteImport
+      parentRoute: typeof AppSpacesSpaceIdRoute
+    }
   }
 }
 
 interface AppSpacesSpaceIdRouteChildren {
   AppSpacesSpaceIdIndexRoute: typeof AppSpacesSpaceIdIndexRoute
+  AppSpacesSpaceIdFilesFileIdRoute: typeof AppSpacesSpaceIdFilesFileIdRoute
 }
 
 const AppSpacesSpaceIdRouteChildren: AppSpacesSpaceIdRouteChildren = {
   AppSpacesSpaceIdIndexRoute: AppSpacesSpaceIdIndexRoute,
+  AppSpacesSpaceIdFilesFileIdRoute: AppSpacesSpaceIdFilesFileIdRoute,
 }
 
 const AppSpacesSpaceIdRouteWithChildren =

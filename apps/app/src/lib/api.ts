@@ -47,13 +47,41 @@ export const auth = createAuthClient(config);
  */
 export async function call<Op extends Operation>(operation: Op, input: InputOf<Op>): Promise<Result<Op>> {
   const result = await api(operation, input);
-  // Any call that is answered "not signed in" makes what the cache holds about who is signed in untrue. It is
-  // marked stale and not asked again at once: the page stays as it is, with what the person was typing, and says
-  // that they are signed out. The next page they go to asks the api, and takes them to the sign-in page.
-  if (!result.ok && result.code === 'UNAUTHENTICATED') {
+  if (!result.ok) heardFailure(result.code);
+  return result;
+}
+
+/**
+ * What the cache makes of a request that failed with code. call does this for every operation; whoever sends a
+ * request that is not an operation (the content of a file) says so here.
+ * Any request that is answered "not signed in" makes what the cache holds about who is signed in untrue. It is
+ * marked stale and not asked again at once: the page stays as it is, with what the person was typing, and says
+ * that they are signed out. The next page they go to asks the api, and takes them to the sign-in page.
+ */
+export function heardFailure(code: string): void {
+  if (code === 'UNAUTHENTICATED') {
     void queryClient.invalidateQueries({ queryKey: currentUserQuery.queryKey, refetchType: 'none' });
   }
-  return result;
+}
+
+/**
+ * The address of something of the api that is not an operation: path is what comes after the host, like the
+ * address the content of a file goes through. A request sent there by hand says, as every other does, that the
+ * sign-in cookie goes along.
+ */
+export function apiAddress(path: string): string {
+  return new URL(path, config.baseUrl).href;
+}
+
+/**
+ * Something was written in the space spaceId: everything read from that space is marked stale, and what a page is
+ * showing is asked for again. It is not worked out which answers the write changed: a rename changes the path of
+ * everything under a folder, and an answer that is asked for once too often costs less than one that is wrong.
+ */
+export function spaceChanged(spaceId: string): void {
+  void queryClient.invalidateQueries({
+    predicate: ({ queryKey }) => (queryKey[1] as { spaceId?: unknown } | undefined)?.spaceId === spaceId
+  });
 }
 
 /**
