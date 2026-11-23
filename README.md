@@ -5,13 +5,14 @@ the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
 > invites, API keys for agents, and files — folders, upload and download, versions, a trash, and limits on how
-> much a space and each member may hold. The web app has a page for most of it: signing in, the spaces you are
-> in, each with its members and invite links, the files of a space (folders, upload, download, renaming, moving,
-> looking for a file by words, the trash, the versions of a file), renaming and deleting a space, the name you
-> go by, and API keys. What it does not do yet (setting storage limits) is done through the HTTP API. For a
-> program there is the [TypeScript SDK](#typescript-sdk), which is in this repository and not on npm yet, and
-> for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it the API. Nothing here
-> is ready for production.
+> much a space and each member may hold; and conversations, where the people and the agents of a space talk, with
+> a channel that tells a caller what happens as it happens. The web app has a page for most of it: signing in, the
+> spaces you are in, each with its members and invite links, the files of a space (folders, upload, download,
+> renaming, moving, looking for a file by words, the trash, the versions of a file), renaming and deleting a
+> space, the name you go by, and API keys. What it does not do yet (conversations, setting storage limits) is done
+> through the HTTP API. For a program there is the [TypeScript SDK](#typescript-sdk), which is in this repository
+> and not on npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it
+> the API. Nothing here is ready for production.
 
 ## What is planned
 
@@ -34,6 +35,30 @@ the same files: they read what people give them and hand back what they make.
   are for the owner of the space, signed in themselves: no API key does them. What a file is called, how it is
   described and which folder it is in have no history: a new one takes the place of the old.
 - **Who wrote what is on record.** Every version says who wrote it, and through which API key when an agent did.
+
+## Conversations
+
+A space has conversations: where its members talk, people and the agents that act for them alike. They are how a
+person tells an agent what to do next to the files it is about, and how the agent says what it did.
+
+- A conversation is about one matter: it has a title, and members of its own, who are members of the space. Its
+  members read it, and so does the owner of the space, who reads every conversation in it. Any member of a space
+  starts one and talks, a viewer too. Who is in a conversation is decided by a person, signed in: no API key adds
+  or removes anyone.
+- A message is plain text. It says who sent it, and through which API key when an agent did: an agent speaks as
+  the person its key belongs to, and what it said is told apart from what they typed. A message can mention
+  members of the conversation and point at files of the space.
+- The messages of a conversation are numbered from 1 and read by number: `getMessages` answers with the ones
+  after a number. A message is never changed; whoever sent it, or the owner of the space, can delete it.
+- **Events.** `GET /api/events?spaceId=…` is answered with a line for each thing that happens in a space, for as
+  long as the channel stays open (`text/event-stream`). An event says that something changed, like "this
+  conversation has reached message 12", and never what was said: the caller reads that through the API. A page
+  shows a message the moment it is sent this way, and a program with an API key answers when it is spoken to and
+  not when it next looks. The server passes events between its processes through Postgres, and needs nothing
+  else for it.
+
+What it does not do yet: the web app has no page for conversations; an agent connected over MCP has no channel,
+and looks when it is asked to; nothing is pushed to an address of yours (no webhooks).
 
 ## Repository layout
 
@@ -230,6 +255,22 @@ try {
   failed any other way. What was thrown underneath is the error's `cause`.
 - A method is one request. Writing to a path whose folders may be missing takes several: the
   [skill](#agent-skill) says which.
+- `watchSpace` is a channel of [events](#conversations), read with `for await`. It is one request too: the server
+  ends a channel after a few minutes and the loop ends with it, so a program that keeps listening calls it again.
+
+  ```ts
+  for (;;) {
+    try {
+      for await (const event of drive.watchSpace({ spaceId })) {
+        // The first event of every channel is `open`. On it, and on every event after, read what is new
+        if (event.type === 'open' || event.type === 'message') await answerWhatIsWaiting();
+      }
+    } catch (error) {
+      // UNREACHABLE: the server was not reached, or the channel broke. Wait a moment, then open the next
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+  ```
 - It uses no module of Node, so it should run wherever there is a `fetch`. It has been tried on Node 22, 24 and
   26, on Bun and on Deno, and in Chrome from a web page the server allows (`WEB_ORIGINS`): the server answers no
   other page.
