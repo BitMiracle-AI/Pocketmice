@@ -30,5 +30,5 @@ export const en = {
   otherAccount: 'Use another account',
   deadTitle: 'This invite link does not work',
   deadDescription: 'It has expired, or the owner of the space deleted it. Ask them for a new one.',
-  toHome: 'Go to your files'
+  toHome: 'Go to your spaces'
 };

@@ -79,7 +79,7 @@ export function MembersPage() {
     if (problem !== null) {
       toast.add({ type: 'error', title: problem });
     } else if (asking === 'leave') {
-      // This space is no longer the person's: they go to the start, which leads to one that is
+      // This space is no longer the person's: they go to the start, where the ones that are theirs are
       toast.add({ title: spaceText.left(space.name) });
       await navigate({ to: '/', replace: true });
     }

@@ -9,6 +9,8 @@ export const en = {
   account: 'Account',
   apiKeys: 'API keys',
   backToFiles: 'Back to files',
+  allSpaces: 'All spaces',
+  userMenu: 'Your account',
   theme: 'Theme',
   themes: { system: 'System', light: 'Light', dark: 'Dark' } satisfies Record<Theme, string>,
   language: 'Language'

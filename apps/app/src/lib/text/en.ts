@@ -49,5 +49,5 @@ export const en = {
   tryAgain: 'Try again',
   notFoundTitle: 'Page not found',
   notFoundDescription: 'There is nothing at this address.',
-  toHome: 'Go to your files'
+  toHome: 'Go to your spaces'
 };

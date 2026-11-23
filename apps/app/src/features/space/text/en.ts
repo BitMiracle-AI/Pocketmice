@@ -3,8 +3,8 @@ import type { SpaceRole } from '@pocketmice/contract/spaceRole';
 /** The sentences about spaces, in English. This file says which sentences there are */
 export const en = {
   roles: { owner: 'Owner', editor: 'Editor', viewer: 'Viewer' } satisfies Record<SpaceRole, string>,
-  listLabel: 'Spaces',
-  switchSpace: 'Switch space',
+  spacesTitle: 'Spaces',
+  spacesLabel: 'Your spaces',
   newSpace: 'New space',
   dialogTitle: 'New space',
   /** What a space is, in one line: under the title of the dialog */
@@ -48,5 +48,5 @@ export const en = {
 
   unknownTitle: 'No such space',
   unknownDescription: 'There is no space at this address, or you are not a member of it.',
-  toHome: 'Go to your files'
+  toHome: 'Go to your spaces'
 };

@@ -8,8 +8,8 @@ import { shellText } from './text';
 /**
  * What every page of the settings is inside of. The settings belong to the person and to no space, so the sidebar
  * lists the settings and a way back, in place of a space and what it holds.
- * backTo is the space the person came from, when the address says so: the way back leads there, and to the start
- * when it does not. The address of every page of the settings carries it along.
+ * backTo is the space the person came from, when the address says so: the way back leads to its files, and to the
+ * person's spaces when it does not. The address of every page of the settings carries it along.
  */
 export function SettingsShell({ backTo, children }: { backTo: string | undefined; children: ReactNode }) {
   const matches = useMatchRoute();
@@ -17,12 +17,16 @@ export function SettingsShell({ backTo, children }: { backTo: string | undefined
     <Shell
       space={backTo}
       top={
-        <NavRow
-          link={backTo ? <Link to="/spaces/$spaceId" params={{ spaceId: backTo }} /> : <Link to="/" />}
-          icon={ArrowLeft01Icon}
-          label={shellText.backToFiles}
-          active={false}
-        />
+        backTo ? (
+          <NavRow
+            link={<Link to="/spaces/$spaceId" params={{ spaceId: backTo }} />}
+            icon={ArrowLeft01Icon}
+            label={shellText.backToFiles}
+            active={false}
+          />
+        ) : (
+          <NavRow link={<Link to="/" />} icon={ArrowLeft01Icon} label={shellText.allSpaces} active={false} />
+        )
       }
       nav={
         <SidebarGroup>

@@ -1,11 +1,11 @@
-import { Delete02Icon, Folder01Icon, Key01Icon, UserMultiple02Icon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, Delete02Icon, Folder01Icon, Key01Icon, UserMultiple02Icon } from '@hugeicons/core-free-icons';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { SidebarGroup, SidebarMenu } from '@/components/ui/sidebar';
+import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { NavRow, Shell } from '@/features/shell/Shell';
 import { shellText } from '@/features/shell/text';
 import { CurrentSpaceProvider } from './CurrentSpaceProvider';
-import { SpaceSwitch } from './SpaceSwitch';
+import { SpaceMark } from './SpaceMark';
 import { useSpaces } from './spaces';
 import { UnknownSpacePage } from './UnknownSpacePage';
 
@@ -27,7 +27,17 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
     <CurrentSpaceProvider space={space}>
       <Shell
         space={spaceId}
-        top={<SpaceSwitch />}
+        // Which space this is, under the way out of it: another space is gone to from the start, where all of
+        // them are
+        top={
+          <>
+            <NavRow link={<Link to="/" />} icon={ArrowLeft01Icon} label={shellText.allSpaces} active={false} />
+            <SidebarMenuItem className="flex h-8 items-center gap-2 px-2 text-sm font-medium">
+              <SpaceMark name={space.name} />
+              <span className="truncate">{space.name}</span>
+            </SidebarMenuItem>
+          </>
+        }
         // The keys are the person's and not this space's, so the way to them is at the bottom, next to who is
         // signed in. The address says which space the person came from, for the way back
         bottom={

@@ -9,6 +9,7 @@ import {
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
 import { Link } from '@tanstack/react-router';
 import { PersonAvatar } from '@/components/PersonAvatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,23 @@ export function UserMenu({ space }: { space: string | undefined }) {
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>
+  );
+}
+
+/** The same menu on a page with no sidebar: the person's avatar, in the corner of the page, opens it */
+export function UserButton() {
+  const user = useCurrentUser();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon" aria-label={shellText.userMenu} className="rounded-full" />}
+      >
+        <PersonAvatar name={user.name} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-56">
+        <UserMenuItems space={undefined} />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

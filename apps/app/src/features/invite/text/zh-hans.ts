@@ -29,5 +29,5 @@ export const zhHans: typeof en = {
   otherAccount: '换一个账号',
   deadTitle: '这个邀请链接用不了',
   deadDescription: '它已经过期，或者被空间的所有者删除了。请对方再给你一个。',
-  toHome: '去我的文件'
+  toHome: '去我的空间'
 };

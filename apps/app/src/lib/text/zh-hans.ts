@@ -44,5 +44,5 @@ export const zhHans: typeof en = {
   tryAgain: '重试',
   notFoundTitle: '没有这个页面',
   notFoundDescription: '这个地址上什么都没有。',
-  toHome: '去我的文件'
+  toHome: '去我的空间'
 };
