@@ -424,7 +424,7 @@ test('which version an empty content is, and that it is empty, come from one ans
   // write over content it never saw
   const called = await getFileContent.run({ spaceId: SOME_ID, fileId: SOME_ID, versionId: null }, async (path) => {
     sent.push(path.split('?')[0] ?? '');
-    return path.startsWith('/api/content')
+    return path.startsWith('/api/fileContent')
       ? new Response('{}', { status: 416, headers: { 'content-range': 'bytes */0', etag: `"${empty}"` } })
       : Response.json({ file: { version: { id: written } } });
   });
@@ -433,7 +433,7 @@ test('which version an empty content is, and that it is empty, come from one ans
     called.content.map(({ text }) => JSON.parse(text)),
     [{ versionId: empty, size: 0, nextCursor: null }]
   );
-  assert.deepEqual(sent, ['/api/content']);
+  assert.deepEqual(sent, ['/api/fileContent']);
 });
 
 test('getFileContent takes a piece of the content and nothing else: an answer that is all of it is not read', async () => {

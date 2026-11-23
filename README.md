@@ -133,19 +133,19 @@ curl -X POST http://localhost:11210/api/getSpaces \
 ```
 
 The content of files does not go through operations, whose inputs and outputs are JSON. It goes through one
-address, `/api/content`, with the same checks on who is calling:
+address, `/api/fileContent`, with the same checks on who is calling:
 
 ```sh
 # Upload a new file, directly into the space (add parentId=<folder> for a folder). Answers with the file
-curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&name=report.md' \
+curl -T report.md 'http://localhost:11210/api/fileContent?spaceId=<space>&name=report.md' \
   -H 'authorization: Bearer pm_...'
 
 # Download it. The etag of the answer is the id of the version that was sent
-curl -o report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<file>' \
+curl -o report.md 'http://localhost:11210/api/fileContent?spaceId=<space>&fileId=<file>' \
   -H 'authorization: Bearer pm_...'
 
 # Write over it, naming the version being replaced: CONFLICT if it is no longer the current one
-curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<file>&baseVersionId=<version>' \
+curl -T report.md 'http://localhost:11210/api/fileContent?spaceId=<space>&fileId=<file>&baseVersionId=<version>' \
   -H 'authorization: Bearer pm_...'
 ```
 
@@ -316,7 +316,7 @@ good), and what anyone may call without being anybody (asking which server this 
 
 What it does not do yet:
 
-- Content that is not text, and anything too large to pass through a model, goes through `/api/content`.
+- Content that is not text, and anything too large to pass through a model, goes through `/api/fileContent`.
 - It takes an API key and has no OAuth. Hosts that connect with OAuth only, like the chat apps of Claude and
   ChatGPT, cannot connect yet. Tried with Claude Code.
 

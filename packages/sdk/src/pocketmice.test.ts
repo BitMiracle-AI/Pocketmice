@@ -293,9 +293,9 @@ test('uploadFile is a PUT of the content to the address of the content, as the q
   assert.deepEqual(
     sent.map(({ url }) => addressOf(url)),
     [
-      { origin: SERVER, pathname: '/api/content', query: { spaceId: SPACE, parentId: FOLDER, name } },
+      { origin: SERVER, pathname: '/api/fileContent', query: { spaceId: SPACE, parentId: FOLDER, name } },
       // Directly in the space is null for the method, and left out of the query
-      { origin: SERVER, pathname: '/api/content', query: { spaceId: SPACE, name: 'top.md' } }
+      { origin: SERVER, pathname: '/api/fileContent', query: { spaceId: SPACE, name: 'top.md' } }
     ]
   );
   // The content is handed to fetch as a Blob, which is what sends it with its length; and nothing but the key is
@@ -407,7 +407,7 @@ test('uploadFileVersion is a PUT that names the file and the version being repla
   assert.equal(sent.length, 1);
   assert.deepEqual(addressOf(sent[0]?.url ?? ''), {
     origin: SERVER,
-    pathname: '/api/content',
+    pathname: '/api/fileContent',
     query: { spaceId: SPACE, fileId: FILE, baseVersionId: VERSION }
   });
   assert.equal(sent[0]?.init.method, 'PUT');
@@ -432,19 +432,19 @@ test('downloadFile is a GET, and answers with the version that was sent and its 
     [
       {
         origin: SERVER,
-        pathname: '/api/content',
+        pathname: '/api/fileContent',
         query: { spaceId: SPACE, fileId: FILE },
         init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
       },
       {
         origin: SERVER,
-        pathname: '/api/content',
+        pathname: '/api/fileContent',
         query: { spaceId: SPACE, fileId: FILE, versionId: VERSION },
         init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
       },
       {
         origin: SERVER,
-        pathname: '/api/content',
+        pathname: '/api/fileContent',
         query: { spaceId: SPACE, fileId: FILE },
         init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
       }

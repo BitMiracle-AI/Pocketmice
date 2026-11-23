@@ -218,7 +218,7 @@ const trashedFile = file.extend({
  * version, and otherwise the whole content is. A HEAD is answered as the GET would be, without the bytes: how
  * large the content is, and which version it is.
  */
-export const FILE_CONTENT_PATH = '/api/content';
+export const FILE_CONTENT_PATH = '/api/fileContent';
 
 /** The content of a file has at most this many bytes */
 export const MAX_FILE_BYTES = 1024 * 1024 * 1024;

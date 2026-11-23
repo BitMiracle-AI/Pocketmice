@@ -150,11 +150,11 @@ folders one by one; when the content decides, download the candidates and read t
 
 ## Downloading
 
-The content of files does not go through operations. It goes through one address, `/api/content`:
+The content of files does not go through operations. It goes through one address, `/api/fileContent`:
 
 ```sh
 curl -sS -D - -o summary.md \
-  "$POCKETMICE_URL/api/content?spaceId=<space>&fileId=<file>" \
+  "$POCKETMICE_URL/api/fileContent?spaceId=<space>&fileId=<file>" \
   -H "authorization: Bearer $POCKETMICE_API_KEY"
 ```
 
@@ -173,7 +173,7 @@ and sends no content. To be sure of what you got, compare `sha256sum` (or `shasu
 ## Uploading a new file
 
 ```sh
-curl -sS -T ./summary.md "$POCKETMICE_URL/api/content" \
+curl -sS -T ./summary.md "$POCKETMICE_URL/api/fileContent" \
   --url-query "spaceId=<space>" --url-query "parentId=<folder id>" --url-query "name=summary.md" \
   -H "authorization: Bearer $POCKETMICE_API_KEY"
 ```
@@ -184,7 +184,7 @@ The answer is the new file, as `getFile` answers.
   a query cannot say `null`.)
 - `--url-query` encodes the name for the address, which a name with a space or any non-ASCII character needs. It
   takes curl 7.87 or later. With an older curl, percent-encode the name yourself and put the query in the address:
-  `…/api/content?spaceId=<space>&name=Q3%20notes.md`. Encode a `+` too, as `%2B`: left as it is, it arrives as a
+  `…/api/fileContent?spaceId=<space>&name=Q3%20notes.md`. Encode a `+` too, as `%2B`: left as it is, it arrives as a
   space, and the file is made under the wrong name without a word.
 - The content must come from a file. `-T -` (from standard input) is refused, because it sends no length. For text
   you have in hand, write it to a temporary file first, or use `-X PUT --data-binary @-` in place of `-T`. The same
@@ -202,7 +202,7 @@ The answer is the new file, as `getFile` answers.
 
 ```sh
 curl -sS -T ./summary.md \
-  "$POCKETMICE_URL/api/content?spaceId=<space>&fileId=<file>&baseVersionId=<version>" \
+  "$POCKETMICE_URL/api/fileContent?spaceId=<space>&fileId=<file>&baseVersionId=<version>" \
   -H "authorization: Bearer $POCKETMICE_API_KEY"
 ```
 
@@ -448,7 +448,7 @@ role `owner`; the conversations take no role, and any member of the space talks.
 | `deleteMessage`        | write | `{spaceId, conversationId, number}`                            | `{}`                                                                 | `NOT_FOUND`             |
 | `markConversationRead` | write | `{spaceId, conversationId, number}`                            | `{}`                                                                 |                         |
 
-And the address the content goes through, `/api/content`:
+And the address the content goes through, `/api/fileContent`:
 
 | Request       | Kind  | Query                            | Answer                                  | Can also fail with      |
 | ------------- | ----- | -------------------------------- | --------------------------------------- | ----------------------- |

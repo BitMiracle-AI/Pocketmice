@@ -184,7 +184,7 @@ test('the address of a request to the content is read back by the query it was w
   // A name with what a query gives a meaning of its own (a space, &, =, +, #, ?) and with another script
   const name = 'Q3 报告 & notes = a+b #1?.md';
   const newFile = fileContentPath({ spaceId: SPACE, parentId: FILE, name });
-  assert.equal(newFile.startsWith('/api/content?'), true);
+  assert.equal(newFile.startsWith('/api/fileContent?'), true);
   assert.deepEqual(newFileQuery.parse(queryOf(newFile)), { spaceId: SPACE, parentId: FILE, name });
 
   // Directly in the space is null, as in every operation, or left out: neither is written into the query
