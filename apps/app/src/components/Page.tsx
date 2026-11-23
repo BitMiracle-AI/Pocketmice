@@ -18,16 +18,18 @@ export function Page({ wide = false, children }: { wide?: boolean; children: Rea
 }
 
 /**
- * The top of a page: its title with a label after it (tag), the buttons of the page at the right (children), and
- * a line under it (hint)
+ * The top of a page: its title, with a mark before it (mark) and a label after it (tag), the buttons of the page
+ * at the right (children), and under it what is said about the page (hint), with the lines it was written in
  */
 export function PageHead({
   title,
+  mark,
   tag,
   hint,
   children
 }: {
   title: string;
+  mark?: ReactNode;
   tag?: ReactNode;
   hint?: string;
   children?: ReactNode;
@@ -35,11 +37,12 @@ export function PageHead({
   return (
     <header className="flex flex-col gap-1.5">
       <div className="flex min-h-8 items-center gap-2.5">
+        {mark}
         <h1 className="truncate font-heading text-lg font-medium tracking-tight">{title}</h1>
         {tag}
         {children && <div className="ml-auto flex shrink-0 items-center gap-2">{children}</div>}
       </div>
-      {hint && <p className="max-w-xl text-sm text-pretty text-muted-foreground">{hint}</p>}
+      {hint && <p className="max-w-xl text-sm text-pretty whitespace-pre-line text-muted-foreground">{hint}</p>}
     </header>
   );
 }

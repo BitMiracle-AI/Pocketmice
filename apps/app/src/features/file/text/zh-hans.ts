@@ -71,6 +71,21 @@ export const zhHans: typeof en = {
   emptyTrashHint: '这个空间回收站里的所有东西都会被彻底删除，包括每个文件的每一个版本，无法恢复。',
   showMore: '显示更多',
 
+  open: (name) => `打开 ${name}`,
+  downloadFile: '下载',
+  versionsTitle: '版本',
+  versionsHint: '每次写入这个文件都会留下一个版本，最上面的是它现在的内容。',
+  versionsHintEditor:
+    '每次写入这个文件都会留下一个版本，最上面的是它现在的内容；恢复别的版本，就是把它复制一份放到最上面。',
+  versionWritten: '写入时间',
+  versionBy: '写入者',
+  current: '当前',
+  downloadVersion: (when) => `下载 ${when} 的版本`,
+  restoreVersion: (when) => `恢复 ${when} 的版本`,
+  versionRestored: (when) => `已恢复 ${when} 的版本`,
+  versionConflict: '这期间有人写过这个文件。看一眼现在的版本，再恢复。',
+  versionGone: '这个版本，或者这个文件，已经不在了。',
+
   folderTitle: '新建文件夹',
   nameLabel: '名称',
   folderPlaceholder: '未命名文件夹',
@@ -81,7 +96,7 @@ export const zhHans: typeof en = {
   nameTaken: '这个文件夹里已经有同名的了。',
   parentGone: '要放进去的那个文件夹已经不在了。',
 
-  goneTitle: '没有这个文件夹',
-  goneDescription: '这个地址上没有文件夹，它可能已经被移到回收站。',
+  goneTitle: '这里什么都没有',
+  goneDescription: '这个地址上没有文件，也没有文件夹，它可能已经被移到回收站。',
   toFiles: '去这个空间的文件'
 };

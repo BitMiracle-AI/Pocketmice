@@ -83,6 +83,21 @@ export const en = {
     'Everything in the trash of this space is deleted for good, with every version of every file. Nothing brings it back.',
   showMore: 'Show more',
 
+  open: (name: string) => `Open ${name}`,
+  downloadFile: 'Download',
+  versionsTitle: 'Versions',
+  versionsHint: 'Every write to this file is kept. The one at the top is its content now.',
+  versionsHintEditor:
+    'Every write to this file is kept. The one at the top is its content now; restoring another puts a copy of it on top.',
+  versionWritten: 'Written',
+  versionBy: 'By',
+  current: 'Current',
+  downloadVersion: (when: string) => `Download the version of ${when}`,
+  restoreVersion: (when: string) => `Restore the version of ${when}`,
+  versionRestored: (when: string) => `Restored the version of ${when}`,
+  versionConflict: 'The file was written to in the meantime. Look at its versions again, then restore.',
+  versionGone: 'That version, or the file, is no longer here.',
+
   folderTitle: 'New folder',
   nameLabel: 'Name',
   folderPlaceholder: 'Untitled folder',
@@ -93,7 +108,7 @@ export const en = {
   nameTaken: 'That name is already used in this folder.',
   parentGone: 'The folder this was going into is no longer here.',
 
-  goneTitle: 'No such folder',
-  goneDescription: 'There is no folder at this address. It may have been moved to the trash.',
+  goneTitle: 'Nothing here',
+  goneDescription: 'There is no file or folder at this address. It may have been moved to the trash.',
   toFiles: 'Go to the files of this space'
 };

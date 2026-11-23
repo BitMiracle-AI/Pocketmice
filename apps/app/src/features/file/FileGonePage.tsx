@@ -8,8 +8,11 @@ import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { fileText } from './text';
 
-/** What an address shows that names a folder the space does not have: one that never was, or was put in the trash */
-export function FolderGonePage() {
+/**
+ * What an address shows that names a file or a folder the space does not have: one that never was, or was put in
+ * the trash
+ */
+export function FileGonePage() {
   const space = useCurrentSpace();
   return (
     <>

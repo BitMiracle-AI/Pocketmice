@@ -20,27 +20,47 @@ type Place = Pick<DriveFile, 'id' | 'name' | 'parentId'>;
 
 /**
  * The dialog a file or a folder is moved in: the person walks through the folders of the space, and moves it into
- * the one they are looking at. It starts in from, the folder the file is in now (null: directly in the space).
+ * the one they are looking at. It starts in the folder the file is in now.
  * It is open while there is a file to move; onClose is called when it was moved, and when the person gave up.
  */
-export function MoveDialog({
-  file,
-  from,
-  onClose
-}: {
-  file: DriveFile | null;
-  from: DriveFile | null;
-  onClose: () => void;
-}) {
+export function MoveDialog({ file, onClose }: { file: DriveFile | null; onClose: () => void }) {
   const shown = useLastGiven(file);
   return (
     <Dialog open={file !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>{shown && <MoveForm file={shown} from={from} onDone={onClose} />}</DialogContent>
+      <DialogContent>{shown && <MoveStart file={shown} onDone={onClose} />}</DialogContent>
     </Dialog>
   );
 }
 
-function MoveForm({ file, from, onDone }: { file: DriveFile; from: DriveFile | null; onDone: () => void }) {
+/**
+ * Finds the folder the file is in, which is where the walk starts, and then shows the form. On the page of that
+ * folder the cache has it and nothing is waited for; on the page of the file itself it is asked for first.
+ */
+function MoveStart({ file, onDone }: { file: DriveFile; onDone: () => void }) {
+  const space = useCurrentSpace();
+  const parent = useQuery({
+    ...readQuery(getFile, { spaceId: space.id, fileId: file.parentId ?? file.id }),
+    enabled: file.parentId !== null
+  });
+
+  if (file.parentId !== null && parent.isPending) {
+    return (
+      <>
+        <DialogHeader>
+          <DialogTitle className="break-words">{fileText.moveTitle(file.name)}</DialogTitle>
+        </DialogHeader>
+        <div className="flex h-72 items-center justify-center">
+          <Spinner />
+        </div>
+      </>
+    );
+  }
+  // A folder that could not be asked for is most likely gone, and the file with it: the walk starts at the top,
+  // and moving says what is the matter
+  return <MoveForm file={file} from={file.parentId !== null ? (parent.data?.file ?? null) : null} onDone={onDone} />;
+}
+
+function MoveForm({ file, from, onDone }: { file: DriveFile; from: Place | null; onDone: () => void }) {
   const space = useCurrentSpace();
   // The folder being looked into. Null is the space itself
   const [at, setAt] = useState<Place | null>(from);

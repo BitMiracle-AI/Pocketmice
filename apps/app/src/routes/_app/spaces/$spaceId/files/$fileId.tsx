@@ -1,18 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { FolderGonePage } from '@/features/file/FolderGonePage';
-import { FolderPage } from '@/features/file/FolderPage';
-import { loadFolder } from '@/features/file/loadFolder';
+import { FileGonePage } from '@/features/file/FileGonePage';
+import { FileOrFolderPage } from '@/features/file/FileOrFolderPage';
+import { loadFile } from '@/features/file/loadFile';
 import { PageError } from '@/features/shell/PageError';
 
-// A folder of the space: what is in it.
+// A folder of the space, or a file of it: what is in the folder, or what the file is and has been.
 export const Route = createFileRoute('/_app/spaces/$spaceId/files/$fileId')({
-  loader: ({ params }) => loadFolder(params.spaceId, params.fileId),
-  component: Folder,
-  notFoundComponent: FolderGonePage,
+  loader: ({ params }) => loadFile(params.spaceId, params.fileId),
+  component: FileOrFolder,
+  notFoundComponent: FileGonePage,
   errorComponent: PageError
 });
 
-function Folder() {
+function FileOrFolder() {
   const { fileId } = Route.useParams();
-  return <FolderPage folderId={fileId} />;
+  return <FileOrFolderPage fileId={fileId} />;
 }

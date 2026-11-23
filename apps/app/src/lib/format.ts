@@ -40,6 +40,21 @@ export function formatWhen(time: string, now: number = Date.now(), of: Language 
   return formatDate(time, of);
 }
 
+/**
+ * A moment, written out to the second: Nov 23, 2026, 2:05:09 PM. For where two times close together have to be
+ * told apart: an agent writes a file several times in a minute.
+ */
+export function formatMoment(time: string, of: Language = language): string {
+  return new Intl.DateTimeFormat(languageTag(of), {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit'
+  }).format(Date.parse(time));
+}
+
 /** A day, written out: Nov 23, 2026 */
 export function formatDate(time: string, of: Language = language): string {
   return new Intl.DateTimeFormat(languageTag(of), { year: 'numeric', month: 'short', day: 'numeric' }).format(

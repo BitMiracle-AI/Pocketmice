@@ -1,7 +1,7 @@
 // To run it, in apps/app: node --test src/lib/format.test.ts
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { formatDate, formatSize, formatWhen } from './format.ts';
+import { formatDate, formatMoment, formatSize, formatWhen } from './format.ts';
 
 test('a size is written in the largest unit it fills, in steps of 1024', () => {
   assert.equal(formatSize(0), '0 B');
@@ -31,6 +31,12 @@ test('a time within the week is said as how long ago it was', () => {
 test('older than a week, it is the date', () => {
   assert.equal(formatWhen('2026-11-01T09:00:00Z', NOW), formatDate('2026-11-01T09:00:00Z'));
   assert.match(formatDate('2026-11-01T12:00:00Z'), /^Nov 1, 2026$/);
+});
+
+test('a moment is the day and the time to the second, in the time of the place the page is read in', () => {
+  // What hour it is depends on where the test runs: the seconds and the shape of the rest do not
+  assert.match(formatMoment('2026-11-01T12:05:09Z'), /^(Oct 31|Nov [12]), 2026, \d{1,2}:(05|35|50):09\s?[AP]M$/);
+  assert.match(formatMoment('2026-11-01T12:05:09Z', 'zh-hans'), /^2026年1[01]月\d{1,2}日 \d{1,2}:(05|35|50):09$/);
 });
 
 test('each is written the way its language writes it', () => {

@@ -14,17 +14,17 @@ import { fileText } from './text';
 const UNDO_FOR_MS = 8000;
 
 /**
- * Puts a file or a folder in the trash, and says so with a way to undo it. One that turns out to be gone already
- * is gone, which is what was asked for.
+ * Puts a file or a folder in the trash, and says so with a way to undo it. Answers whether it is gone from where
+ * it was: one that turns out to be gone already is gone, which is what was asked for.
  */
-export async function moveToTrash(spaceId: string, file: Pick<DriveFile, 'id' | 'name'>): Promise<void> {
+export async function moveToTrash(spaceId: string, file: Pick<DriveFile, 'id' | 'name'>): Promise<boolean> {
   const result = await call(trashFile, { spaceId, fileId: file.id });
   if (!result.ok && result.code !== 'NOT_FOUND') {
     toast.add({ type: 'error', title: failureText(result.code, {}) });
-    return;
+    return false;
   }
   spaceChanged(spaceId);
-  if (!result.ok) return;
+  if (!result.ok) return true;
 
   const said = toast.add({
     title: fileText.trashed(file.name),
@@ -37,6 +37,7 @@ export async function moveToTrash(spaceId: string, file: Pick<DriveFile, 'id' | 
       }
     }
   });
+  return true;
 }
 
 /**

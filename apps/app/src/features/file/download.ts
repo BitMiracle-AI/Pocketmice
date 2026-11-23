@@ -9,11 +9,12 @@ const FRAME_KEPT_MS = 60_000;
 
 /**
  * Downloads a file: the browser fetches its content and saves it, as it saves any download. The bytes do not pass
- * through the page, so a file as large as a file may be costs the page no memory.
+ * through the page, so a file as large as a file may be costs the page no memory. With versionId it is the content
+ * of that version, and not the one the file has now.
  * The browser does not tell the page how a download went. So the api is asked about the file first: when it is
  * gone, or the person is signed out, the page says so and nothing is started.
  */
-export async function downloadFile(spaceId: string, file: Pick<DriveFile, 'id'>): Promise<void> {
+export async function downloadFile(spaceId: string, file: Pick<DriveFile, 'id'>, versionId?: string): Promise<void> {
   const asked = await call(getFile, { spaceId, fileId: file.id });
   if (!asked.ok) {
     toast.add({ type: 'error', title: failureText(asked.code, { NOT_FOUND: fileText.fileGone }) });
@@ -26,7 +27,7 @@ export async function downloadFile(spaceId: string, file: Pick<DriveFile, 'id'>)
   // asked whether it may be left while files are being uploaded
   const frame = document.createElement('iframe');
   frame.hidden = true;
-  frame.src = apiAddress(fileContentPath({ spaceId, fileId: file.id }));
+  frame.src = apiAddress(fileContentPath({ spaceId, fileId: file.id, versionId }));
   document.body.append(frame);
   setTimeout(() => frame.remove(), FRAME_KEPT_MS);
 }
