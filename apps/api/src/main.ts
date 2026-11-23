@@ -5,6 +5,7 @@ import manifest from '../package.json' with { type: 'json' };
 import { createApp } from './app.ts';
 import { identifyCaller } from './domains/apiKey/identifyCaller.ts';
 import { identifyBySession } from './domains/auth/auth.ts';
+import { findConversationAccess } from './domains/conversation/findConversationAccess.ts';
 import { fileContentTools } from './domains/file/fileContentTools.ts';
 import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
@@ -32,6 +33,7 @@ const app = createApp({
   // By the API key a request carries, or else by who is signed in
   identifyCaller: identifyCaller(db, identifyBySession(auth)),
   spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
+  conversationAccess: (spaceId, conversationId, userId) => findConversationAccess(db, spaceId, conversationId, userId),
   reportError: logInternalError
 });
 

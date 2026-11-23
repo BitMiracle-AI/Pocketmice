@@ -13,6 +13,7 @@ export const en = {
     UNAUTHENTICATED: 'You are signed out. Sign in and try again.',
     FORBIDDEN: 'You are not allowed to do that.',
     UNKNOWN_SPACE: 'That space does not exist, or you are no longer a member of it.',
+    UNKNOWN_CONVERSATION: 'That conversation does not exist, or you are no longer a member of it.',
     UNKNOWN_OPERATION: 'This page is out of step with the server. Reload the page and try again.',
     INTERNAL: 'The server ran into a problem. Try again in a moment.',
     UNREACHABLE: 'Could not reach the server. Check your connection and try again.',

@@ -27,6 +27,12 @@ export const UNIVERSAL_ERROR_STATUS = {
    * cannot find out whether a space exists.
    */
   UNKNOWN_SPACE: 404,
+  /**
+   * The operation belongs to a conversation, and the conversation the input names does not exist for the caller:
+   * the space has no such conversation, or the caller cannot read it. Both get the same answer, so someone who is
+   * not in a conversation cannot find out whether it exists.
+   */
+  UNKNOWN_CONVERSATION: 404,
   /** The server has no such operation */
   UNKNOWN_OPERATION: 404,
   /** The server itself failed. The reason goes to the server's log only, never to the caller */

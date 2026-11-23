@@ -229,6 +229,90 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   });
 });
 
+test('an operation of a conversation keeps the rules of one of a space, takes a conversationId and states who it is open to', () => {
+  // Right: the caller is known, the input says which conversation of which space, and who is let in is stated
+  operation({
+    name: 'getThreadThings',
+    description: 'An operation of the tests.',
+    kind: 'read',
+    access: 'authenticated',
+    belongsTo: 'conversation',
+    minRole: 'viewer',
+    openTo: 'reader',
+    input: z.object({ spaceId: id, conversationId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  operation({
+    name: 'getThreadThings',
+    description: 'An operation of the tests.',
+    kind: 'read',
+    // @ts-expect-error -- without knowing who is calling, nobody can be found to be in the conversation
+    access: 'public',
+    belongsTo: 'conversation',
+    minRole: 'viewer',
+    openTo: 'reader',
+    input: z.object({ spaceId: id, conversationId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  operation({
+    name: 'getThreadThings',
+    description: 'An operation of the tests.',
+    kind: 'read',
+    access: 'authenticated',
+    belongsTo: 'conversation',
+    minRole: 'viewer',
+    openTo: 'reader',
+    // @ts-expect-error -- the input does not say which conversation
+    input: z.object({ spaceId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  // @ts-expect-error -- it does not say who it is open to
+  operation({
+    name: 'getThreadThings',
+    description: 'An operation of the tests.',
+    kind: 'read',
+    access: 'authenticated',
+    belongsTo: 'conversation',
+    minRole: 'viewer',
+    input: z.object({ spaceId: id, conversationId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  // @ts-expect-error -- it does not say which members of the space may call it
+  operation({
+    name: 'getThreadThings',
+    description: 'An operation of the tests.',
+    kind: 'read',
+    access: 'authenticated',
+    belongsTo: 'conversation',
+    openTo: 'reader',
+    input: z.object({ spaceId: id, conversationId: id }),
+    output: z.object({}),
+    errors: []
+  });
+
+  operation({
+    name: 'getSpaceThings',
+    description: 'An operation of the tests.',
+    kind: 'read',
+    access: 'authenticated',
+    belongsTo: 'space',
+    minRole: 'viewer',
+    // @ts-expect-error -- there is no conversation to be let into
+    openTo: 'reader',
+    input: z.object({ spaceId: id }),
+    output: z.object({}),
+    errors: []
+  });
+});
+
 test('an operation that belongs to no space states no role: one that does fails the type check', () => {
   operation({
     name: 'getThings',

@@ -5,7 +5,14 @@ import { id } from '@pocketmice/contract/id';
 import { operation } from '@pocketmice/contract/operation';
 import { z } from 'zod';
 import { createApp } from '../app.ts';
-import { ApiError, type CurrentUser, implement, MAX_INPUT_BYTES, type Membership } from './operation.ts';
+import {
+  ApiError,
+  type ConversationAccess,
+  type CurrentUser,
+  implement,
+  MAX_INPUT_BYTES,
+  type Membership
+} from './operation.ts';
 
 const WEB_ORIGIN = 'http://localhost:11211';
 const ADA: CurrentUser = { id: 'u1', email: 'ada@example.com' };
@@ -15,9 +22,11 @@ const KEY = 'k1';
 // The ids the tests use. An id in an input is a lowercase uuid
 const S1 = '11111111-1111-4111-8111-111111111111';
 const N1 = '22222222-2222-4222-8222-222222222222';
+const C1 = '33333333-3333-4333-8333-333333333333';
 
 // The operations the tests call: a write of a space that takes an editor, a read that belongs to no space, one
-// anyone may call, and one kept for the person themselves
+// anyone may call, one kept for the person themselves, and two of a conversation: a read open to whoever can read
+// it, and a write open to its members
 const renameNote = operation({
   name: 'renameNote',
   description: 'An operation of the tests.',
@@ -63,6 +72,32 @@ const createToken = operation({
   errors: []
 });
 
+const getThread = operation({
+  name: 'getThread',
+  description: 'An operation of the tests.',
+  kind: 'read',
+  access: 'authenticated',
+  belongsTo: 'conversation',
+  minRole: 'viewer',
+  openTo: 'reader',
+  input: z.object({ spaceId: id, conversationId: id }),
+  output: z.object({ title: z.string() }),
+  errors: []
+});
+
+const createReply = operation({
+  name: 'createReply',
+  description: 'An operation of the tests.',
+  kind: 'write',
+  access: 'authenticated',
+  belongsTo: 'conversation',
+  minRole: 'viewer',
+  openTo: 'member',
+  input: z.object({ spaceId: id, conversationId: id, text: z.string() }),
+  output: z.object({}),
+  errors: []
+});
+
 interface Options {
   /** Who is calling. Left out, it is ADA; null is nobody */
   user?: CurrentUser | null;
@@ -72,6 +107,11 @@ interface Options {
   responseHeaders?: Headers;
   /** What the caller is in the space the input names. Left out, the owner; null means the space does not exist for them */
   membership?: Membership | null;
+  /**
+   * What the caller is to the conversation the input names. Left out, a member of it; null means the space has no
+   * such conversation
+   */
+  conversation?: ConversationAccess | null;
   /** What the implementation of renameNote does. Left out, it renames as the input says */
   rename?: Parameters<typeof implement<typeof renameNote>>[1];
 }
@@ -81,11 +121,19 @@ interface Options {
  * implementations were given is collected in calls, the lookups in identified and membershipLookups, and what the
  * server reported about itself in reported.
  */
-function setup({ user = ADA, apiKey, responseHeaders, membership = OWNER, rename }: Options = {}) {
+function setup({
+  user = ADA,
+  apiKey,
+  responseHeaders,
+  membership = OWNER,
+  conversation = { member: true },
+  rename
+}: Options = {}) {
   const calls: unknown[] = [];
   const reported: { error: unknown; where: string }[] = [];
   let identified = 0;
   const membershipLookups: unknown[] = [];
+  const conversationLookups: unknown[] = [];
 
   const app = createApp({
     auth: { handler: async () => new Response('from the sign-in library') },
@@ -106,6 +154,14 @@ function setup({ user = ADA, apiKey, responseHeaders, membership = OWNER, rename
       implement(createToken, async (context) => {
         calls.push(context);
         return { token: 'abc' };
+      }),
+      implement(getThread, async (context) => {
+        calls.push(context);
+        return { title: 'Launch' };
+      }),
+      implement(createReply, async (context) => {
+        calls.push(context);
+        return {};
       })
     ],
     identifyCaller: async () => {
@@ -115,6 +171,10 @@ function setup({ user = ADA, apiKey, responseHeaders, membership = OWNER, rename
     spaceMembership: async (spaceId, userId) => {
       membershipLookups.push({ spaceId, userId });
       return membership;
+    },
+    conversationAccess: async (spaceId, conversationId, userId) => {
+      conversationLookups.push({ spaceId, conversationId, userId });
+      return conversation;
     },
     reportError: (error, where) => reported.push({ error, where })
   });
@@ -133,7 +193,7 @@ function setup({ user = ADA, apiKey, responseHeaders, membership = OWNER, rename
     return app.request(`/api/${name}`, { method: 'POST', headers: merged, body: text });
   }
 
-  return { app, post, calls, reported, membershipLookups, identifiedTimes: () => identified };
+  return { app, post, calls, reported, membershipLookups, conversationLookups, identifiedTimes: () => identified };
 }
 
 /** A renameNote input that fits the definition */
@@ -295,6 +355,72 @@ test('a space that does not exist for the caller is UNKNOWN_SPACE; the implement
     code: 'UNKNOWN_SPACE',
     message: `There is no space ${S1}, or you are not a member of it.`
   });
+  assert.deepEqual(calls, []);
+});
+
+/** An input of the two operations of a conversation */
+const THREAD = { spaceId: S1, conversationId: C1 };
+
+test('an operation of a conversation runs for a member of it, and is given what an operation of a space is given', async () => {
+  const { post, calls, membershipLookups, conversationLookups } = setup({ membership: { role: 'viewer' } });
+
+  assert.equal((await post('getThread', THREAD)).status, 200);
+  assert.equal((await post('createReply', { ...THREAD, text: 'Done.' })).status, 200);
+
+  const given = { clientIp: null, user: ADA, apiKeyId: null, membership: { role: 'viewer' } };
+  assert.deepEqual(calls, [
+    { input: THREAD, ...given },
+    { input: { ...THREAD, text: 'Done.' }, ...given }
+  ]);
+  // The space is asked about first, then the conversation of that space, once each for every call
+  assert.deepEqual(membershipLookups, [
+    { spaceId: S1, userId: ADA.id },
+    { spaceId: S1, userId: ADA.id }
+  ]);
+  assert.deepEqual(conversationLookups, [
+    { spaceId: S1, conversationId: C1, userId: ADA.id },
+    { spaceId: S1, conversationId: C1, userId: ADA.id }
+  ]);
+});
+
+test('a conversation that does not exist for the caller is UNKNOWN_CONVERSATION, whether the space has none or the caller is not in it; the implementation does not run', async () => {
+  const expected = {
+    status: 404,
+    code: 'UNKNOWN_CONVERSATION',
+    message: `Space ${S1} has no conversation ${C1}, or you are not a member of it.`
+  };
+
+  for (const conversation of [null, { member: false }]) {
+    const { post, calls } = setup({ membership: { role: 'editor' }, conversation });
+
+    assert.deepEqual(await failure(await post('getThread', THREAD)), expected);
+    assert.deepEqual(await failure(await post('createReply', { ...THREAD, text: 'Done.' })), expected);
+    assert.deepEqual(calls, []);
+  }
+
+  // Not even the owner of the space is told of a conversation the space does not have
+  const owner = setup({ membership: OWNER, conversation: null });
+  assert.deepEqual(await failure(await owner.post('getThread', THREAD)), expected);
+});
+
+test('the owner of the space reads a conversation without being in it, and is FORBIDDEN what is open to its members', async () => {
+  const { post, calls } = setup({ membership: OWNER, conversation: { member: false } });
+
+  assert.equal((await post('getThread', THREAD)).status, 200);
+  assert.deepEqual(await failure(await post('createReply', { ...THREAD, text: 'Done.' })), {
+    status: 403,
+    code: 'FORBIDDEN',
+    message:
+      'This takes being a member of the conversation. As the owner of the space you can read it; to do this, add yourself to it first.'
+  });
+  assert.deepEqual(calls, [{ input: THREAD, clientIp: null, user: ADA, apiKeyId: null, membership: OWNER }]);
+});
+
+test('whoever is not in the space is not asked about its conversations: UNKNOWN_SPACE, and the conversation is not looked up', async () => {
+  const { post, calls, conversationLookups } = setup({ membership: null });
+
+  assert.equal((await failure(await post('getThread', THREAD))).code, 'UNKNOWN_SPACE');
+  assert.deepEqual(conversationLookups, []);
   assert.deepEqual(calls, []);
 });
 
@@ -524,6 +650,7 @@ test('the same operation implemented twice is an error when the app is built', (
         implementations: [twice, twice],
         identifyCaller: async () => ({ user: null }),
         spaceMembership: async () => null,
+        conversationAccess: async () => null,
         reportError: () => {}
       }),
     /Operation getSettings is implemented more than once/

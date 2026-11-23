@@ -9,6 +9,7 @@ export const zhHans: typeof en = {
     UNAUTHENTICATED: '登录已失效，请重新登录后再试。',
     FORBIDDEN: '你没有权限这样做。',
     UNKNOWN_SPACE: '这个空间不存在，或者你已经不是它的成员。',
+    UNKNOWN_CONVERSATION: '这个对话不存在，或者你已经不在其中。',
     UNKNOWN_OPERATION: '页面和服务器的版本对不上，请刷新页面后重试。',
     INTERNAL: '服务器出了问题，请稍后重试。',
     UNREACHABLE: '连不上服务器，请检查网络后重试。',

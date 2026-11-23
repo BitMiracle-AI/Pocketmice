@@ -1,6 +1,7 @@
 import { createApiClient, isServerUrl } from '@pocketmice/client/api';
 import * as apiKey from '@pocketmice/contract/domains/apiKey';
 import * as auth from '@pocketmice/contract/domains/auth';
+import * as conversation from '@pocketmice/contract/domains/conversation';
 import * as file from '@pocketmice/contract/domains/file';
 import * as invite from '@pocketmice/contract/domains/invite';
 import * as profile from '@pocketmice/contract/domains/profile';
@@ -29,7 +30,7 @@ import { errorOf } from './pocketmiceError.ts';
  * definitions that is added to the contract is added here; the test fails while an operation an API key may call
  * is missing.
  */
-const DEFINITIONS = { ...apiKey, ...auth, ...file, ...invite, ...profile, ...server, ...space };
+const DEFINITIONS = { ...apiKey, ...auth, ...conversation, ...file, ...invite, ...profile, ...server, ...space };
 
 type Definitions = typeof DEFINITIONS;
 

@@ -206,8 +206,8 @@ export const removeMember = operation({
 export const deleteSpace = operation({
   name: 'deleteSpace',
   description:
-    'Deletes a space for good: its files with every version of them, its members and its invites. Nothing ' +
-    'brings it back, so it is for the owner, signed in themselves.',
+    'Deletes a space for good: its files with every version of them, its conversations, its members and its ' +
+    'invites. Nothing brings it back, so it is for the owner, signed in themselves.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',

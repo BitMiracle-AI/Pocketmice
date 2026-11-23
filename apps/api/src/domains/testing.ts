@@ -21,6 +21,7 @@ import type { CurrentUser } from '../http/operation.ts';
 import type { FileStorage } from '../storage/fileStorage.ts';
 import { createFolderStorage } from '../storage/folderStorage.ts';
 import { identifyCaller } from './apiKey/identifyCaller.ts';
+import { findConversationAccess } from './conversation/findConversationAccess.ts';
 import { fileContentTools } from './file/fileContentTools.ts';
 import { domainImplementations } from './implementations.ts';
 import { prepareSignIn } from './prepareSignIn.ts';
@@ -114,6 +115,8 @@ export function useTestApi(): TestApi {
         return { user: user ?? null };
       }),
       spaceMembership: (spaceId, userId) => findMembership(connected, spaceId, userId),
+      conversationAccess: (spaceId, conversationId, userId) =>
+        findConversationAccess(connected, spaceId, conversationId, userId),
       reportError
     });
   });

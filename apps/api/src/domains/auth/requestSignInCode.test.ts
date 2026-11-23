@@ -50,6 +50,7 @@ function setup({ codes = true, send }: Options = {}) {
     // The operation is for anyone: nobody is asked who is calling
     identifyCaller: async () => ({ user: null }),
     spaceMembership: async () => null,
+    conversationAccess: async () => null,
     reportError: (error, where) => reported.push({ error, where })
   });
 

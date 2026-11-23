@@ -98,6 +98,7 @@ function setup({ prepare, authDb = db, mail = false }: Options = {}) {
     }),
     identifyCaller: identifyCaller(db, identifyBySession(auth)),
     spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
+    conversationAccess: async () => null,
     reportError
   });
   const ip = nextIp();

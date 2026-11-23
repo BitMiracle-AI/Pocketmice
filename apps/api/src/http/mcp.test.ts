@@ -148,6 +148,7 @@ function setup({ membership = { role: 'owner' }, rename, tools = [getTheme, brea
       return apiKey ? { user: ADA, apiKey } : { user: null };
     },
     spaceMembership: async () => membership,
+    conversationAccess: async () => null,
     reportError: (error, where) => reported.push({ error, where })
   });
 

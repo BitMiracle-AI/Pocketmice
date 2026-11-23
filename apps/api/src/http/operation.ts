@@ -1,7 +1,13 @@
 import { isIP } from 'node:net';
 import type { ApiKeyPermission } from '@pocketmice/contract/domains/apiKey';
 import { ERROR_STATUS, type ErrorBody, type ErrorCode, isUniversalErrorCode } from '@pocketmice/contract/errors';
-import { type CheckedInputOf, type Operation, type OutputOf, operationPath } from '@pocketmice/contract/operation';
+import {
+  type CheckedInputOf,
+  type OpenTo,
+  type Operation,
+  type OutputOf,
+  operationPath
+} from '@pocketmice/contract/operation';
 import { roleCovers, type SpaceRole } from '@pocketmice/contract/spaceRole';
 import type { Context, Hono } from 'hono';
 
@@ -49,10 +55,18 @@ export interface Membership {
   role: SpaceRole;
 }
 
+/** What the caller is to the conversation that conversationId in the input names */
+export interface ConversationAccess {
+  /** Whether they are a member of it */
+  member: boolean;
+}
+
 /**
  * What an implementation is given: the input, checked against the definition, and the IP the request came from.
- * For an operation that is not public, also the person calling. For an operation of a space, also what the caller
- * is in that space — getting it means the caller is a member, in a role the operation accepts.
+ * For an operation that is not public, also the person calling. For an operation of a space or of a conversation,
+ * also what the caller is in that space — getting it means the caller is a member, in a role the operation accepts.
+ * An operation of a conversation is given nothing more: that it runs means the conversation is in that space and
+ * is open to the caller.
  * apiKeyId is the API key the request came with, or null when the person signed in themselves. It is there to be
  * written down next to what was done (which key wrote this version of a file), and for nothing else: what the
  * caller may do was settled before the implementation ran, and an implementation never branches on it.
@@ -65,7 +79,7 @@ type HandlerContext<Op extends Operation> = {
    */
   clientIp: string | null;
 } & (Op['access'] extends 'public' ? unknown : { user: CurrentUser; apiKeyId: string | null }) &
-  (Op['belongsTo'] extends 'space' ? { membership: Membership } : unknown);
+  (Op['belongsTo'] extends 'space' | 'conversation' ? { membership: Membership } : unknown);
 
 /**
  * An operation together with its implementation. The exact types of the input and the output were matched up in
@@ -111,8 +125,8 @@ export function implement<Op extends Operation>(
   return {
     operation,
     // By the time this runs the input has been checked against the definition, an operation that is not public
-    // knows who is calling, and an operation of a space knows the caller is a member (see admit), so the assertion
-    // holds
+    // knows who is calling, and an operation of a space or of a conversation knows the caller is a member (see
+    // admit), so the assertion holds
     run: (input, { user, apiKeyId, membership, clientIp }) =>
       handler({
         input,
@@ -138,6 +152,11 @@ export interface AdmissionDeps {
    * they are not a member. Asked once for every call of an operation of a space.
    */
   spaceMembership: (spaceId: string, userId: string) => Promise<Membership | null>;
+  /**
+   * What this person is to this conversation of this space. Null when that space has no such conversation. Asked
+   * once for every call of an operation of a conversation, after the caller was found to be a member of the space.
+   */
+  conversationAccess: (spaceId: string, conversationId: string, userId: string) => Promise<ConversationAccess | null>;
   /** The web pages allowed to call the api. A request from any other web page is refused */
   webOrigins: string[];
   /**
@@ -254,10 +273,45 @@ export async function admitMember(
 }
 
 /**
+ * What follows the second half for what belongs to a conversation: the conversation is one of the space, and it is
+ * open to the caller. membership is what admitMember answered with for that space.
+ * Who can read a conversation is written here and nowhere else: its members, and the owner of the space.
+ */
+export async function admitToConversation(
+  c: Context,
+  spaceId: string,
+  conversationId: string,
+  openTo: OpenTo,
+  user: CurrentUser,
+  membership: Membership,
+  deps: AdmissionDeps
+): Promise<ConversationAccess | Response> {
+  const access = await deps.conversationAccess(spaceId, conversationId, user.id);
+  // No such conversation and one the caller cannot read get one answer: someone who is not in a conversation
+  // cannot find out whether it exists
+  if (!access || (!access.member && !roleCovers(membership.role, 'owner'))) {
+    return fail(
+      c,
+      'UNKNOWN_CONVERSATION',
+      `Space ${spaceId} has no conversation ${conversationId}, or you are not a member of it.`
+    );
+  }
+  // Left is the owner of the space, who reads the conversation without being in it
+  if (!access.member && openTo === 'member') {
+    return fail(
+      c,
+      'FORBIDDEN',
+      'This takes being a member of the conversation. As the owner of the space you can read it; to do this, add yourself to it first.'
+    );
+  }
+  return access;
+}
+
+/**
  * Whether a request to an operation is let in. Every request passes through here before the implementation runs,
  * and the first check it fails decides the response: how large the body is, which web page it comes from, who is
  * calling, what the API key it came with may do, whether the body fits the definition, whether the caller is a
- * member of the space, whether their role there is enough.
+ * member of the space, whether their role there is enough, whether the conversation is open to them.
  * A request that passes yields the checked input and who is calling. Whether the caller may call the operation at
  * all is settled here, for every operation alike: an implementation does not check it again.
  */
@@ -298,20 +352,30 @@ async function admit(
   if (!input.success) return fail(c, 'INVALID_INPUT', describeIssues(input.error.issues));
 
   let membership: Membership | null = null;
-  if (operation.belongsTo === 'space') {
-    // The types of a definition guarantee all three (see operation in the contract). Reaching one of these lines
-    // means someone wrote a definition around the types
-    if (!admitted.user) throw new Error(`Operation ${operation.name} belongs to a space, so it must not be public.`);
-    const spaceId = (input.data as { spaceId?: unknown } | null)?.spaceId;
+  if (operation.belongsTo !== 'none') {
+    // The types of a definition guarantee what is thrown for below (see operation in the contract). Reaching one of
+    // these lines means someone wrote a definition around the types
+    const { name, belongsTo, minRole, openTo } = operation;
+    if (!admitted.user) throw new Error(`Operation ${name} belongs to a ${belongsTo}, so it must not be public.`);
+    const { spaceId, conversationId } = input.data as { spaceId?: unknown; conversationId?: unknown };
     if (typeof spaceId !== 'string') {
-      throw new Error(`Operation ${operation.name} belongs to a space, so its input must have a spaceId.`);
+      throw new Error(`Operation ${name} belongs to a ${belongsTo}, so its input must have a spaceId.`);
     }
-    const { minRole } = operation;
-    if (!minRole) throw new Error(`Operation ${operation.name} belongs to a space, so it must state a minRole.`);
+    if (!minRole) throw new Error(`Operation ${name} belongs to a ${belongsTo}, so it must state a minRole.`);
 
     const member = await admitMember(c, spaceId, minRole, admitted.user, deps);
     if (member instanceof Response) return member;
     membership = member;
+
+    if (belongsTo === 'conversation') {
+      if (typeof conversationId !== 'string') {
+        throw new Error(`Operation ${name} belongs to a conversation, so its input must have a conversationId.`);
+      }
+      if (!openTo) throw new Error(`Operation ${name} belongs to a conversation, so it must state who it is open to.`);
+
+      const access = await admitToConversation(c, spaceId, conversationId, openTo, admitted.user, member, deps);
+      if (access instanceof Response) return access;
+    }
   }
 
   return { input: input.data, caller: { ...admitted, membership, clientIp: clientIpOf(c.req.raw.headers) } };

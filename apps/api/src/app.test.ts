@@ -26,6 +26,7 @@ function setup() {
     implementations: [],
     identifyCaller: async () => ({ user: null }),
     spaceMembership: async () => null,
+    conversationAccess: async () => null,
     reportError: () => {}
   });
   return { app, received };

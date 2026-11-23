@@ -6,6 +6,15 @@ import { deleteApiKey } from './apiKey/deleteApiKey.ts';
 import { getApiKeys } from './apiKey/getApiKeys.ts';
 import type { SignIn } from './auth/auth.ts';
 import { requestSignInCode } from './auth/requestSignInCode.ts';
+import { addConversationMember } from './conversation/addConversationMember.ts';
+import { createConversation } from './conversation/createConversation.ts';
+import { deleteConversation } from './conversation/deleteConversation.ts';
+import { getAllConversations } from './conversation/getAllConversations.ts';
+import { getConversation } from './conversation/getConversation.ts';
+import { getConversations } from './conversation/getConversations.ts';
+import { leaveConversation } from './conversation/leaveConversation.ts';
+import { removeConversationMember } from './conversation/removeConversationMember.ts';
+import { updateConversation } from './conversation/updateConversation.ts';
 import { createFolder } from './file/createFolder.ts';
 import { deleteFile } from './file/deleteFile.ts';
 import { emptyTrash } from './file/emptyTrash.ts';
@@ -96,6 +105,15 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     getFileVersions(deps),
     restoreFileVersion(deps),
     deleteFile(deps),
-    emptyTrash(deps)
+    emptyTrash(deps),
+    createConversation(deps),
+    getConversations(deps),
+    getAllConversations(deps),
+    getConversation(deps),
+    updateConversation(deps),
+    addConversationMember(deps),
+    leaveConversation(deps),
+    removeConversationMember(deps),
+    deleteConversation(deps)
   ];
 }

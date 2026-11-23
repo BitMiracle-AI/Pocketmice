@@ -25,7 +25,7 @@ const READ_NAME = /^get[A-Z]/;
 export interface Operation<
   Kind extends 'read' | 'write' = 'read' | 'write',
   Access extends 'public' | 'authenticated' | 'session' = 'public' | 'authenticated' | 'session',
-  BelongsTo extends 'space' | 'none' = 'space' | 'none',
+  BelongsTo extends 'space' | 'conversation' | 'none' = 'space' | 'conversation' | 'none',
   Input extends z.ZodObject = z.ZodObject,
   Output extends z.ZodObject = z.ZodObject,
   Code extends DeclaredErrorCode = DeclaredErrorCode
@@ -57,19 +57,34 @@ export interface Operation<
    */
   readonly access: Access;
   /**
-   * Whether the operation belongs to a space.
+   * What the operation belongs to.
    * space: it reads or writes what is in the space that spaceId in the input names. The caller must be a member of
    * that space, and the server checks so before the implementation runs, rather than trusting every implementation
    * to remember; not a member, or no such space, is UNKNOWN_SPACE.
+   * conversation: it reads or writes one conversation of a space: the one conversationId in the input names, in the
+   * space spaceId names. All that holds for an operation of a space holds for it. The caller must also be let into
+   * the conversation (see openTo), which the server checks next; no such conversation in that space, or one the
+   * caller cannot read, is UNKNOWN_CONVERSATION.
    * none: it is about the caller alone, or about nothing that is in a space, like "which spaces am I in".
    */
   readonly belongsTo: BelongsTo;
   /**
-   * For an operation of a space: the lowest role that may call it (see spaceRole.ts). The server checks it together
-   * with the membership; a member whose role is lower is answered FORBIDDEN.
-   * An operation that belongs to no space has none.
+   * For an operation of a space or of a conversation: the lowest role in the space that may call it (see
+   * spaceRole.ts). The server checks it together with the membership; a member whose role is lower is answered
+   * FORBIDDEN.
+   * An operation that belongs to neither has none.
    */
   readonly minRole?: SpaceRole;
+  /**
+   * For an operation of a conversation: who it is open to, among the members of the space whose role is enough.
+   * member: the members of the conversation.
+   * reader: whoever can read the conversation: its members, and the owner of the space, who reads every
+   * conversation in it without being a member of any.
+   * The owner of the space, calling what is open to members on a conversation they are not in, is answered
+   * FORBIDDEN and not UNKNOWN_CONVERSATION: they can read it, so it exists for them.
+   * An operation that belongs to no conversation has none.
+   */
+  readonly openTo?: OpenTo;
   readonly input: Input;
   readonly output: Output;
   /**
@@ -79,22 +94,36 @@ export interface Operation<
   readonly errors: readonly Code[];
 }
 
+/** Who an operation of a conversation is open to (see openTo in Operation) */
+export type OpenTo = 'member' | 'reader';
+
 /**
  * The rules an operation of a space keeps besides, written into the types: a definition that breaks one fails the
  * type check where it is written.
  * It is not public: without knowing who is calling, membership cannot be checked. Its input has a spaceId, which
  * says which space. It states the lowest role that may call it.
- * And an operation that belongs to no space states no role: there is no space to have one in.
+ * An operation of a conversation keeps the same three, and two more: its input also has a conversationId, and it
+ * states who it is open to.
+ * And an operation that belongs to neither states no role and nobody it is open to: there is no space to have a
+ * role in, and no conversation to be let into.
  */
-type SpaceRules<Access, BelongsTo> = BelongsTo extends 'space'
+type PlaceRules<Access, BelongsTo> = BelongsTo extends 'space'
   ? {
       // Not written as the two values that are right: with a wrong access, TypeScript would then judge the whole
       // definition an impossible type and report every field, hiding which one is wrong
       readonly access: Access extends 'public' ? OperationsOfASpaceAreNotPublic : unknown;
       readonly input: z.ZodType<{ spaceId: string }>;
       readonly minRole: SpaceRole;
+      readonly openTo?: never;
     }
-  : { readonly minRole?: never };
+  : BelongsTo extends 'conversation'
+    ? {
+        readonly access: Access extends 'public' ? OperationsOfASpaceAreNotPublic : unknown;
+        readonly input: z.ZodType<{ spaceId: string; conversationId: string }>;
+        readonly minRole: SpaceRole;
+        readonly openTo: OpenTo;
+      }
+    : { readonly minRole?: never; readonly openTo?: never };
 
 /** Exists only to put this sentence into the type checker's message. No value has this type */
 interface OperationsOfASpaceAreNotPublic {
@@ -119,12 +148,12 @@ interface OperationsOfASpaceAreNotPublic {
 export function operation<
   Kind extends 'read' | 'write',
   Access extends 'public' | 'authenticated' | 'session',
-  BelongsTo extends 'space' | 'none',
+  BelongsTo extends 'space' | 'conversation' | 'none',
   Input extends z.ZodObject,
   Output extends z.ZodObject,
   Code extends DeclaredErrorCode = never
 >(
-  definition: Operation<Kind, Access, BelongsTo, Input, Output, Code> & SpaceRules<Access, BelongsTo>
+  definition: Operation<Kind, Access, BelongsTo, Input, Output, Code> & PlaceRules<Access, BelongsTo>
 ): Operation<Kind, Access, BelongsTo, Input, Output, Code> {
   if (!NAME.test(definition.name)) {
     throw new Error(
