@@ -171,6 +171,21 @@ test('a download is always a file to save, under its name, and says which versio
   assert.equal(await response.text(), page);
 });
 
+test("a download keeps its name when the name has a ' or ( ) * in it", async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  const file = await upload(ada, { spaceId, name: "it's done (1) *.md" }, 'x');
+
+  const response = await get(ada, { spaceId, fileId: file.id });
+
+  // Each of the four written out. A browser that meets a ' as it is gives up on the name: Chrome saves the file as
+  // "content"
+  assert.equal(
+    response.headers.get('content-disposition'),
+    "attachment; filename*=UTF-8''it%27s%20done%20%281%29%20%2A.md"
+  );
+});
+
 // Regression: the app hands a HEAD to the function that answers a GET, and drops the body of what it returns. The
 // download fetched the bytes all the same, and the stream nobody read stayed open: with the folder storage, Node
 // ended the whole process when it came across the file left open
