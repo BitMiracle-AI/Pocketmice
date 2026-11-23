@@ -86,7 +86,7 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
     try {
       return await body();
     } catch (thrown) {
-      throw errorOf(failureOfThrown(thrown, name), name, thrown);
+      throw errorOf(failureOfThrown(thrown, name), name);
     }
   }
 
@@ -103,7 +103,7 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
       // which kind theirs is: a shared one is refused by fetch itself
       response = await send(url, { method: init.method, body: init.body as BodyInit | undefined });
     } catch (thrown) {
-      throw errorOf(failureOfThrown(thrown, name), name, thrown);
+      throw errorOf(failureOfThrown(thrown, name), name);
     }
     if (response.ok) return response;
 

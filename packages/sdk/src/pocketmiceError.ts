@@ -28,7 +28,10 @@ export class PocketmiceError extends Error {
   }
 }
 
-/** The error to throw for a failure the client arrived at. cause is what was thrown on this side, if anything was */
-export function errorOf(failure: Failure<DeclaredErrorCode>, operation: string, cause?: unknown): PocketmiceError {
-  return new PocketmiceError(failure.code, failure.message, operation, cause);
+/**
+ * The error to throw for a failure the client arrived at. What was thrown on this side, if anything was, is its
+ * cause.
+ */
+export function errorOf(failure: Failure<DeclaredErrorCode>, operation: string): PocketmiceError {
+  return new PocketmiceError(failure.code, failure.message, operation, failure.cause);
 }

@@ -186,6 +186,19 @@ test('a fetch that fails any other way, like one that stopped waiting, is UNEXPE
   }
 });
 
+test('an input JSON cannot express is UNEXPECTED, what JSON threw is the cause, and nothing is sent', async () => {
+  const { drive, sent } = setup(async () => json(200, {}));
+  const circular: Record<string, unknown> = { spaceId: SPACE, fileId: FILE };
+  circular.self = circular;
+
+  const error = await thrownBy(drive.getFile(circular as { spaceId: string; fileId: string }));
+
+  assert.equal(error.code, 'UNEXPECTED');
+  assert.equal(error.operation, 'getFile');
+  assert.ok(error.cause instanceof TypeError);
+  assert.equal(sent.length, 0);
+});
+
 test('two calls at once each keep their own cause', async () => {
   const first = new TypeError('the first');
   const second = new TypeError('the second');

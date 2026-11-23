@@ -102,30 +102,16 @@ function operationMethods(baseUrl: string, send: Send): OperationMethods {
   // of the client takes when the definition is not known until the program runs
   const exported: [string, unknown][] = Object.entries(DEFINITIONS);
 
+  // Nothing is recorded here when a call fails unexpectedly: what was thrown is the cause of the error the method
+  // throws, and what to do with it is up to the program
+  const call = createApiClient({ baseUrl, fetch: send, reportError: () => {} });
+
   for (const [name, operation] of exported) {
     if (!isOperation(operation) || operation.access === 'session') continue;
 
     methods[name] = async (input: Record<string, unknown> = {}) => {
-      // The client says that a call failed and in which way, not what was thrown on this side: that is kept here,
-      // to be the cause of the error. A client is built for each call so that each call keeps its own
-      let cause: unknown;
-      const call = createApiClient({
-        baseUrl,
-        fetch: async (url, init) => {
-          try {
-            return await send(url, init);
-          } catch (thrown) {
-            cause = thrown;
-            throw thrown;
-          }
-        },
-        reportError: (thrown) => {
-          cause = thrown;
-        }
-      });
-
       const result = await call(operation, input);
-      if (!result.ok) throw errorOf(result, name, cause);
+      if (!result.ok) throw errorOf(result, name);
       return result.data;
     };
   }

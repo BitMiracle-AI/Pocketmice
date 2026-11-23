@@ -121,25 +121,30 @@ test('a success whose body is not a JSON object is BAD_RESPONSE', async () => {
   }
 });
 
-test('fetch cannot connect, or the body breaks off: UNREACHABLE, and nothing is reported as a bug', async () => {
+test('fetch cannot connect, or the body breaks off: UNREACHABLE, with what was thrown, and nothing is reported as a bug', async () => {
+  // What the fetch of Node throws: why it failed is not in its message, it is in its cause
+  const failed = new TypeError('fetch failed', { cause: new Error('connect ECONNREFUSED 127.0.0.1:1') });
   const refused = setup(async () => {
-    throw new TypeError('fetch failed');
+    throw failed;
   });
   assert.deepEqual(await refused.call(getNote, { noteId: NOTE }), {
     ok: false,
     code: 'UNREACHABLE',
-    message: 'Could not reach the server: fetch failed'
+    message: 'Could not reach the server: fetch failed',
+    cause: failed
   });
   assert.deepEqual(refused.reported, []);
 
+  const brokeOff = new TypeError('terminated');
   const cutOff = setup(async () => ({
     status: 200,
     text: async () => {
-      throw new TypeError('terminated');
+      throw brokeOff;
     }
   }));
   const result = await cutOff.call(getNote, { noteId: NOTE });
   assert.equal(!result.ok && result.code, 'UNREACHABLE');
+  assert.equal(!result.ok && result.cause, brokeOff);
 });
 
 test('any other error while sending is a bug on this side: UNEXPECTED, and it is reported', async () => {
@@ -151,7 +156,8 @@ test('any other error while sending is a bug on this side: UNEXPECTED, and it is
   assert.deepEqual(await call(getNote, { noteId: NOTE }), {
     ok: false,
     code: 'UNEXPECTED',
-    message: 'Calling getNote failed before a response arrived.'
+    message: 'Calling getNote failed before a response arrived.',
+    cause: bug
   });
   assert.deepEqual(reported, [{ error: bug, name: 'getNote' }]);
 });
@@ -164,6 +170,8 @@ test('an input JSON cannot express is UNEXPECTED, not UNREACHABLE, and nothing i
   const result = await call(getNote, circular as unknown as { noteId: string });
 
   assert.equal(!result.ok && result.code, 'UNEXPECTED');
+  // What JSON threw
+  assert.equal(!result.ok && result.cause instanceof TypeError, true);
   assert.equal(sent.length, 0);
   assert.equal(reported.length, 1);
 });

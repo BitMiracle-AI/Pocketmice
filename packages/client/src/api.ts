@@ -20,6 +20,12 @@ export interface Failure<Code extends string = never> {
   code: Code | UniversalErrorCode | ClientErrorCode;
   /** English, for logs and developers. What to tell a person is up to the caller, decided by the code */
   message: string;
+  /**
+   * What was thrown on this side, when that is how the call failed: UNREACHABLE and UNEXPECTED have it, a failure
+   * the server answered with has none. It is for whoever looks into the failure: the fetch of Node says no more
+   * than "fetch failed", and why is in what it threw.
+   */
+  cause?: unknown;
 }
 
 /** The result of one call: the output if it worked, an error code if it did not */
@@ -37,7 +43,10 @@ export interface ApiClientConfig {
     url: string,
     init: { method: 'POST'; headers: Record<string, string>; body: string }
   ) => Promise<{ status: number; text: () => Promise<string> }>;
-  /** Called when this side fails unexpectedly, to record why. The caller of the client only gets UNEXPECTED */
+  /**
+   * Called when this side fails unexpectedly (UNEXPECTED), so that it is recorded in one place, whichever call it
+   * happened in. The result of that call has what was thrown too, as its cause.
+   */
   reportError: (error: unknown, name: string) => void;
 }
 
@@ -60,10 +69,6 @@ export function createApiClient(config: ApiClientConfig) {
   return async function call<Op extends Operation>(operation: Op, input: InputOf<Op>): Promise<Result<Op>> {
     const url = new URL(operationPath(operation), config.baseUrl).href;
     const name = operation.name;
-    const unexpected = (thrown: unknown): Failure => {
-      config.reportError(thrown, name);
-      return unexpectedFailure(name);
-    };
 
     // Writing the input as JSON is a step of its own, apart from sending the request: an input that JSON cannot
     // express (a circular reference, say) also throws a TypeError, and in one step with the request it would be
@@ -72,7 +77,8 @@ export function createApiClient(config: ApiClientConfig) {
     try {
       body = JSON.stringify(input);
     } catch (thrown) {
-      return unexpected(thrown);
+      config.reportError(thrown, name);
+      return unexpectedFailure(name, thrown);
     }
 
     let status: number;
@@ -127,10 +133,11 @@ export function isServerUrl(address: string): boolean {
  * being called, for the message.
  * fetch throws a TypeError when it cannot connect, or when the body breaks off half way: UNREACHABLE. Any other
  * error is not the network and must not be reported as one: it is a bug on this side, UNEXPECTED.
+ * Either way, what was thrown is the cause of the failure.
  */
 export function failureOfThrown(thrown: unknown, name: string): Failure {
-  if (!(thrown instanceof TypeError)) return unexpectedFailure(name);
-  return { ok: false, code: 'UNREACHABLE', message: `Could not reach the server: ${thrown.message}` };
+  if (!(thrown instanceof TypeError)) return unexpectedFailure(name, thrown);
+  return { ok: false, code: 'UNREACHABLE', message: `Could not reach the server: ${thrown.message}`, cause: thrown };
 }
 
 /**
@@ -166,8 +173,8 @@ export function failureOf<Code extends string>(
   };
 }
 
-function unexpectedFailure(name: string): Failure {
-  return { ok: false, code: 'UNEXPECTED', message: `Calling ${name} failed before a response arrived.` };
+function unexpectedFailure(name: string, thrown: unknown): Failure {
+  return { ok: false, code: 'UNEXPECTED', message: `Calling ${name} failed before a response arrived.`, cause: thrown };
 }
 
 function parseJson(text: string): unknown {
