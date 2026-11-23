@@ -97,6 +97,33 @@ test('an input field called id or ending in Id must be the shared id', () => {
   assert.throws(() => define(z.object({ parentId: id.optional() })), /takes "parentId" in its input/);
 });
 
+test('an operation takes the fields its input names and no other, however the input was written', () => {
+  const define = (input: z.ZodObject) =>
+    operation({
+      name: 'getThings',
+      description: 'An operation of the tests.',
+      kind: 'read',
+      access: 'public',
+      belongsTo: 'none',
+      input,
+      output: z.object({}),
+      errors: []
+    });
+  const getThings = define(z.object({ limit: z.number().default(10), cursor: z.string().optional() }));
+
+  // What fits is taken as it was before, with the defaults filled in
+  assert.deepEqual(getThings.input.parse({ cursor: 'abc' }), { limit: 10, cursor: 'abc' });
+
+  // A field under another name is not passed over: a caller that passes nextCursor back as it is called in the
+  // answer would be given the first page again, and never be told
+  const refused = getThings.input.safeParse({ nextCursor: 'abc' });
+  assert.equal(refused.success, false);
+  assert.match(refused.error?.issues[0]?.message ?? '', /nextCursor/);
+
+  // An input written to let every field through is held to the same
+  assert.equal(define(z.looseObject({})).input.safeParse({ anything: 1 }).success, false);
+});
+
 test('the address of an operation is /api/ followed by its name', () => {
   assert.equal(operationPath(named('getServerInfo')), '/api/getServerInfo');
 });

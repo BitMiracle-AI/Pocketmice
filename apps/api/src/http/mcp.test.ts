@@ -210,6 +210,8 @@ for (const era of ERAS) {
     assert.equal(write?.description, renameNote.description);
     assert.deepEqual(write?.inputSchema.required, ['spaceId', 'noteId', 'title']);
     assert.deepEqual(Object.keys(write?.inputSchema.properties ?? {}), ['spaceId', 'noteId', 'title', 'notify']);
+    // And no other field: the model is told before it calls
+    assert.equal(write?.inputSchema.additionalProperties, false);
     // No key destroys content, so no write is marked as one that destroys
     assert.deepEqual(write?.annotations, { readOnlyHint: false, destructiveHint: false });
 
@@ -290,6 +292,12 @@ for (const era of ERAS) {
     assert.equal(calls.length, 0);
     // The caller was looked up once, for the request the call came in, and no request was sent for the tool
     assert.equal(identified.length, before + 1);
+
+    // A field the tool does not have is refused the same way, and not dropped on the way to the operation
+    const misspelt = await callTool(client, 'renameNote', { ...RENAME, notfy: true });
+    assert.equal(misspelt.isError, true);
+    assert.match(misspelt.texts[0] ?? '', /notfy/);
+    assert.equal(calls.length, 0);
   });
 
   test(`${era}: a tool that is not an operation sends its own requests, as the caller`, async () => {

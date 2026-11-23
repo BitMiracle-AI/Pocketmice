@@ -71,6 +71,8 @@ export interface Tool {
 /**
  * Writes a tool that is not an operation. The type of what run is given comes from input: a run that does not
  * match it fails the type check.
+ * Its input is written with z.strictObject, so that a field it does not name is refused, as an operation refuses
+ * one (see operation in the contract), and not dropped.
  */
 export function tool<Input extends z.ZodObject>(definition: {
   name: string;

@@ -331,6 +331,9 @@ test('an input that does not fit the definition is INVALID_INPUT, naming the fie
     // A uuid, but in uppercase: an id has one spelling
     { ...RENAME, spaceId: 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA' },
     { ...RENAME, notify: 'yes' },
+    // A field the definition does not have, here notify misspelt. Passed over, the note would be renamed without
+    // the notice that was asked for, and the caller told that all went well
+    { ...RENAME, notfy: true },
     null,
     []
   ]) {
@@ -340,6 +343,9 @@ test('an input that does not fit the definition is INVALID_INPUT, naming the fie
     assert.equal(failed.code, 'INVALID_INPUT');
   }
   assert.match((await failure(await post('renameNote', { ...RENAME, title: '' }))).message, /^title: /);
+  assert.match((await failure(await post('renameNote', { ...RENAME, notfy: true }))).message, /"notfy"/);
+  // An operation that takes nothing is not sent anything
+  assert.equal((await failure(await post('getSettings', { theme: 'dark' }))).code, 'INVALID_INPUT');
   assert.deepEqual(calls, []);
   // An input that does not fit names no space to look anyone up in
   assert.deepEqual(membershipLookups, []);

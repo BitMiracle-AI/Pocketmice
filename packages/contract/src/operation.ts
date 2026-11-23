@@ -107,6 +107,14 @@ interface OperationsOfASpaceAreNotPublic {
  * - the name says read (it starts with get) and the kind says write, or the other way round;
  * - the description is empty;
  * - an input field called id, or ending in Id, is not the shared id, nor that id made nullable (see id.ts).
+ *
+ * The definition it gives back takes the fields its input names and no other, however the input was written: a
+ * call with a field the definition does not have is refused (INVALID_INPUT, naming the field), and is not answered
+ * as though the field had not been sent. A caller that writes desc for description would otherwise be given a
+ * folder with no description, and one that passes nextCursor back under that name, and not as cursor, the first
+ * page again for as long as it asks. Whoever writes JSON by hand, as an agent does, is told of the mistake.
+ * It is made so here, and not written in every definition, so that no definition can leave it out. The entrances
+ * that are not operations write it themselves (z.strictObject).
  */
 export function operation<
   Kind extends 'read' | 'write',
@@ -140,7 +148,8 @@ export function operation<
       );
     }
   }
-  return definition;
+  // The fields and their types stay what they were, which is all the type of an input says
+  return { ...definition, input: definition.input.strict() as Input };
 }
 
 /** Whether a field of an input is the shared id, or the shared id made nullable: an id, or null for "none" */

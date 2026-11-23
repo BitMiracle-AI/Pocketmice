@@ -78,7 +78,7 @@ const getFileContent = tool({
     'end to end are the text. Only text is read this way: content that is not UTF-8 is refused, and is downloaded ' +
     `from ${FILE_CONTENT_PATH}. NOT_FOUND: there is no such file, it is a folder, or it has no such version.`,
   kind: 'read',
-  input: z.object({ spaceId: id, fileId: id, versionId: id.nullable(), cursor: z.string().optional() }),
+  input: z.strictObject({ spaceId: id, fileId: id, versionId: id.nullable(), cursor: z.string().optional() }),
   run: async ({ spaceId, fileId, versionId, cursor }, send) => {
     let version = versionId;
     let from = 0;
@@ -149,7 +149,7 @@ const createFile = tool({
     `null. Answers with the file. Only text is written this way: anything else is uploaded to ${FILE_CONTENT_PATH}. ` +
     'NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.',
   kind: 'write',
-  input: z.object({ spaceId: id, parentId: id.nullable(), name: fileName, content: z.string() }),
+  input: z.strictObject({ spaceId: id, parentId: id.nullable(), name: fileName, content: z.string() }),
   run: ({ spaceId, parentId, name, content }, send) => upload(send, { spaceId, parentId, name }, content)
 });
 
@@ -162,7 +162,7 @@ const updateFileContent = tool({
     'Answers with the file. NOT_FOUND: there is no such file. CONFLICT: baseVersionId is not the current version ' +
     'of the file: somebody wrote to it since it was read, or it is a folder. Read it again, then decide.',
   kind: 'write',
-  input: z.object({ spaceId: id, fileId: id, baseVersionId: id, content: z.string() }),
+  input: z.strictObject({ spaceId: id, fileId: id, baseVersionId: id, content: z.string() }),
   run: ({ spaceId, fileId, baseVersionId, content }, send) => upload(send, { spaceId, fileId, baseVersionId }, content)
 });
 

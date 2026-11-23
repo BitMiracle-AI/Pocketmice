@@ -122,6 +122,26 @@ test('the tools of the api are the operations done as the person a key belongs t
   assert.ok(forAnyone.includes('requestSignInCode') && forThePerson.includes('createApiKey'));
 });
 
+test('every tool takes the fields it names and no other: a cursor passed back under another name is refused, not read as none', async () => {
+  const { spaceId, client } = await setup();
+
+  // The three that are not operations write it themselves, and a fourth that did not would show here
+  for (const { name, inputSchema } of (await client.listTools()).tools) {
+    assert.equal(inputSchema.additionalProperties, false, `${name} should say that it takes no other field`);
+  }
+
+  const file = await written(client, 'createFile', { spaceId, parentId: null, name: 'notes.md', content: 'A note.' });
+  // Passed over, this would read the content from its start again, for as long as the agent went on asking
+  const called = await callTool(client, 'getFileContent', {
+    spaceId,
+    fileId: file.id,
+    versionId: null,
+    nextCursor: 'abc'
+  });
+  assert.equal(called.isError, true);
+  assert.match(called.texts[0] ?? '', /nextCursor/);
+});
+
 test('an agent finds its way with the tools of the operations: the space, a folder, the file in it', async () => {
   const { ada, spaceId, client } = await setup();
   const folder = await api.as(ada)(createFolder, { spaceId, parentId: null, name: 'Reports' });
