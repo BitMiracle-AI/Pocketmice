@@ -30,8 +30,11 @@ import { answer, failure, refusal, type Send, type Tool, type ToolResult, tool }
  */
 export const MAX_TEXT_READ_BYTES = 32 * 1024;
 
-/** The cursor of a read: the version being read and the byte to read on from, as nextCursorOf writes them */
-const CURSOR = /^([0-9a-f-]{36}):(\d+)$/;
+/**
+ * The cursor of a read: the version being read and the byte to read on from, as nextCursorOf writes them. The byte
+ * is a number that can be written out in digits: one too long for that is no place in any file.
+ */
+const CURSOR = /^([0-9a-f-]{36}):(\d{1,15})$/;
 
 function nextCursorOf(versionId: string, from: number): string {
   return `${versionId}:${from}`;
@@ -107,13 +110,16 @@ const getFileContent = tool({
     }
     if (!response.ok) return refusal(response);
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
     // The etag of a download is the id of the version that was sent, in quotes
     const versionRead = response.headers.get('etag')?.replaceAll('"', '');
-    const size = Number(response.headers.get('content-range')?.split('/')[1] ?? bytes.length);
-    if (!versionRead || !Number.isInteger(size)) {
-      throw new Error(`The content address answered ${response.status} without saying which version, or how large.`);
+    const size = Number(response.headers.get('content-range')?.split('/')[1]);
+    // Only a piece is taken. The content address may answer a range with all of the content, which is up to a
+    // gigabyte: an answer that is not a piece (206, saying which version and of how many bytes) is not read
+    if (response.status !== 206 || !versionRead || !Number.isInteger(size)) {
+      await response.body?.cancel();
+      throw new Error(`The content address answered a range with ${response.status}, and not with a piece.`);
     }
+    const bytes = new Uint8Array(await response.arrayBuffer());
 
     const last = from + bytes.length >= size;
     const whole = last ? bytes.length : wholeCharacters(bytes);
@@ -122,7 +128,6 @@ const getFileContent = tool({
       // fatal: bytes that are not UTF-8 throw, and are not turned into replacement characters without a word.
       // ignoreBOM: a byte order mark is kept, as the character it is: what is read is what is there
       text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes.subarray(0, whole));
-      if (!last && whole === 0) throw new Error('No whole character in a piece: it is not text.');
     } catch {
       return failure(
         `This content is not text: it is ${size} bytes that are not UTF-8, which cannot be read here. Download it: ` +

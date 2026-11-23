@@ -8,7 +8,7 @@ import { isOperation } from '@pocketmice/contract/operation';
 import { callTool, connectMcp } from '../../http/mcpClient.testing.ts';
 import type { CurrentUser } from '../../http/operation.ts';
 import { useTestApi } from '../testing.ts';
-import { MAX_TEXT_READ_BYTES, wholeCharacters } from './fileContentTools.ts';
+import { fileContentTools, MAX_TEXT_READ_BYTES, wholeCharacters } from './fileContentTools.ts';
 
 // The MCP entrance on the whole api: its list of tools, and the three tools for the content of files. How the
 // entrance treats a tool, whatever the tool is, is tested in http/mcp.test.ts.
@@ -29,6 +29,9 @@ interface About {
   size: number;
   nextCursor: string | null;
 }
+
+/** An id that is well written and names nothing */
+const SOME_ID = '00000000-0000-4000-8000-000000000000';
 
 /** Makes a space as this person and returns its id */
 async function makeSpace(owner: CurrentUser) {
@@ -171,7 +174,7 @@ test('createFile is refused as an upload is: a name that is taken, a folder that
 
   const nowhere = await callTool(client, 'createFile', {
     spaceId,
-    parentId: '00000000-0000-4000-8000-000000000000',
+    parentId: SOME_ID,
     name: 'other.txt',
     content: 'two'
   });
@@ -323,18 +326,66 @@ test('getFileContent is refused as a download is: a folder, a file or a version 
   const folder = await api.as(ada)(createFolder, { spaceId, parentId: null, name: 'Reports' });
   assert.ok(folder.ok);
   const file = await written(client, 'createFile', { spaceId, parentId: null, name: 'notes.txt', content: 'one' });
-  const nothing = '00000000-0000-4000-8000-000000000000';
 
   for (const [input, code] of [
     [{ fileId: folder.data.file.id, versionId: null }, 'NOT_FOUND'],
-    [{ fileId: nothing, versionId: null }, 'NOT_FOUND'],
-    [{ fileId: file.id, versionId: nothing }, 'NOT_FOUND'],
-    [{ fileId: file.id, versionId: null, cursor: 'page-2' }, 'INVALID_INPUT']
+    [{ fileId: SOME_ID, versionId: null }, 'NOT_FOUND'],
+    [{ fileId: file.id, versionId: SOME_ID }, 'NOT_FOUND'],
+    [{ fileId: file.id, versionId: null, cursor: 'page-2' }, 'INVALID_INPUT'],
+    // A place no answer gave: a number too long to be a byte of any file
+    [{ fileId: file.id, versionId: null, cursor: `${file.version.id}:${'9'.repeat(25)}` }, 'INVALID_INPUT']
   ] as const) {
     const called = await callTool(client, 'getFileContent', { spaceId, ...input });
     assert.equal(called.isError, true, JSON.stringify(input));
     assert.match(called.texts[0] ?? '', new RegExp(`^${code}: `), JSON.stringify(input));
   }
+});
+
+test('a cursor at the end of the content, or past it, reads nothing more', async () => {
+  const { spaceId, client } = await setup();
+  const file = await written(client, 'createFile', { spaceId, parentId: null, name: 'notes.txt', content: 'one' });
+
+  for (const from of [3, 4, MAX_TEXT_READ_BYTES * 1000]) {
+    const called = await callTool(client, 'getFileContent', {
+      spaceId,
+      fileId: file.id,
+      versionId: null,
+      cursor: `${file.version.id}:${from}`
+    });
+    assert.deepEqual(
+      called.texts.map((text) => JSON.parse(text)),
+      [{ versionId: file.version.id, size: 3, nextCursor: null }],
+      `from byte ${from}`
+    );
+  }
+});
+
+test('getFileContent takes a piece of the content and nothing else: an answer that is all of it is not read', async () => {
+  const getFileContent = fileContentTools.find(({ name }) => name === 'getFileContent');
+  assert.ok(getFileContent);
+  const input = { spaceId: SOME_ID, fileId: SOME_ID, versionId: null };
+  let read = 0;
+  let cancelled = false;
+  // The content address may answer a range with the whole content (status 200), which is up to 1 GB. Here it is
+  // 64 KB, in 64 chunks
+  const whole = new ReadableStream<Uint8Array>({
+    pull: (controller) => {
+      if (++read > 64) controller.close();
+      else controller.enqueue(new Uint8Array(1024));
+    },
+    cancel: () => {
+      cancelled = true;
+    }
+  });
+
+  await assert.rejects(
+    getFileContent.run(input, async () => new Response(whole, { status: 200, headers: { etag: `"${SOME_ID}"` } })),
+    /answered a range with 200/
+  );
+
+  assert.equal(cancelled, true);
+  // What a stream reads ahead by itself, and no more
+  assert.ok(read <= 2, `${read} chunks were read`);
 });
 
 test('a read-only key reads content with the tools and writes none; a space its person is not in does not exist for it', async () => {
