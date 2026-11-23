@@ -22,7 +22,8 @@ Five facts decide how everything below works:
   the trash it does not exist for any other call.
 - **Some things only the person does.** No API key makes or deletes API keys, invites or removes members, changes a
   role, joins, leaves or deletes a space, deletes a file for good, or empties the trash. Those take the person,
-  signed in themselves. When a task needs one of them, say so and stop: there is no way around it.
+  signed in themselves. When a task needs one of them, do the part a key can do, tell the user which part is left
+  for them, and do not look for a way around it.
 
 ## Connecting
 
@@ -67,6 +68,9 @@ pm getSpaces '{}'
 
 `role` is what the person is there: a `viewer` reads, an `editor` also changes what is in the space, the `owner`
 also decides who gets in. A read-only key reads, whatever the role.
+
+Nothing says beforehand which kind your key is: a read-only key finds out at its first write, with `FORBIDDEN`. What
+a key may do is settled when the person makes it, so the remedy is a new, read-write key from them.
 
 With one space, use it. With several, use the one the user named. If they named none, ask: do not guess, and do not
 make a space unless asked to.
@@ -114,9 +118,9 @@ pm getFiles '{"spaceId":"<space>","parentId":"<folder id>"}'   # in a folder
 # {"files":[ …files as above… ],"nextCursor":null}
 ```
 
-`parentId` must be there: write `null` for the top of the space. A list comes a page at a time, 100 files unless
-`"limit"` says otherwise (1000 at most). When `nextCursor` is not `null` there are more: call again with
-`"cursor":"<nextCursor>"`.
+`parentId` must be there: write `null` for the top of the space. The files come in the order of their names,
+folders and files together. A list comes a page at a time, 100 files unless `"limit"` says otherwise (1000 at most).
+When `nextCursor` is not `null` there are more: call again with `"cursor":"<nextCursor>"`.
 
 There is no search, and no call that lists a whole tree: to find a file whose place you do not know, go through
 the folders one by one.
@@ -134,8 +138,9 @@ curl -sS -D - -o summary.md \
 `-D -` prints the status and the headers while `-o` saves the content. Look at both:
 
 - The status must be `200`. On a failure, what was saved to your file is the error body, not the file.
-- `etag` is the id of the version you were sent, in quotes. Keep it without the quotes: it is the `baseVersionId`
-  you need to write over this file.
+- `etag` is the id of the version you were sent, in quotes. Without the quotes it is the `baseVersionId` you need
+  to write over this file. When a script cuts it out of the headers, drop the quotes and the carriage return every
+  header line ends with (`tr -d '\r"'`): left in, they fail the next request with an error that does not say why.
 
 Add `&versionId=<version>` for an older version. For the first bytes of a large file add `-r 0-999` (the status is
 then `206`). `curl -sS -I` with the same address answers with the size (`content-length`) and the version (`etag`)
@@ -158,7 +163,9 @@ The answer is the new file, as `getFile` answers.
   takes curl 7.87 or later. With an older curl, percent-encode the name yourself and put the query in the address:
   `…/api/content?spaceId=<space>&name=Q3%20notes.md`.
 - The content must come from a file. `-T -` (from standard input) is refused, because it sends no length. For text
-  you have in hand, write it to a temporary file first, or use `-X PUT --data-binary @-` in place of `-T`.
+  you have in hand, write it to a temporary file first, or use `-X PUT --data-binary @-` in place of `-T`. The same
+  goes for writing over a file.
+- An upload takes no description. To give the new file one, follow with `updateFile`.
 - `CONFLICT` means the name is taken in that folder: the file exists already. Write over it (below) or pick
   another name; in one folder a name is used once, and `Notes.md` and `notes.md` are two names.
 - `NOT_FOUND` means there is no folder `parentId`. Folders are not made for you: see
@@ -192,8 +199,9 @@ People say "save it as `/Reports/2026/summary.md`". Calls take ids, so:
    - `NOT_FOUND`: go on.
 2. `pm getFileByPath` with the path of the folder, `/Reports/2026`. Its `id` is the `parentId` for the upload. (For
    a path with one name, like `/notes.txt`, there is no folder: leave `parentId` out.)
-3. If the folder is `NOT_FOUND` too, make what is missing from the top down, one folder a call. Each answer has the
-   `id` to use as the next `parentId`:
+3. If the folder is `NOT_FOUND` too, find out how much of the path exists: the answer does not say. Ask for the
+   folder above it, `/Reports`, and so on upwards, until one answers or none is left. Then make what is missing
+   from there down, one folder a call. Each answer has the `id` to use as the next `parentId`:
 
    ```sh
    pm createFolder '{"spaceId":"<space>","parentId":null,"name":"Reports"}'
@@ -246,7 +254,9 @@ Trashing a folder takes everything in it along; what is inside is not listed in 
 folder. A trashed file is `NOT_FOUND` for every other call, and its name is free in the meantime, so `restoreFile`
 answers `CONFLICT` when the name has been taken, or when the folder it was in is itself in the trash now.
 
-Trash a file only when the user asked for it to go. Deleting for good is not something a key does.
+Trash a file only when the user asked for it to go. When they ask for it to be deleted for good, trash it and tell
+them the rest is theirs: deleting for good is done by the owner of the space, signed in themselves, on what is
+already in the trash.
 
 ## Errors
 
