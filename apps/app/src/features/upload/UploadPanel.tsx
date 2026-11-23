@@ -18,8 +18,8 @@ function failureSentence(failure: UploadFailure): string {
     TOO_LARGE: tooLarge,
     NOT_FOUND: uploadText.folderGone,
     CONFLICT: uploadText.changedMeanwhile,
-    SPACE_STORAGE_LIMIT_EXCEEDED: uploadText.spaceFull,
-    MEMBER_STORAGE_LIMIT_EXCEEDED: uploadText.memberFull
+    SPACE_STORAGE_LIMIT_EXCEEDED: uploadText.spaceNoRoom,
+    MEMBER_STORAGE_LIMIT_EXCEEDED: uploadText.memberNoRoom
   });
 }
 

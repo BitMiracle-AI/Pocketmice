@@ -40,8 +40,8 @@ export async function restoreVersion(spaceId: string, file: DriveFile, version: 
           title: failureText(result.code, {
             CONFLICT: fileText.versionConflict,
             NOT_FOUND: fileText.versionGone,
-            SPACE_STORAGE_LIMIT_EXCEEDED: fileText.versionSpaceFull,
-            MEMBER_STORAGE_LIMIT_EXCEEDED: fileText.versionMemberFull
+            SPACE_STORAGE_LIMIT_EXCEEDED: fileText.versionSpaceNoRoom,
+            MEMBER_STORAGE_LIMIT_EXCEEDED: fileText.versionMemberNoRoom
           })
         }
   );
