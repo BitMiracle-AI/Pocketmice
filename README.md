@@ -154,7 +154,9 @@ pass a limit is refused before its bytes are taken, with `SPACE_STORAGE_LIMIT_EX
 `MEMBER_STORAGE_LIMIT_EXCEEDED`; `getSpaceSize` and `getMembers` say how much is held. Only the owner sets a
 limit, signed in themselves, and only the owner makes room, by deleting for good: no API key does either. A space
 that was given no limit has none. A limit is not exact: uploads that are under way at the same time do not count
-each other, and together can go past it by as much as they add.
+each other, and together can go past it by as much as they add. And a limit holds one space, not the server:
+whoever can sign in makes spaces of their own, which have no limit, so limits do not say how much the server
+holds in all.
 
 A reverse proxy goes in front of the API, which by itself listens on its own machine only. The API counts on the
 proxy for four things:
