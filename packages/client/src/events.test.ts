@@ -104,6 +104,28 @@ test('a channel on which nothing arrives is taken for broken: UNREACHABLE, and a
   assert.deepEqual(read, [{ type: 'open' }]);
 });
 
+test('how long the caller takes over an event is not silence: what was written meanwhile is handed out after it', async () => {
+  const { config, write, end } = channel();
+  const read: SpaceEvent[] = [];
+
+  const reading = (async () => {
+    for await (const event of readEvents({ ...config, silenceMs: 60 }, { spaceId: SPACE })) {
+      read.push(event);
+      // An agent that thinks about what it heard, for longer than the silence allowed
+      if (event.type === 'open') await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  })();
+  write('data: {"type":"open"}\n\n');
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  write(`data: {"type":"message","conversationId":"${CONVERSATION}","number":4}\n\n`);
+  // The server ends the channel once the caller is reading again
+  await new Promise((resolve) => setTimeout(resolve, 220));
+  end();
+
+  await reading;
+  assert.deepEqual(read, [{ type: 'open' }, { type: 'message', conversationId: CONVERSATION, number: 4 }]);
+});
+
 test('a server that cannot be reached is UNREACHABLE, and what fetch threw is the cause', async () => {
   const thrown = new TypeError('fetch failed');
   const config: EventsConfig = {

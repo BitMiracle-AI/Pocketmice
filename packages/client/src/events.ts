@@ -67,33 +67,35 @@ export async function* readEvents(
   signal?.addEventListener('abort', stop);
   if (signal?.aborted) stop();
 
-  // Silence is counted from when the request is sent, so a server that takes the connection and answers nothing is
-  // given up on as well. By bytes and not by events: a ping is enough
+  // Silence is counted while this side waits for the server: for the answer to begin, and then for each piece of
+  // it, so a server that takes the connection and answers nothing is given up on as well. By bytes and not by
+  // events: a ping is enough. It is not counted while the caller has an event in hand: how long a caller takes
+  // over one says nothing about the channel, and what the server writes meanwhile is read when the caller is back
   let silent = false;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const heard = () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
+  const fromServer = async <T>(arriving: Promise<T>): Promise<T> => {
+    const timer = setTimeout(() => {
       silent = true;
       request.abort();
     }, silenceMs);
+    try {
+      return await arriving;
+    } finally {
+      clearTimeout(timer);
+    }
   };
 
   try {
-    heard();
-    const response = await send(url, { method: 'GET', signal: request.signal });
-    heard();
+    const response = await fromServer(send(url, { method: 'GET', signal: request.signal }));
     if (response.status !== 200 || !response.body) {
-      throw new ChannelFailure(failureOf(NAME, response.status, await response.text(), []));
+      throw new ChannelFailure(failureOf(NAME, response.status, await fromServer(response.text()), []));
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let text = '';
     for (;;) {
-      const { done, value } = await reader.read();
+      const { done, value } = await fromServer(reader.read());
       if (done) return;
-      heard();
       text += decoder.decode(value, { stream: true });
       // An event is one line, `data: <JSON>`, and an empty line after it. A piece that arrives may hold several
       // events, or the beginning of one
@@ -118,7 +120,6 @@ export async function* readEvents(
     }
     throw new ChannelFailure(failureOfThrown(thrown, NAME));
   } finally {
-    clearTimeout(timer);
     signal?.removeEventListener('abort', stop);
     // Whichever way the reading ended, the request is not left open
     request.abort();

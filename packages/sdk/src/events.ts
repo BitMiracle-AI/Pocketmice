@@ -17,6 +17,8 @@ export interface EventMethods {
    * It is one request, like every method. The server ends a channel after a few minutes, and the loop then ends
    * without an error: call it again to go on, and do on its open what you do on any event. Leaving the loop, or
    * signal, gives the channel up.
+   * Take as long as you need over an event: what happens meanwhile is handed out when you are back, or, when the
+   * channel has ended by then, is read on the open of the next.
    * UNKNOWN_SPACE: the person is not a member of the space. UNREACHABLE: the server could not be reached, or the
    * channel broke off or went silent; call it again after a moment.
    */
