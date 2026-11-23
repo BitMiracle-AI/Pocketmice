@@ -135,8 +135,10 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
       // The etag of a download is the id of the version that was sent, in the quotes an etag is written in
       const versionId = /^"(.+)"$/.exec(response.headers.get('etag') ?? '')?.[1];
       if (versionId === undefined) {
-        // The bytes are not wanted any more: left unread, they would keep the connection busy
-        void response.body?.cancel();
+        // The bytes are not wanted any more: left unread, they would keep the connection busy. Letting go of them
+        // fails when the connection has already broken, which nobody waits to hear: a failure nobody handles would
+        // end the program
+        response.body?.cancel().catch(() => {});
         throw new PocketmiceError(
           'BAD_RESPONSE',
           'The server answered downloadFile without saying which version it sent.',

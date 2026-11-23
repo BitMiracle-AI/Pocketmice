@@ -380,6 +380,32 @@ test('an answer from the content that is not what was agreed is BAD_RESPONSE', a
   assert.match(noVersion.message, /without saying which version/);
 });
 
+test('a download without a version whose connection has broken too is still only a BAD_RESPONSE', async () => {
+  // Letting go of bytes that are not wanted fails when the connection already broke. Nobody is waiting for that:
+  // left unhandled, it would end the whole program
+  const { drive } = setup(
+    async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.error(new TypeError('terminated'));
+          }
+        })
+      )
+  );
+  const unhandled: unknown[] = [];
+  const note = (reason: unknown) => unhandled.push(reason);
+  process.on('unhandledRejection', note);
+
+  const error = await thrownBy(drive.downloadFile({ spaceId: SPACE, fileId: FILE }));
+  // Long enough for a rejection nobody handles to be reported
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  process.off('unhandledRejection', note);
+
+  assert.equal(error.code, 'BAD_RESPONSE');
+  assert.deepEqual(unhandled, []);
+});
+
 test('a download that breaks off while it is read is UNREACHABLE', async () => {
   const brokeOff = new TypeError('terminated');
   const { drive } = setup(async () =>
