@@ -70,6 +70,22 @@ test('making sure of the profile again leaves it as it is, also when two sign-in
   ]);
 });
 
+test('someone who gave no name at sign-up goes by the part of their address before the @, cut to the length a name may have', async () => {
+  const names = [];
+  for (const email of ['grace.hopper@example.com', `${'a'.repeat(64)}@example.com`]) {
+    // What signing up with a code leaves behind: a user row with an empty name
+    const [user] = await api.db.insert(users).values({ name: '', email }).returning({ id: users.id });
+    assert.ok(user);
+
+    await ensureProfile(api.db, user.id);
+
+    const [profile] = await api.db.select({ name: profiles.name }).from(profiles).where(eq(profiles.id, user.id));
+    names.push(profile?.name);
+  }
+
+  assert.deepEqual(names, ['grace.hopper', 'a'.repeat(50)]);
+});
+
 test('the profile goes when the user is deleted', async () => {
   const ada = await api.addPerson('Ada');
 

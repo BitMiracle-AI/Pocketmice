@@ -100,3 +100,51 @@ export function storageFromEnv(): StorageConfig {
     forcePathStyle: pathStyle === 'true'
   };
 }
+
+/**
+ * How mail is sent: through an SMTP server, as whom; or not sent at all and printed in the output of the api, for
+ * development
+ */
+export type MailConfig = { kind: 'smtp'; smtpUrl: string; from: string } | { kind: 'console' };
+
+/**
+ * Reads how mail is sent, when it is. SMTP_URL and MAIL_FROM go together: with both the server sends mail, with
+ * neither it sends none, and one without the other is an error. MAIL_TO_CONSOLE=true is the third way, for
+ * development: mail is printed and not sent, and it does not go with the other two.
+ * Whether a server has a way with mail settles how people sign in to it (see createAuth in domains/auth/auth.ts).
+ * An address that is wrong is not repeated in the error: it has the password of the mail account in it.
+ */
+export function mailFromEnv(): MailConfig | null {
+  const smtpUrl = process.env.SMTP_URL;
+  const from = process.env.MAIL_FROM;
+  const toConsole = process.env.MAIL_TO_CONSOLE;
+  if (toConsole && toConsole !== 'true' && toConsole !== 'false') {
+    throw new Error(`Environment variable MAIL_TO_CONSOLE must be true or false, got "${toConsole}".`);
+  }
+  if (toConsole === 'true') {
+    if (smtpUrl || from) {
+      throw new Error(
+        'MAIL_TO_CONSOLE is true and SMTP_URL or MAIL_FROM is set too. Set one: mail is printed, or it is sent.'
+      );
+    }
+    return { kind: 'console' };
+  }
+  if (!smtpUrl && !from) return null;
+  if (!smtpUrl || !from) {
+    throw new Error(
+      `${smtpUrl ? 'SMTP_URL is set and MAIL_FROM is not' : 'MAIL_FROM is set and SMTP_URL is not'}. Set both to send mail, or neither: see apps/api/.env.example.`
+    );
+  }
+  // Written without its scheme, smtp.example.com:587 still reads as an address: one whose scheme is the host
+  if (!(URL.canParse(smtpUrl) && /^smtps?:$/.test(new URL(smtpUrl).protocol) && new URL(smtpUrl).hostname)) {
+    throw new Error(
+      'Environment variable SMTP_URL is not the address of an SMTP server. Write it like smtp://user:password@smtp.example.com:587.'
+    );
+  }
+  if (!/[^\s@<]+@[^\s@>]+/.test(from)) {
+    throw new Error(
+      `Environment variable MAIL_FROM has no email address in it: "${from}". Write it like Pocketmice <noreply@example.com>.`
+    );
+  }
+  return { kind: 'smtp', smtpUrl, from };
+}

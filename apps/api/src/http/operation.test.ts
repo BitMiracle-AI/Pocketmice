@@ -149,7 +149,9 @@ test('a request that fits the definition: the implementation gets the checked in
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { note: { id: N1, title: 'Groceries' } });
   // The default in the definition is filled in
-  assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, apiKeyId: null, membership: OWNER }]);
+  assert.deepEqual(calls, [
+    { input: { ...RENAME, notify: false }, clientIp: null, user: ADA, apiKeyId: null, membership: OWNER }
+  ]);
   assert.deepEqual(membershipLookups, [{ spaceId: S1, userId: 'u1' }]);
   assert.deepEqual(reported, []);
 });
@@ -185,8 +187,8 @@ test('a request that came with an API key is the person whose key it is: the imp
   assert.equal((await post('getSettings', {})).status, 200);
 
   assert.deepEqual(calls, [
-    { input: { ...RENAME, notify: false }, user: ADA, apiKeyId: KEY, membership: OWNER },
-    { input: {}, user: ADA, apiKeyId: KEY }
+    { input: { ...RENAME, notify: false }, clientIp: null, user: ADA, apiKeyId: KEY, membership: OWNER },
+    { input: {}, clientIp: null, user: ADA, apiKeyId: KEY }
   ]);
 });
 
@@ -201,7 +203,7 @@ test('a read-only API key calls reads, and is FORBIDDEN to call a write whatever
     message: 'This API key is read-only, and this request changes something.'
   });
 
-  assert.deepEqual(calls, [{ input: {}, user: ADA, apiKeyId: KEY }]);
+  assert.deepEqual(calls, [{ input: {}, clientIp: null, user: ADA, apiKeyId: KEY }]);
   // Refused before the body was read or anyone was looked up
   assert.deepEqual(membershipLookups, []);
   const unread = await failure(await post('renameNote', '{"spaceId":'));
@@ -222,7 +224,7 @@ test('an operation kept for the person themselves is FORBIDDEN to any API key, a
 
   const { post, calls } = setup();
   assert.deepEqual(await (await post('createToken', {})).json(), { token: 'abc' });
-  assert.deepEqual(calls, [{ input: {}, user: ADA, apiKeyId: null }]);
+  assert.deepEqual(calls, [{ input: {}, clientIp: null, user: ADA, apiKeyId: null }]);
 });
 
 test('a member whose role is lower than the operation takes is FORBIDDEN; the implementation does not run', async () => {
@@ -240,7 +242,9 @@ test('a member whose role is lower than the operation takes is FORBIDDEN; the im
     const { post, calls } = setup({ membership: { role } });
 
     assert.equal((await post('renameNote', RENAME)).status, 200, role);
-    assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, apiKeyId: null, membership: { role } }]);
+    assert.deepEqual(calls, [
+      { input: { ...RENAME, notify: false }, clientIp: null, user: ADA, apiKeyId: null, membership: { role } }
+    ]);
   }
 });
 
@@ -250,7 +254,7 @@ test('an operation that belongs to no space gets the caller and no membership; n
   const response = await post('getSettings', {});
 
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ input: {}, user: ADA, apiKeyId: null }]);
+  assert.deepEqual(calls, [{ input: {}, clientIp: null, user: ADA, apiKeyId: null }]);
   assert.deepEqual(membershipLookups, []);
 });
 
@@ -260,8 +264,23 @@ test('an operation anyone may call does not ask who is calling', async () => {
   const response = await post('getInvitation', { invitationId: N1 });
 
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ input: { invitationId: N1 } }]);
+  assert.deepEqual(calls, [{ input: { invitationId: N1 }, clientIp: null }]);
   assert.equal(identifiedTimes(), 0);
+});
+
+test('the implementation is told the IP the request came from, as the reverse proxy reports it; one that cannot be told is null', async () => {
+  const { post, calls } = setup({ user: null });
+  const from = (forwarded: string | null) =>
+    post('getInvitation', { invitationId: N1 }, { 'x-forwarded-for': forwarded });
+
+  for (const forwarded of ['203.0.113.7', ' 2001:db8::1 ']) await from(forwarded);
+  // No header; a list, of which any part may be what the client made up; and what is not an IP
+  for (const forwarded of [null, '198.51.100.1, 203.0.113.7', 'unknown']) await from(forwarded);
+
+  assert.deepEqual(
+    calls.map((call) => (call as { clientIp: unknown }).clientIp),
+    ['203.0.113.7', '2001:db8::1', null, null, null]
+  );
 });
 
 test('a space that does not exist for the caller is UNKNOWN_SPACE; the implementation does not run', async () => {

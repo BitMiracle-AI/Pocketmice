@@ -9,7 +9,7 @@ import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
 import { hostFromEnv, portFromEnv } from './env.ts';
 import { logInternalError } from './http/errorLog.ts';
-import { auth, db, storage, webOrigins } from './instances.ts';
+import { auth, db, mail, storage, webOrigins } from './instances.ts';
 
 // The ports of this project start at 11210, one for each unit that listens. A port that is taken is an error and
 // the process exits: it never picks another one.
@@ -18,7 +18,13 @@ const port = portFromEnv('PORT', 11210);
 const app = createApp({
   auth,
   webOrigins,
-  implementations: domainImplementations({ db, storage, version: manifest.version, reportError: logInternalError }),
+  implementations: domainImplementations({
+    db,
+    storage,
+    version: manifest.version,
+    signIn: auth.signIn,
+    reportError: logInternalError
+  }),
   content: { db, storage },
   // By the API key a request carries, or else by who is signed in
   identifyCaller: identifyCaller(db, identifyBySession(auth)),
@@ -47,6 +53,15 @@ server.requestTimeout = 3 * 60 * 60 * 1000;
 const host = hostFromEnv('HOST', '127.0.0.1');
 server.listen({ port, host }, () => {
   console.log(`api listening on http://${host}:${port}`);
+  // How people sign in follows from what the environment says about mail: said here, so whoever set it up sees
+  // what they got
+  if (mail === null) {
+    console.log('people sign in with a password: no mail is sent (set SMTP_URL and MAIL_FROM to sign in with a code)');
+  } else if (mail.kind === 'console') {
+    console.log('people sign in with a code, which is PRINTED HERE and not sent (MAIL_TO_CONSOLE): for development');
+  } else {
+    console.log('people sign in with a code sent to their email address');
+  }
 });
 
 /**

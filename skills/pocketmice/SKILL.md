@@ -23,7 +23,8 @@ Five facts decide how everything below works:
 - **Some things only the person does.** No API key reads, makes or deletes API keys or invites, removes a member or
   changes a role, joins, leaves or deletes a space, deletes a file for good, or empties the trash. Those take the
   person, signed in themselves. When a task needs one of them, do the part a key can do, tell the user which part
-  is left for them, and do not look for a way around it.
+  is left for them, and do not look for a way around it. Signing in is theirs as well: `requestSignInCode` mails a
+  sign-in code to an email address, and is nothing you call.
 
 ## Connecting
 
@@ -289,7 +290,7 @@ key and, inside a space, the role `editor`. `updateSpace` alone takes the role `
 
 | Operation            | Kind  | Input                                                  | Answer                                            | Can also fail with      |
 | -------------------- | ----- | ------------------------------------------------------ | ------------------------------------------------- | ----------------------- |
-| `getServerInfo`      | read  | `{}` (needs no key)                                    | `{version}`                                       |                         |
+| `getServerInfo`      | read  | `{}` (needs no key)                                    | `{version, signInMethod}`                         |                         |
 | `getProfile`         | read  | `{}`                                                   | `{id, email, name}` of the person the key acts as |                         |
 | `getSpaces`          | read  | `{}`                                                   | `{spaces}`                                        |                         |
 | `getMembers`         | read  | `{spaceId}`                                            | `{members}`: `userId`, `name`, `role`             |                         |

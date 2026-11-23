@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { signInBody, signInEmail, signInPassword, signUpBody } from './auth.ts';
+import {
+  codeSignInBody,
+  requestSignInCode,
+  signInBody,
+  signInCode,
+  signInEmail,
+  signInPassword,
+  signUpBody
+} from './auth.ts';
 
 test('an email address is trimmed and lowercased before it is checked', () => {
   assert.equal(signInEmail.parse('  Ada@Example.COM '), 'ada@example.com');
@@ -37,4 +45,23 @@ test('signing up and signing in accept the fields written for them and no others
   );
   // A password shorter than a real one can be is passed on: the library answers it like any wrong password
   assert.equal(signInBody.safeParse({ email: account.email, password: 'short' }).success, true);
+});
+
+test('a sign-in code is six digits and nothing else', () => {
+  assert.equal(signInCode.parse('012345'), '012345');
+  for (const wrong of ['', '12345', '1234567', '12345a', ' 123456', '123 456', '１２３４５６']) {
+    assert.equal(signInCode.safeParse(wrong).success, false, `"${wrong}" should be refused`);
+  }
+});
+
+test('asking for a code and signing in with one write the address the same way, and accept no other field', () => {
+  assert.deepEqual(requestSignInCode.input.parse({ email: '  Ada@Example.COM ' }), { email: 'ada@example.com' });
+  assert.deepEqual(codeSignInBody.parse({ email: '  Ada@Example.COM ', otp: '123456' }), {
+    email: 'ada@example.com',
+    otp: '123456'
+  });
+
+  assert.equal(codeSignInBody.safeParse({ email: 'ada@example.com' }).success, false);
+  assert.equal(codeSignInBody.safeParse({ email: 'ada@example.com', otp: '123456', name: 'Ada' }).success, false);
+  assert.equal(codeSignInBody.safeParse({ email: 'ada@example.com', otp: '123456', image: 'x' }).success, false);
 });

@@ -39,6 +39,7 @@ const implementations = domainImplementations({
   db: {} as Db,
   storage: {} as FileStorage,
   version: '1.2.3',
+  signIn: { method: 'password' },
   reportError: () => {}
 });
 

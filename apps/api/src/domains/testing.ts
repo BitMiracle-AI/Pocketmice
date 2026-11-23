@@ -82,7 +82,14 @@ export function useTestApi(): TestApi {
       // The sign-in library has no part in these tests
       auth: { handler: async () => new Response(null, { status: 404 }) },
       webOrigins: [WEB_ORIGIN],
-      implementations: domainImplementations({ db: connected, storage, version: '1.2.3', reportError }),
+      implementations: domainImplementations({
+        db: connected,
+        storage,
+        version: '1.2.3',
+        // A server that sends no mail. Signing in with a code is tested in domains/auth
+        signIn: { method: 'password' },
+        reportError
+      }),
       content: { db: connected, storage },
       // An API key is recognised the way a running server does it. Who is signed in is read from the test's header,
       // which holds the id of a user row

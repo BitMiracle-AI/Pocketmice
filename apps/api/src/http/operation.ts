@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import type { ApiKeyPermission } from '@pocketmice/contract/domains/apiKey';
 import { ERROR_STATUS, type ErrorBody, type ErrorCode, isUniversalErrorCode } from '@pocketmice/contract/errors';
 import { type CheckedInputOf, type Operation, type OutputOf, operationPath } from '@pocketmice/contract/operation';
@@ -48,16 +49,21 @@ export interface Membership {
 }
 
 /**
- * What an implementation is given: the input, checked against the definition. For an operation that is not public,
- * also the person calling. For an operation of a space, also what the caller is in that space — getting it means
- * the caller is a member, in a role the operation accepts.
+ * What an implementation is given: the input, checked against the definition, and the IP the request came from.
+ * For an operation that is not public, also the person calling. For an operation of a space, also what the caller
+ * is in that space — getting it means the caller is a member, in a role the operation accepts.
  * apiKeyId is the API key the request came with, or null when the person signed in themselves. It is there to be
  * written down next to what was done (which key wrote this version of a file), and for nothing else: what the
  * caller may do was settled before the implementation ran, and an implementation never branches on it.
  */
-type HandlerContext<Op extends Operation> = { input: CheckedInputOf<Op> } & (Op['access'] extends 'public'
-  ? unknown
-  : { user: CurrentUser; apiKeyId: string | null }) &
+type HandlerContext<Op extends Operation> = {
+  input: CheckedInputOf<Op>;
+  /**
+   * The IP the request came from; null when it cannot be told (see clientIpOf). An operation anyone may call
+   * limits by it how often it is called
+   */
+  clientIp: string | null;
+} & (Op['access'] extends 'public' ? unknown : { user: CurrentUser; apiKeyId: string | null }) &
   (Op['belongsTo'] extends 'space' ? { membership: Membership } : unknown);
 
 /**
@@ -69,9 +75,13 @@ export interface Implementation {
   run: (input: unknown, caller: Caller) => Promise<unknown>;
 }
 
-/** What this layer found out and hands to the implementation: who is calling. Which parts are set depends on the definition */
+/**
+ * What this layer found out and hands to the implementation: who is calling, and from where. Which parts are set
+ * depends on the definition
+ */
 export interface Caller extends AdmittedCaller {
   membership: Membership | null;
+  clientIp: string | null;
 }
 
 /**
@@ -102,9 +112,10 @@ export function implement<Op extends Operation>(
     // By the time this runs the input has been checked against the definition, an operation that is not public
     // knows who is calling, and an operation of a space knows the caller is a member (see admit), so the assertion
     // holds
-    run: (input, { user, apiKeyId, membership }) =>
+    run: (input, { user, apiKeyId, membership, clientIp }) =>
       handler({
         input,
+        clientIp,
         ...(user && { user, apiKeyId }),
         ...(membership && { membership })
       } as unknown as HandlerContext<Op>)
@@ -302,7 +313,18 @@ async function admit(
     membership = member;
   }
 
-  return { input: input.data, caller: { ...admitted, membership } };
+  return { input: input.data, caller: { ...admitted, membership, clientIp: clientIpOf(c.req.raw.headers) } };
+}
+
+/**
+ * The IP a request came from, read from x-forwarded-for: the reverse proxy in front sets it to the one address the
+ * request came from, in place of whatever the client sent (see main.ts), which is why it can be believed.
+ * Null when it cannot be told: there is no such header, it holds more than one address, or what it holds is not an
+ * IP. The sign-in library tells the IP for its own limit by the same rule (see rateLimit in domains/auth/auth.ts).
+ */
+function clientIpOf(headers: Headers): string | null {
+  const forwarded = headers.get('x-forwarded-for')?.trim();
+  return forwarded && isIP(forwarded) !== 0 ? forwarded : null;
 }
 
 /** Handles one request to an operation. If a check fails, the implementation does not run */

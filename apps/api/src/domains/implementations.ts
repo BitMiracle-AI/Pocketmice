@@ -4,6 +4,8 @@ import type { FileStorage } from '../storage/fileStorage.ts';
 import { createApiKey } from './apiKey/createApiKey.ts';
 import { deleteApiKey } from './apiKey/deleteApiKey.ts';
 import { getApiKeys } from './apiKey/getApiKeys.ts';
+import type { SignIn } from './auth/auth.ts';
+import { requestSignInCode } from './auth/requestSignInCode.ts';
 import { createFolder } from './file/createFolder.ts';
 import { deleteFile } from './file/deleteFile.ts';
 import { emptyTrash } from './file/emptyTrash.ts';
@@ -40,6 +42,8 @@ export interface DomainDeps {
   storage: FileStorage;
   /** The version of this server */
   version: string;
+  /** How people sign in to this server (see createAuth in domains/auth/auth.ts) */
+  signIn: SignIn;
   /**
    * Called when something failed that the caller is not told about: what they asked for is done, and the server is
    * left with something to clean up. where says in which part of the code.
@@ -54,6 +58,7 @@ export interface DomainDeps {
 export function domainImplementations(deps: DomainDeps): Implementation[] {
   return [
     getServerInfo(deps),
+    requestSignInCode(deps),
     getProfile(deps),
     updateProfile(deps),
     getSpaces(deps),

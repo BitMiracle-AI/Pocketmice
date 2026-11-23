@@ -17,6 +17,8 @@ the same files: they read what people give them and hand back what they make.
   same API as a person, with an API key that person made. What it does is done as that person; a key can be
   read-only, and no key decides who gets into a space.
 - A server you can run yourself, on Postgres, with the files in a folder on its disk or in an S3-compatible bucket.
+  People sign in with an email address and a password; a server that is given an SMTP server to send mail through
+  signs them in with a code sent to their address instead.
 
 ## What it promises about files
 
@@ -111,11 +113,11 @@ A reverse proxy goes in front of the API, which by itself listens on its own mac
 proxy for three things:
 
 - The limit on the size of a request body is raised to 1 GB (nginx allows 1 MB unless told otherwise).
-- `X-Forwarded-For` is set to the address each request came from, in place of whatever the client sent: the limit
-  on sign-in attempts counts by it. In nginx that is `proxy_set_header X-Forwarded-For $remote_addr;`, and nginx
-  sends no such header unless told. Traefik sets it by itself, unless it is told to trust the headers of its
-  clients. Without it everyone shares one count, and thirty wrong passwords a minute from anyone keep everybody
-  from signing in.
+- `X-Forwarded-For` is set to the address each request came from, in place of whatever the client sent: the limits
+  on sign-in attempts and on sign-in codes count by it. In nginx that is
+  `proxy_set_header X-Forwarded-For $remote_addr;`, and nginx sends no such header unless told. Traefik sets it by
+  itself, unless it is told to trust the headers of its clients. Without it everyone shares one count, and thirty
+  wrong passwords a minute from anyone keep everybody from signing in.
 - A connection that goes silent is ended (nginx does so by itself, after a minute). The API itself ends a request
   only when it has taken three hours, which is 1 GB over a slow line. Traefik by its own default gives a whole
   request, body included, one minute: lift that limit (`respondingTimeouts.readTimeout` of the entry point), or an

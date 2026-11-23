@@ -41,7 +41,11 @@ export const DECLARED_ERROR_STATUS = {
   /** The thing asked for does not exist */
   NOT_FOUND: 404,
   /** The request conflicts with how things are now: for example, the thing to create already exists */
-  CONFLICT: 409
+  CONFLICT: 409,
+  /** This was asked for too often, from where this request comes from or for the same thing. Later it works again */
+  TOO_MANY_REQUESTS: 429,
+  /** A sign-in code was to be sent, and the mail did not go out. Asking again may work */
+  CODE_NOT_SENT: 503
 } as const;
 
 export type UniversalErrorCode = keyof typeof UNIVERSAL_ERROR_STATUS;

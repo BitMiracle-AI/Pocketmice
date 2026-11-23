@@ -5,6 +5,9 @@ import { useTestApi } from '../testing.ts';
 
 const api = useTestApi();
 
-test('getServerInfo answers anyone with the version the server was started with', async () => {
-  assert.deepEqual(await api.as(null)(getServerInfo, {}), { ok: true, data: { version: '1.2.3' } });
+test('getServerInfo answers anyone with the version the server was started with, and how people sign in to it', async () => {
+  assert.deepEqual(await api.as(null)(getServerInfo, {}), {
+    ok: true,
+    data: { version: '1.2.3', signInMethod: 'password' }
+  });
 });
