@@ -274,8 +274,9 @@ export async function removeMessage(spaceId: string, conversationId: string, num
 }
 
 /**
- * Says that the person has read a conversation up to the message of this number. Nothing is said when it fails:
- * the page says it again the next time it has reason to.
+ * Says that the person has read a conversation up to the message of this number. Nothing is said when it fails,
+ * and it is not tried again for that number: the page says how far they have read when the next message is shown,
+ * or when the conversation is opened again.
  * How far they have read is in what was read about the conversation, and not in its messages: only that is
  * marked stale.
  */

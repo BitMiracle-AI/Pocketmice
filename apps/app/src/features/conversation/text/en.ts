@@ -25,7 +25,7 @@ export const en = {
   goneTitle: 'No such conversation',
   goneDescription: 'It was deleted, or you are no longer in it.',
   toList: 'Go to your conversations',
-  backToList: 'All conversations',
+  backToList: 'Back to conversations',
 
   startTitle: 'New conversation',
   /** What a conversation is, in one line: under the title of the dialog */
@@ -61,7 +61,7 @@ export const en = {
   leave: 'Leave conversation',
   leaveTitle: (title: string) => `Leave “${title}”?`,
   leaveDescription:
-    'You will no longer see it, and neither will an agent calling with one of your API keys. Someone in it can add you again.',
+    'You will no longer see it, and neither will an agent calling with one of your API keys. Someone in it, or the owner of the space, can add you again.',
   leaveDescriptionOwner:
     'You stop being a member: you can still read it as the owner of the space, and no longer write in it.',
   left: (title: string) => `You left “${title}”`,

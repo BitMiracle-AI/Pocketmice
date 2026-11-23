@@ -22,7 +22,7 @@ export const zhHans: typeof en = {
   goneTitle: '没有这个对话',
   goneDescription: '它已被删除，或者你已不在其中。',
   toList: '去我的对话',
-  backToList: '所有对话',
+  backToList: '返回对话列表',
 
   startTitle: '新建对话',
   whatAConversationIs: '一件事一个对话。同样几个人，需要几个就可以有几个。',
@@ -55,7 +55,7 @@ export const zhHans: typeof en = {
   notInSpace: '对方已不是这个空间的成员。',
   leave: '退出对话',
   leaveTitle: (title) => `退出「${title}」？`,
-  leaveDescription: '你将不再看到它，用你的 API key 调用的 Agent 也一样。其中的人可以再把你加回来。',
+  leaveDescription: '你将不再看到它，用你的 API key 调用的 Agent 也一样。其中的人或空间的所有者可以再把你加回来。',
   leaveDescriptionOwner: '你不再是它的成员：作为空间的所有者你仍然能读，但不能再在里面发言。',
   left: (title) => `你已退出「${title}」`,
   deleteConversation: '删除对话',
