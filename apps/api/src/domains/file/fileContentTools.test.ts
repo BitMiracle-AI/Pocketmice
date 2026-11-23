@@ -90,26 +90,33 @@ async function uploadBytes(
   return ((await response.json()) as { file: Written }).file;
 }
 
-test('the tools of the api are the operations an API key may call and the three for the content of files', async () => {
+test('the tools of the api are the operations done as the person a key belongs to, and the three for the content of files', async () => {
   const { client } = await setup();
 
   // Every operation the contract defines, asked of its files the way implementations.test.ts asks
   const definitions = new URL('./domains/', import.meta.resolve('@pocketmice/contract/operation'));
-  const forKeys: string[] = [];
-  const forThePerson: string[] = [];
+  const byAccess: Record<string, string[]> = { authenticated: [], public: [], session: [] };
   for (const file of readdirSync(definitions).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))) {
     const exported: Record<string, unknown> = await import(new URL(file, definitions).href);
     for (const value of Object.values(exported)) {
-      if (isOperation(value)) (value.access === 'session' ? forThePerson : forKeys).push(value.name);
+      if (isOperation(value)) byAccess[value.access]?.push(value.name);
     }
   }
-  assert.ok(forKeys.length > 0 && forThePerson.length > 0);
+  const { authenticated = [], public: forAnyone = [], session: forThePerson = [] } = byAccess;
+  assert.ok(authenticated.length > 0 && forAnyone.length > 0 && forThePerson.length > 0);
 
   const listed = (await client.listTools()).tools.map(({ name }) => name);
 
-  assert.deepEqual(listed.toSorted(), [...forKeys, 'createFile', 'getFileContent', 'updateFileContent'].toSorted());
-  // What only the person does themselves is not offered to an agent at all
-  for (const name of forThePerson) assert.equal(listed.includes(name), false, `${name} should not be a tool`);
+  assert.deepEqual(
+    listed.toSorted(),
+    [...authenticated, 'createFile', 'getFileContent', 'updateFileContent'].toSorted()
+  );
+  // What anyone may call is not done as anybody, and what only the person does themselves no key does: neither is
+  // offered to an agent. Asking for a sign-in code is among the first, making a key among the second
+  for (const name of [...forAnyone, ...forThePerson]) {
+    assert.equal(listed.includes(name), false, `${name} should not be a tool`);
+  }
+  assert.ok(forAnyone.includes('requestSignInCode') && forThePerson.includes('createApiKey'));
 });
 
 test('an agent finds its way with the tools of the operations: the space, a folder, the file in it', async () => {

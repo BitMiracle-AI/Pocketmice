@@ -16,9 +16,12 @@ import { type AdmissionDeps, admitCaller, fail } from './operation.ts';
 //   such as the address the content of files goes through. Nothing is done here that a request from outside could
 //   not do, and nothing is decided here: who may call what is settled where it always is, when that request comes
 //   in. So a tool does what the key it was called with does over HTTP, and nothing else.
-// - Every operation an API key may call is a tool, under the operation's own name, with its description and its
-//   input. The list is not written a second time: it is the operations of the api, less the ones kept for the
-//   person themselves (access session).
+// - Every operation that is done as the person a key belongs to is a tool, under the operation's own name, with
+//   its description and its input. The list is not written a second time: it is the operations of the api whose
+//   access is authenticated. The other two kinds are left out, each for its own reason. One kept for the person
+//   themselves (session) would only be refused. One that anyone may call (public) is not done as anybody: asking
+//   which server this is, or for a sign-in code to be mailed to an address. A model is offered what it can do for
+//   the person it works for, and those are not that.
 // - Tools that are not operations are handed in by whoever mounts the address (see Tool).
 // - A tool whose request is refused answers with the error code and the message of that refusal, as a result the
 //   model reads and can act on, like "CONFLICT: …".
@@ -48,8 +51,8 @@ export type ToolResult = {
 
 /**
  * Sends one request to this api as the caller of the tool: the path with its query, and what fetch takes. It
- * carries the API key the tool was called with and the address that call came from (x-forwarded-for, which
- * operations limit their callers by), and nothing else of the request the tool came in.
+ * carries the two things the api goes by to tell a request's caller, and nothing else of the request the tool came
+ * in: the API key the tool was called with, and the address that call came from (x-forwarded-for).
  */
 export type Send = (path: string, init?: RequestInit) => Promise<Response>;
 
@@ -122,7 +125,7 @@ export function operationTool(operation: Operation): Tool {
 }
 
 export interface McpDeps extends AdmissionDeps {
-  /** Every operation of the api. The ones an API key may call become tools */
+  /** Every operation of the api. The ones whose access is authenticated become tools */
   operations: Operation[];
   /** The tools that are not operations */
   tools: Tool[];
@@ -135,7 +138,10 @@ export interface McpDeps extends AdmissionDeps {
  * process: they are received, checked and answered like any request from outside.
  */
 export function mountMcp(app: Hono, deps: McpDeps): void {
-  const tools = [...deps.operations.filter(({ access }) => access !== 'session').map(operationTool), ...deps.tools];
+  const tools = [
+    ...deps.operations.filter(({ access }) => access === 'authenticated').map(operationTool),
+    ...deps.tools
+  ];
   const names = new Set<string>();
   for (const { name } of tools) {
     if (names.has(name)) throw new Error(`There is more than one MCP tool called ${name}.`);
@@ -149,8 +155,9 @@ export function mountMcp(app: Hono, deps: McpDeps): void {
       const send: Send = async (path, init = {}) => {
         const headers = new Headers(init.headers);
         headers.set('authorization', apiKeyAuthorization(authInfo.token));
-        // Where the call came from goes along: a limit on how often something is asked from one address holds for
-        // a tool as it does for a request from outside
+        // Where the call came from goes along. Every implementation is told it (clientIp in operation.ts): one that
+        // limits how often it is asked from one address must count a tool's request as coming from where the call
+        // did, not from nowhere
         if (forwardedFor) headers.set('x-forwarded-for', forwardedFor);
         return app.request(path, { ...init, headers });
       };

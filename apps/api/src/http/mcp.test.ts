@@ -183,7 +183,7 @@ async function failed(response: Response) {
 }
 
 for (const era of ERAS) {
-  test(`${era}: every operation an API key may call is a tool, and one kept for the person themselves is not`, async () => {
+  test(`${era}: an operation done as the person a key belongs to is a tool; one anyone may call and one kept for the person themselves are not`, async () => {
     const { connect } = setup();
     const client = await connect(WRITE_KEY, era);
 
@@ -191,13 +191,14 @@ for (const era of ERAS) {
     assert.deepEqual(client.getServerVersion(), { name: 'pocketmice', version: '1.2.3' });
 
     const { tools } = await client.listTools();
-    assert.deepEqual(tools.map(({ name }) => name).sort(), [
-      'breakThing',
-      'getInvitation',
-      'getSettings',
-      'getTheme',
-      'renameNote'
-    ]);
+    // getInvitation, which anyone may call, and createToken, which only the person does, are not among them
+    assert.deepEqual(tools.map(({ name }) => name).sort(), ['breakThing', 'getSettings', 'getTheme', 'renameNote']);
+
+    // What is not a tool cannot be called as one, whatever it is over HTTP
+    for (const name of ['getInvitation', 'createToken']) {
+      const called = await callTool(client, name, {}).catch((thrown) => ({ isError: true, texts: [String(thrown)] }));
+      assert.equal(called.isError, true, `${name} should not be callable as a tool`);
+    }
   });
 
   test(`${era}: a tool is the operation under its own name: its description, its input, and whether it changes anything`, async () => {
@@ -266,7 +267,7 @@ for (const era of ERAS) {
     const { connect, calls } = setup();
     const client = await connect(READ_KEY, era);
 
-    assert.equal((await client.listTools()).tools.length, 5);
+    assert.equal((await client.listTools()).tools.length, 4);
     assert.deepEqual(await callTool(client, 'getSettings', {}), { texts: ['{"theme":"dark"}'], isError: false });
     assert.equal(calls.length, 1);
 
