@@ -49,7 +49,7 @@ export interface ApiClientConfig {
  * A config that is wrong (the address) fails when the client is built, not at the first call.
  */
 export function createApiClient(config: ApiClientConfig) {
-  if (!URL.canParse(config.baseUrl)) {
+  if (!isServerUrl(config.baseUrl)) {
     throw new Error(`API base URL "${config.baseUrl}" is invalid. Write it like https://api.example.com.`);
   }
   const headers = { 'content-type': 'application/json' };
@@ -107,6 +107,17 @@ export function createApiClient(config: ApiClientConfig) {
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>;
+
+/**
+ * Whether this is the address of a server: a URL of http or https.
+ * That it is a URL is not enough. A host and a port with the scheme forgotten, like localhost:11210, is one too,
+ * with the host for its scheme: no request can go to it, and building the address of an operation from it throws.
+ */
+export function isServerUrl(address: string): boolean {
+  if (!URL.canParse(address)) return false;
+  const { protocol } = new URL(address);
+  return protocol === 'http:' || protocol === 'https:';
+}
 
 // The two functions below are how a call reads a failure. They are exported for a caller that sends a request
 // which is not an operation, to the address the content of files goes through, and reads its failures the same way.

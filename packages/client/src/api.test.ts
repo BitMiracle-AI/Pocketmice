@@ -173,4 +173,7 @@ test('a base URL that is not an address fails when the client is built', () => {
 
   assert.throws(() => createApiClient({ ...config, baseUrl: 'api.example.com' }), /API base URL .* is invalid/);
   assert.throws(() => createApiClient({ ...config, baseUrl: '' }), /API base URL .* is invalid/);
+  // A host and a port with the scheme forgotten is a URL too, with the host for its scheme: one no request can go to
+  assert.throws(() => createApiClient({ ...config, baseUrl: 'localhost:11210' }), /API base URL .* is invalid/);
+  assert.throws(() => createApiClient({ ...config, baseUrl: 'ftp://api.example.com' }), /API base URL .* is invalid/);
 });

@@ -204,6 +204,10 @@ test('two calls at once each keep their own cause', async () => {
 test('an address that is not one, and a key that is missing or is not a key, fail when the drive is built', () => {
   assert.throws(() => createPocketmice({ url: 'drive.example.com', apiKey: KEY }), /address of the server/);
   assert.throws(() => createPocketmice({ url: '', apiKey: KEY }), /address of the server/);
+  // The scheme forgotten before a host and a port: that is a URL too, with the host for its scheme, and no request
+  // can go to it. Left to the first call, it would throw there what is not a PocketmiceError
+  assert.throws(() => createPocketmice({ url: 'localhost:11210', apiKey: KEY }), /address of the server/);
+  assert.throws(() => createPocketmice({ url: 'drive.example.com:443', apiKey: KEY }), /address of the server/);
 
   // An environment variable that is not set is how a key usually goes missing
   const notSet = process.env.POCKETMICE_API_KEY_THAT_IS_NOT_SET as string;

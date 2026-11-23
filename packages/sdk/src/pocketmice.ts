@@ -1,4 +1,4 @@
-import { createApiClient } from '@pocketmice/client/api';
+import { createApiClient, isServerUrl } from '@pocketmice/client/api';
 import * as apiKey from '@pocketmice/contract/domains/apiKey';
 import * as auth from '@pocketmice/contract/domains/auth';
 import * as file from '@pocketmice/contract/domains/file';
@@ -75,7 +75,7 @@ type Send = (
  * call. Whether the key works is not asked here: a method finds out, with UNAUTHENTICATED.
  */
 export function createPocketmice(config: PocketmiceConfig): Pocketmice {
-  if (!URL.canParse(config.url)) {
+  if (!isServerUrl(config.url)) {
     throw new Error(`The address of the server, "${config.url}", is not one. Write it like https://drive.example.com.`);
   }
   // Checked as it arrives and not by its type: the usual mistake is an environment variable that is not set
