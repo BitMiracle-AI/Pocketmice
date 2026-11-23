@@ -3,7 +3,7 @@ import { type SQL, sql } from 'drizzle-orm';
 import type { FileStorage } from '../../storage/fileStorage.ts';
 import { removeContent } from './writeContent.ts';
 
-// Deleting for good: the one thing done to files that cannot be undone.
+// Deleting for good: the one thing done to files that destroys content.
 // The order is the reverse of writing (see writeContent.ts), for the same promise: the rows go first, in one
 // statement, and the bytes after. A process that dies in between leaves bytes that no row points at, never a row
 // without its bytes.

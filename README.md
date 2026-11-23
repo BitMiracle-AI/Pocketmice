@@ -25,9 +25,10 @@ the same files: they read what people give them and hand back what they make.
 
 - **Nothing is written over unseen.** To write over a file, the caller names the version it is replacing. If
   somebody else wrote in between, the write is refused with `CONFLICT`.
-- **What an agent does can be undone.** Every write is a new version and the versions before it stay; deleting
-  puts a file in the trash. Deleting for good, emptying the trash and deleting a space are for the owner of the
-  space, signed in themselves: no API key does them.
+- **What an agent does to the content of a file can be undone.** Every write is a new version and the versions
+  before it stay; deleting puts a file in the trash. Deleting for good, emptying the trash and deleting a space
+  are for the owner of the space, signed in themselves: no API key does them. What a file is called, how it is
+  described and which folder it is in have no history: a new one takes the place of the old.
 - **Who wrote what is on record.** Every version says who wrote it, and through which API key when an agent did.
 
 ## Repository layout

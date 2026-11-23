@@ -33,9 +33,11 @@ import { operation } from '../operation.ts';
 // 3. The trash. trashFile does not remove anything: it puts the file in the trash, and what is in a trashed folder
 // goes with it. What is in the trash does not exist for any operation but these: getTrashedFiles lists it,
 // restoreFile puts it back, and deleteFile and emptyTrash delete it for good. Its name is free while it is there.
-// Deleting for good is the one thing here that cannot be undone, so it is for the owner of the space, signed in
-// themselves: no API key does it. Whatever anyone else does to the files of a space, a member or an agent, the
-// owner can undo.
+// Deleting for good is the one thing here that destroys content, so it is for the owner of the space, signed in
+// themselves: no API key does it. Whatever anyone else does to the content of a file, a member or an agent, the
+// owner can undo: a write is a new version, and a delete is the trash.
+// That is a promise about content. The name of a file, its description and the folder it is in have no history:
+// updateFile and moveFile put a new one in the place of the old, and the old is not kept.
 //
 // 4. Looking for a file. Whoever does not know where a file is looks for it by words (getMatchingFiles): the files
 // of a space, or of one folder and the folders inside it, that have every one of the words in their name or their
