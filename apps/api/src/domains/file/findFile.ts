@@ -1,5 +1,5 @@
 import { pathOfNames } from '@pocketmice/contract/domains/file';
-import type { Db } from '@pocketmice/db';
+import type { DbReader } from '@pocketmice/db';
 import { files } from '@pocketmice/db/schema/file';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../http/operation.ts';
@@ -35,8 +35,8 @@ export interface Place {
 
 /**
  * How many folders deep the walk goes at most. Nothing real is this deep. The limit is there so that the walk ends
- * even on a tree that has a loop in it (see moveFile for how one could come about): a file whose walk does not
- * reach the top is not found.
+ * whatever the table holds. The api never makes a loop (see moveFile.ts), but rows written past it could be in one,
+ * and a file whose walk does not reach the top is not found.
  */
 const MAX_DEPTH = 1000;
 
@@ -44,7 +44,7 @@ const MAX_DEPTH = 1000;
  * The files with these ids in this space, by id. An id that no file of the space has is left out.
  * Files in the trash are found too: what to make of one is up to the caller.
  */
-export async function findFiles(db: Db, spaceId: string, ids: string[]): Promise<Map<string, FoundFile>> {
+export async function findFiles(db: DbReader, spaceId: string, ids: string[]): Promise<Map<string, FoundFile>> {
   const found = new Map<string, FoundFile>();
   if (ids.length === 0) return found;
 
@@ -88,7 +88,7 @@ export async function findFiles(db: Db, spaceId: string, ids: string[]): Promise
 }
 
 /** The content these rows have now, by the id of the file. A folder is left out: it has none */
-export async function versionsOf(db: Db, rows: FileRow[]): Promise<Map<string, FileVersion>> {
+export async function versionsOf(db: DbReader, rows: FileRow[]): Promise<Map<string, FileVersion>> {
   const current = await findVersions(
     db,
     rows.flatMap((row) => (row.versionId === null ? [] : [row.versionId]))
@@ -102,7 +102,7 @@ export async function versionsOf(db: Db, rows: FileRow[]): Promise<Map<string, F
 }
 
 /** The file with this id in this space, in the trash or not. Null when the space has no such file */
-export async function findFile(db: Db, spaceId: string, fileId: string): Promise<FoundFile | null> {
+export async function findFile(db: DbReader, spaceId: string, fileId: string): Promise<FoundFile | null> {
   return (await findFiles(db, spaceId, [fileId])).get(fileId) ?? null;
 }
 
@@ -116,7 +116,7 @@ export function isInTrash(found: FoundFile): boolean {
  * NOT_FOUND otherwise. A file in the trash gets the same answer as one that never was: for every operation but the
  * two of the trash, it does not exist.
  */
-export async function liveFile(db: Db, spaceId: string, fileId: string): Promise<FoundFile> {
+export async function liveFile(db: DbReader, spaceId: string, fileId: string): Promise<FoundFile> {
   const found = await findFile(db, spaceId, fileId);
   if (!found || isInTrash(found)) {
     throw new ApiError('NOT_FOUND', `There is no file ${fileId} in space ${spaceId}.`);
@@ -128,7 +128,7 @@ export async function liveFile(db: Db, spaceId: string, fileId: string): Promise
  * The place that parentId names: a folder of this space that is not in the trash, or, for null, the space itself.
  * NOT_FOUND when there is no such folder.
  */
-export async function findPlace(db: Db, spaceId: string, parentId: string | null): Promise<Place> {
+export async function findPlace(db: DbReader, spaceId: string, parentId: string | null): Promise<Place> {
   if (parentId === null) return { path: '', lineage: [] };
 
   const found = await findFile(db, spaceId, parentId);

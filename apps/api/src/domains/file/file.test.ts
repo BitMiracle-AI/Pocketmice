@@ -376,6 +376,32 @@ test('moveFile refuses a folder into itself or into a folder inside it, a place 
   assert.deepEqual(await namesIn(ada, spaceId, archive.id), ['2026']);
 });
 
+test('of two moves that would put two folders into each other, sent together, one is refused, and both folders stay in reach', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+
+  // Many pairs: whether two requests cross is up to timing, and one pair alone could pass by luck
+  for (let pair = 0; pair < 20; pair += 1) {
+    const one = await makeFolder(ada, spaceId, null, `One ${pair}`);
+    const two = await makeFolder(ada, spaceId, null, `Two ${pair}`);
+
+    const results = await Promise.all([
+      api.as(ada)(moveFile, { spaceId, fileId: one.id, parentId: two.id }),
+      api.as(ada)(moveFile, { spaceId, fileId: two.id, parentId: one.id })
+    ]);
+
+    assert.deepEqual(
+      results.map((result) => (result.ok ? 'moved' : result.code)).sort(),
+      ['CONFLICT', 'moved'],
+      `pair ${pair}`
+    );
+    // Both taken, the two would hang from nothing, and nobody could get to them again
+    const moved = results.find((result) => result.ok);
+    assert.ok(moved?.ok);
+    assert.equal(await pathOf(ada, spaceId, moved.data.file.id), moved.data.file.path);
+  }
+});
+
 test('folders in a loop, which only writing to the database past the api can make, are not found, and asking ends', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);

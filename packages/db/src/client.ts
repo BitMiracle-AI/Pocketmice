@@ -51,3 +51,9 @@ export function connectDb(url: string, options: ConnectOptions = {}) {
 }
 
 export type Db = ReturnType<typeof connectDb>;
+
+/**
+ * The database, or a transaction on it, as far as asking it goes. Code that takes this can be called with either,
+ * so what it reads inside a transaction is read on the connection that holds the transaction's locks.
+ */
+export type DbReader = Pick<Db, 'select' | 'execute'>;

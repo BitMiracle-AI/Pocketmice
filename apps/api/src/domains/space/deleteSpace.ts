@@ -7,7 +7,7 @@ import { type DeleteDeps, deleteForGood } from '../file/deleteForGood.ts';
 export function deleteSpace(deps: DeleteDeps) {
   return implement(definition, async ({ input }) => {
     // The files first, with their bytes: every file of the space, in the trash or not. Picked by the space alone and
-    // not by walking down from its top, so that what no path leads to goes too (see moveFile.ts for how that can be)
+    // not by walking down from its top: deleting a space does not count on its tree being whole
     await deleteForGood(deps, input.spaceId, sql`true`);
 
     // Then the space, with who is in it. Its invites go with its row (see the spaceInvites table). A file that

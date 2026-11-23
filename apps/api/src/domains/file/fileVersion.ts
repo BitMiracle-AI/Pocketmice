@@ -1,4 +1,4 @@
-import type { Db } from '@pocketmice/db';
+import type { DbReader } from '@pocketmice/db';
 import { apiKeys } from '@pocketmice/db/schema/apiKey';
 import { fileVersions } from '@pocketmice/db/schema/file';
 import { profiles } from '@pocketmice/db/schema/profile';
@@ -18,7 +18,7 @@ export interface FileVersion {
  * What is read of a version, with the name of who wrote it and of the key it was written through.
  * The key is joined whether or not it was deleted since: a deleted key keeps its row, so that this still names it.
  */
-export function selectVersions(db: Db) {
+export function selectVersions(db: DbReader) {
   return (
     db
       .select({
@@ -53,7 +53,7 @@ export function toVersion(row: VersionRow): FileVersion {
 }
 
 /** The versions with these ids, by id */
-export async function findVersions(db: Db, ids: string[]): Promise<Map<string, FileVersion>> {
+export async function findVersions(db: DbReader, ids: string[]): Promise<Map<string, FileVersion>> {
   if (ids.length === 0) return new Map();
   const rows = await selectVersions(db).where(inArray(fileVersions.id, ids));
   return new Map(rows.map((row) => [row.id, toVersion(row)]));
