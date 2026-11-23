@@ -150,6 +150,10 @@ Keep the database, and every backup of it, the way you keep a credential. It hol
 hash of it: that is how the person who made a key copies it again whenever they are signed in. So whoever can read
 the database can call the API as every person who has a key.
 
+A server that has just started has nobody in it. The first account, its API key and a first space are made with
+curl for now: [The first steps, by hand](#the-first-steps-by-hand), with the address of your server in place of
+`http://localhost:11210`.
+
 ## TypeScript SDK
 
 A program that holds an API key uses the drive through `packages/sdk`. It is not on npm yet: for now it is used
