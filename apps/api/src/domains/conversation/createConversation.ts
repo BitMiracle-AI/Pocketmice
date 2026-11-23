@@ -2,6 +2,7 @@ import { createConversation as definition } from '@pocketmice/contract/domains/c
 import type { Db } from '@pocketmice/db';
 import { conversationMembers, conversations } from '@pocketmice/db/schema/conversation';
 import { implement } from '../../http/operation.ts';
+import { tellSpace } from '../event/spaceEvents.ts';
 
 export function createConversation({ db }: { db: Db }) {
   return implement(definition, async ({ input, user }) => {
@@ -14,6 +15,8 @@ export function createConversation({ db }: { db: Db }) {
         .returning({ id: conversations.id, title: conversations.title, createdAt: conversations.createdAt });
       if (!row) throw new Error('The conversation was not created.');
       await tx.insert(conversationMembers).values({ conversationId: row.id, userId: user.id, spaceId: input.spaceId });
+      // For the other pages of the caller and their agents, and for the owner of the space
+      await tellSpace(tx, { spaceId: input.spaceId, conversationId: row.id });
       return row;
     });
 

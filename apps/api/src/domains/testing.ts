@@ -72,8 +72,8 @@ export interface TestApi {
 
 /**
  * Call it once at the top of a test file. The file gets a temporary database and a temporary folder of its own,
- * both removed when the file is done, and an api on top of them with every operation, the content address and the
- * MCP entrance.
+ * both removed when the file is done, and an api on top of them with every operation, the content address, the
+ * MCP entrance and the events of the spaces.
  */
 export function useTestApi(): TestApi {
   let testDb: TestDb | undefined;
@@ -106,6 +106,7 @@ export function useTestApi(): TestApi {
       }),
       content: { db: connected, storage },
       mcp: { version: '1.2.3', tools: fileContentTools },
+      events: { db: connected },
       // An API key is recognised the way a running server does it. Who is signed in is read from the test's header,
       // which holds the id of a user row
       identifyCaller: identifyCaller(connected, async (headers) => {

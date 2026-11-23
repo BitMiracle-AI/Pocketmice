@@ -4,6 +4,7 @@ import type { Db } from '@pocketmice/db';
 import { messages } from '@pocketmice/db/schema/conversation';
 import { and, eq, isNull } from 'drizzle-orm';
 import { ApiError, implement } from '../../http/operation.ts';
+import { tellSpace } from '../event/spaceEvents.ts';
 
 export function deleteMessage({ db }: { db: Db }) {
   return implement(definition, async ({ input, user, membership }) => {
@@ -24,6 +25,7 @@ export function deleteMessage({ db }: { db: Db }) {
       .update(messages)
       .set({ deletedAt: new Date() })
       .where(and(theMessage, isNull(messages.deletedAt)));
+    await tellSpace(db, { spaceId: input.spaceId, conversationId: input.conversationId });
 
     return {};
   });

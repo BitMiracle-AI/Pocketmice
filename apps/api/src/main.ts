@@ -17,6 +17,9 @@ import { auth, db, mail, storage, webOrigins } from './instances.ts';
 // the process exits: it never picks another one.
 const port = portFromEnv('PORT', 11210);
 
+/** Fires when the process is told to stop (see the end of this file) */
+const stopping = new AbortController();
+
 const app = createApp({
   auth,
   webOrigins,
@@ -30,6 +33,7 @@ const app = createApp({
   content: { db, storage },
   // The tools for the content of files go through the content address above
   mcp: { version: manifest.version, tools: fileContentTools },
+  events: { db, stopping: stopping.signal },
   // By the API key a request carries, or else by who is signed in
   identifyCaller: identifyCaller(db, identifyBySession(auth)),
   spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
@@ -89,11 +93,12 @@ server.listen({ port, host }, () => {
  * ones in hand, disconnect from the database, then exit. Waits at most this long, in milliseconds.
  */
 const SHUTDOWN_MS = 10_000;
-let stopping = false;
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.on(signal, () => {
-    if (stopping) return;
-    stopping = true;
+    if (stopping.signal.aborted) return;
+    // The channels of events are answers that do not end: they are ended here, or closing the server would wait
+    // for each of them
+    stopping.abort();
     setTimeout(() => process.exit(0), SHUTDOWN_MS).unref();
     server.close(() => {
       void db.$client.end().finally(() => process.exit(0));

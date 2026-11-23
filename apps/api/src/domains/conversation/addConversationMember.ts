@@ -3,6 +3,7 @@ import type { Db } from '@pocketmice/db';
 import { conversationMembers, conversations } from '@pocketmice/db/schema/conversation';
 import { sql } from 'drizzle-orm';
 import { ApiError, implement } from '../../http/operation.ts';
+import { tellSpace } from '../event/spaceEvents.ts';
 import { findMembership } from '../space/findMembership.ts';
 
 export function addConversationMember({ db }: { db: Db }) {
@@ -23,6 +24,8 @@ export function addConversationMember({ db }: { db: Db }) {
       where ${conversations.id} = ${input.conversationId} and ${conversations.spaceId} = ${input.spaceId}
       on conflict do nothing
     `);
+    // Whoever was added can read it now, and is told with the others
+    await tellSpace(db, { spaceId: input.spaceId, conversationId: input.conversationId });
 
     return {};
   });

@@ -3,6 +3,7 @@ import type { Db } from '@pocketmice/db';
 import { conversationMembers, conversations, messages } from '@pocketmice/db/schema/conversation';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError, implement } from '../../http/operation.ts';
+import { tellSpace } from '../event/spaceEvents.ts';
 import { findFiles, isInTrash } from '../file/findFile.ts';
 import { selectMessages, toMessages } from './message.ts';
 
@@ -78,6 +79,8 @@ export function createMessage({ db }: { db: Db }) {
         // The time the conversation was given: the two say the same
         createdAt: reached.at
       });
+      // Said in the transaction: whoever hears it finds the message there
+      await tellSpace(tx, { spaceId: input.spaceId, conversationId: input.conversationId, number: reached.number });
       return reached.number;
     });
 

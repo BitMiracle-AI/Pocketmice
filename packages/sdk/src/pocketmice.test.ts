@@ -101,7 +101,7 @@ test('an input in which nothing is required may be left out, and is sent as {}',
   );
 });
 
-test('every operation of the contract that an API key may call is a method, and besides them only the three of the content', async () => {
+test('every operation of the contract that an API key may call is a method, and besides them only the three of the content and the one of the events', async () => {
   // Where the contract keeps its definitions is asked of the rules that resolve an import of it
   const dir = new URL('./domains/', import.meta.resolve('@pocketmice/contract/operation'));
   const forAKey: string[] = [];
@@ -119,7 +119,7 @@ test('every operation of the contract that an API key may call is a method, and 
 
   assert.deepEqual(
     Object.keys(drive).sort(),
-    [...forAKey, 'downloadFile', 'uploadFile', 'uploadFileVersion'].sort(),
+    [...forAKey, 'downloadFile', 'uploadFile', 'uploadFileVersion', 'watchSpace'].sort(),
     'an operation is missing when its file is not among the DEFINITIONS in pocketmice.ts'
   );
 });

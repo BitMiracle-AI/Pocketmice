@@ -2,6 +2,7 @@ import { createApiClient, isServerUrl } from '@pocketmice/client/api';
 import * as apiKey from '@pocketmice/contract/domains/apiKey';
 import * as auth from '@pocketmice/contract/domains/auth';
 import * as conversation from '@pocketmice/contract/domains/conversation';
+import * as event from '@pocketmice/contract/domains/event';
 import * as file from '@pocketmice/contract/domains/file';
 import * as invite from '@pocketmice/contract/domains/invite';
 import * as profile from '@pocketmice/contract/domains/profile';
@@ -9,6 +10,7 @@ import * as server from '@pocketmice/contract/domains/server';
 import * as space from '@pocketmice/contract/domains/space';
 import { type InputOf, isOperation, type Operation, type OutputOf } from '@pocketmice/contract/operation';
 import { type ContentMethods, contentMethods } from './content.ts';
+import { type EventMethods, eventMethods } from './events.ts';
 import { errorOf } from './pocketmiceError.ts';
 
 // The SDK: how a program that holds an API key uses a Pocketmice drive. A person made the key, and what the
@@ -20,6 +22,7 @@ import { errorOf } from './pocketmiceError.ts';
 // - What only the person does (an operation whose access is session) is not a method at all. With a key it could
 //   only ever be refused.
 // - The content of files, which does not go through operations, has three methods of its own (see content.ts).
+// - The events of a space, which do not either, have one: a channel, read as it arrives (see events.ts).
 // - A method is one request. What takes several, like writing to a path whose folders may be missing, is not a
 //   method here: it belongs in the api as an operation, where an agent with the skill or with MCP gets it too.
 // - A method that fails throws a PocketmiceError, and nothing else. What to do is decided by its code.
@@ -30,7 +33,17 @@ import { errorOf } from './pocketmiceError.ts';
  * definitions that is added to the contract is added here; the test fails while an operation an API key may call
  * is missing.
  */
-const DEFINITIONS = { ...apiKey, ...auth, ...conversation, ...file, ...invite, ...profile, ...server, ...space };
+const DEFINITIONS = {
+  ...apiKey,
+  ...auth,
+  ...conversation,
+  ...event,
+  ...file,
+  ...invite,
+  ...profile,
+  ...server,
+  ...space
+};
 
 type Definitions = typeof DEFINITIONS;
 
@@ -51,7 +64,7 @@ type Method<Op> = Op extends Operation
 export type OperationMethods = { [Name in keyof KeyOperations]: Method<KeyOperations[Name]> };
 
 /** A drive, as the holder of one API key sees it */
-export type Pocketmice = OperationMethods & ContentMethods;
+export type Pocketmice = OperationMethods & ContentMethods & EventMethods;
 
 export interface PocketmiceConfig {
   /** The address of the server, like https://drive.example.com */
@@ -68,7 +81,7 @@ export interface PocketmiceConfig {
 /** Sends one request as the holder of the key */
 type Send = (
   url: string,
-  init: { method: string; headers?: Record<string, string>; body?: BodyInit }
+  init: { method: string; headers?: Record<string, string>; body?: BodyInit; signal?: AbortSignal }
 ) => Promise<Response>;
 
 /**
@@ -97,7 +110,11 @@ export function createPocketmice(config: PocketmiceConfig): Pocketmice {
     return given ? given(url, keyed) : fetch(url, keyed);
   };
 
-  return { ...operationMethods(config.url, send), ...contentMethods(config.url, send) };
+  return {
+    ...operationMethods(config.url, send),
+    ...contentMethods(config.url, send),
+    ...eventMethods(config.url, send)
+  };
 }
 
 /** A method for every operation an API key may call */

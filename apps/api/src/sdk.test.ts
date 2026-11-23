@@ -10,7 +10,7 @@ import { Readable } from 'node:stream';
 import { after, before, test } from 'node:test';
 import { apiKeyAuthorization, createApiKey } from '@pocketmice/contract/domains/apiKey';
 import { fileContentPath } from '@pocketmice/contract/domains/file';
-import { createPocketmice, type Pocketmice, PocketmiceError } from '@pocketmice/sdk';
+import { createPocketmice, type Pocketmice, PocketmiceError, type SpaceEvent } from '@pocketmice/sdk';
 import { useTestApi } from './domains/testing.ts';
 
 // The SDK against the api, over a real connection: the fetch of Node on one side, a port on the other. The tests
@@ -234,4 +234,50 @@ test('what the SDK leaves out is refused by the server: a stream, sent by the fe
   assert.deepEqual(await response.json(), {
     error: { code: 'INVALID_INPUT', message: 'Send the content with a content-length header, not in chunks.' }
   });
+});
+
+test('watchSpace hears what happens in a space as it happens, over a real connection: open first, then a message by its number', async () => {
+  const { drive, reader, spaceId } = await start();
+  const { conversation } = await drive.createConversation({ spaceId, title: 'Launch plan' });
+  const place = { spaceId, conversationId: conversation.id };
+
+  // A read-only key listens as well as one that writes
+  const heard: SpaceEvent[] = [];
+  const started = Date.now();
+  let toldAfter = 0;
+  for await (const event of reader.watchSpace({ spaceId })) {
+    heard.push(event);
+    // The channel is open: what is sent from here on is told
+    if (event.type === 'open') await drive.createMessage({ ...place, text: 'Ship on Friday.' });
+    if (event.type === 'message') {
+      toldAfter = Date.now() - started;
+      // Leaving the loop gives the channel up
+      break;
+    }
+  }
+
+  assert.deepEqual(heard, [{ type: 'open' }, { type: 'message', conversationId: conversation.id, number: 1 }]);
+  // It came as it happened, and not with the first ping, which is three seconds on
+  assert.ok(toldAfter < 2000, `the message was told after ${toldAfter} ms`);
+  // What was said is read with the number that was told
+  const { messages } = await reader.getMessages({ ...place, afterNumber: 0 });
+  assert.deepEqual(
+    messages.map(({ number, text }) => [number, text]),
+    [[1, 'Ship on Friday.']]
+  );
+});
+
+test('watchSpace of a space the person is not in throws UNKNOWN_SPACE, as a method of an operation does', async () => {
+  const { drive } = await start();
+
+  await assert.rejects(
+    (async () => {
+      for await (const _ of drive.watchSpace({ spaceId: '00000000-0000-4000-8000-000000000000' })) break;
+    })(),
+    (thrown) => {
+      assert.ok(thrown instanceof PocketmiceError);
+      assert.deepEqual([thrown.code, thrown.operation], ['UNKNOWN_SPACE', 'watchSpace']);
+      return true;
+    }
+  );
 });

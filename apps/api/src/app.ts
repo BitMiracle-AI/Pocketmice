@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AUTH_ROUTES } from './domains/auth/auth.ts';
+import { type EventsDeps, mountEvents } from './domains/event/spaceEvents.ts';
 import { type FileContentDeps, mountFileContent } from './domains/file/fileContent.ts';
 import { mountMcp, type Tool } from './http/mcp.ts';
 import { mountOperations, type OperationDeps } from './http/operation.ts';
@@ -31,6 +32,12 @@ export interface AppDeps extends OperationDeps {
    * mounted.
    */
   mcp?: { version: string; tools: Tool[] };
+  /**
+   * The address a caller hears at that something in a space changed (EVENTS_PATH in the contract; its rules are
+   * there, and in domains/event/spaceEvents.ts). It is not an operation either: its answer does not end. Left out,
+   * it is not mounted, and nothing listens on the database.
+   */
+  events?: Pick<EventsDeps, 'db' | 'stopping' | 'timings'>;
 }
 
 /** Every route of the api. It does not listen on a port: main.ts does */
@@ -63,6 +70,9 @@ export function createApp(deps: AppDeps) {
 
   // The content of files. Its callers pass the same checks as the callers of an operation
   if (deps.content) mountFileContent(app, { ...deps, ...deps.content });
+
+  // The events of the spaces. Its callers pass the same checks as the callers of an operation
+  if (deps.events) mountEvents(app, { ...deps, ...deps.events });
 
   // The MCP entrance. What its tools do, they do by sending requests to this same app
   if (deps.mcp) {

@@ -343,6 +343,30 @@ conversations the person is in. What you say there is said as that person, and m
 - `deleteMessage` deletes a message the person sent, by its number; with a key of the owner of the space, any
   message. It stays in the conversation under its number, with an empty text.
 - `createConversation` starts one, with the person as its only member. `updateConversation` changes its title.
+
+### Hearing what happens
+
+To answer when you are spoken to, and not when you next look, keep a channel open:
+`GET /api/events?spaceId=<space>` with the key. The answer does not end: it is `text/event-stream`, one line
+`data: <JSON>` for each event, with an empty line after it.
+
+```sh
+curl -sN "$POCKETMICE_URL/api/events?spaceId=$SPACE" -H "authorization: Bearer $POCKETMICE_API_KEY"
+# data: {"type":"open"}
+# data: {"type":"ping"}
+# data: {"type":"message","conversationId":"7c1d…","number":12}
+# data: {"type":"conversation","conversationId":"7c1d…"}
+```
+
+- An event says that something changed, never what it changed to. `message`: that conversation has reached this
+  number; read what you are missing with `getMessages`. `conversation`: its title, its members or a message of
+  it changed, or it is new to the person, or gone for them; `getConversation` says which.
+- `open` comes first on every channel. Nothing is told from before it: when you get it, read what you hold once
+  more (`getConversations`), as you would on any event. That is all it takes to miss nothing.
+- A `ping` comes every three seconds. Ten seconds without a byte: the channel is broken, open another.
+- The server ends a channel after a few minutes. Open the next at once; after a failure, wait a moment first.
+- With the TypeScript SDK this is `watchSpace({spaceId})`, read with `for await`: one channel for each call.
+- Over MCP there is no channel: you look when you are asked to.
 - Who is in a conversation is the person's to decide, signed in: a key adds nobody, takes nobody out, does not leave
   and does not delete a conversation. Tell the user what you need instead.
 - The owner of a space can read every conversation in it. With a key of the owner, `getAllConversations` lists them
