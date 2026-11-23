@@ -1,0 +1,18 @@
+# What must not go into the build context of an image. The image of every unit under apps/ is built with the root
+# of the repository as its context, so there is this one file.
+
+# Secrets: a unit's .env is for this machine only. A deployed unit is given its configuration where it is deployed
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies installed on this machine (for another system, of no use in the image) and what builds leave behind
+**/node_modules
+**/dist
+
+# What a unit keeps on the disk of the machine it runs on (for the api, the files people uploaded) and scratch
+# files: the same two lines as in .gitignore
+apps/*/data
+apps/*/temp
+
+.git
