@@ -136,5 +136,11 @@ export const en = {
   previewEmpty: 'This file is empty',
   /** Under a text that is longer than what is shown of it */
   previewCut: (size: string) => `The first ${size} of the file.`,
-  previewOpen: 'Enlarge the preview'
+  previewOpen: 'Enlarge the preview',
+  /** In the small box of a PDF, which is read only once it is opened large */
+  previewPdf: 'Enlarge it to read it here',
+  previewNotPdf: 'This file is not a PDF',
+  /** The two ways a text written in Markdown is shown large */
+  previewDocument: 'Document',
+  previewSource: 'Source'
 };

@@ -119,5 +119,9 @@ export const zhHans: typeof en = {
   previewTooLarge: '文件太大，不在这里预览',
   previewEmpty: '这个文件是空的',
   previewCut: (size) => `这是文件的前 ${size}。`,
-  previewOpen: '放大预览'
+  previewOpen: '放大预览',
+  previewPdf: '放大后在这里阅读',
+  previewNotPdf: '这个文件不是 PDF',
+  previewDocument: '文档',
+  previewSource: '原文'
 };
