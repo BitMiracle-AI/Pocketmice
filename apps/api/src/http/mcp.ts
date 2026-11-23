@@ -154,7 +154,13 @@ export function mountMcp(app: Hono, deps: McpDeps): void {
         return app.request(path, { ...init, headers });
       };
 
-      const server = new McpServer({ name: 'pocketmice', version: deps.version });
+      // The list of tools is the same for as long as the server runs, and the client is told so. Left to itself
+      // the protocol's layer says the list may change, and a client that waits to be told is then given a stream
+      // that stays open with nothing ever sent down it; told the truth, it is answered and let go
+      const server = new McpServer(
+        { name: 'pocketmice', version: deps.version },
+        { capabilities: { tools: { listChanged: false } } }
+      );
       for (const { name, description, kind, input, run } of tools) {
         server.registerTool(
           name,

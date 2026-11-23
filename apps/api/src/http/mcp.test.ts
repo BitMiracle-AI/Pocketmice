@@ -336,6 +336,46 @@ for (const era of ERAS) {
   });
 }
 
+test('the list of tools does not change while the server runs, and the entrance says so: a client that asks to be told of changes is answered and let go', async () => {
+  const { app, connect } = setup();
+  for (const era of ERAS) {
+    assert.equal((await connect(WRITE_KEY, era)).getServerCapabilities()?.tools?.listChanged, false, era);
+  }
+
+  // A client that asks all the same, in the revision that has a request for it. What it is answered with is kept,
+  // to see that the answer ends: a stream left open is held until the client leaves, by a server that has nothing
+  // to send down it
+  const answers: { method: string; answer: Response }[] = [];
+  const client = await connectMcp(async (path, init = {}) => {
+    const headers = new Headers(init.headers);
+    headers.set('authorization', `Bearer ${WRITE_KEY}`);
+    const response = await app.request(path, { ...init, headers });
+    const { method = '' } = JSON.parse(typeof init.body === 'string' ? init.body : '{}') as { method?: string };
+    answers.push({ method, answer: response.clone() });
+    return response;
+  }, 'modern');
+
+  try {
+    await client.listen({ toolsListChanged: true });
+
+    const listened = answers.find(({ method }) => method === 'subscriptions/listen');
+    assert.ok(listened, 'the client should have sent its request to listen');
+    let timer: NodeJS.Timeout | undefined;
+    const ended = await Promise.race([
+      listened.answer.text(),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), 1000);
+      })
+    ]);
+    clearTimeout(timer);
+    assert.notEqual(ended, null, 'the answer to a request to listen should have ended');
+    // It was told what it will be sent: nothing
+    assert.match(ended ?? '', /"notifications\/subscriptions\/acknowledged","params":\{"notifications":\{\}/);
+  } finally {
+    await client.close();
+  }
+});
+
 test('without an API key that works the protocol is not spoken: not for a key that does not work, and not for someone signed in', async () => {
   const { post, identified } = setup();
 
