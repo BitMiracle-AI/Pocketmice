@@ -229,11 +229,12 @@ async function download(c: Context, deps: FileContentDeps): Promise<Response> {
   const began = c.req.header('if-range');
   const range = began === undefined || began === etag ? rangeOf(c.req.header('range'), size) : null;
   if (range === 'none') {
-    // The one answer here that is not an error code of ours: it is HTTP's own answer to a Range header
+    // The one answer here that is not an error code of ours: it is HTTP's own answer to a Range header. It says
+    // which version has nothing there and how large that version is, so a caller learns both from one answer
     return c.json(
       { error: { code: 'INVALID_INPUT', message: `The range asked for has nothing of the ${size} bytes in it.` } },
       416,
-      { 'content-range': `bytes */${size}` }
+      { 'content-range': `bytes */${size}`, etag }
     );
   }
   const status = range ? 206 : 200;

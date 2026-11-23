@@ -442,6 +442,8 @@ test('one range of the content is answered as that range; a range with nothing i
   const beyond = await get(ada, query, { range: 'bytes=10000-' });
   assert.equal(beyond.status, 416);
   assert.equal(beyond.headers.get('content-range'), 'bytes */10000');
+  // It says which version has nothing there, as every answer to a download says which version it is about
+  assert.equal(beyond.headers.get('etag'), `"${file.version.id}"`);
   // A header this address does not serve is not an error: the whole content is sent
   for (const range of ['bytes=0-1,5-6', 'lines=1-2', 'bytes=abc']) {
     const whole = await get(ada, query, { range });

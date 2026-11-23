@@ -2,12 +2,10 @@ import {
   FILE_CONTENT_PATH,
   fileContentPath,
   fileName,
-  getFile,
   type NewFileQuery,
   type NewVersionQuery
 } from '@pocketmice/contract/domains/file';
 import { id } from '@pocketmice/contract/id';
-import { operationPath } from '@pocketmice/contract/operation';
 import { z } from 'zod';
 import { answer, failure, refusal, type Send, type Tool, type ToolResult, tool } from '../../http/mcp.ts';
 
@@ -94,32 +92,23 @@ const getFileContent = tool({
     const address = contentAddress(spaceId, fileId, version);
     const response = await send(address, { headers: { range: `bytes=${from}-${from + MAX_TEXT_READ_BYTES - 1}` } });
 
-    // Nothing of the content is at that byte or after it: the content is empty, or the cursor is at its end
-    if (response.status === 416) {
-      const size = Number(response.headers.get('content-range')?.split('/')[1]);
-      if (version !== null) return piece({ versionId: version, size, nextCursor: null }, '');
-      // That answer does not say which version it is, and the caller needs to know to write over the file
-      const found = await send(operationPath(getFile), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ spaceId, fileId })
-      });
-      if (!found.ok) return refusal(found);
-      const { file } = (await found.json()) as { file: { version: { id: string } } };
-      return piece({ versionId: file.version.id, size, nextCursor: null }, '');
-    }
-    if (!response.ok) return refusal(response);
+    // 416: nothing of the content is at that byte or after it. The content is empty, or the cursor is at its end
+    const nothingThere = response.status === 416;
+    if (!response.ok && !nothingThere) return refusal(response);
 
-    // The etag of a download is the id of the version that was sent, in quotes
+    // Either answer says which version it is about (the etag is its id, in quotes) and how large that version is:
+    // the two are of one moment, whoever writes to the file in the next
     const versionRead = response.headers.get('etag')?.replaceAll('"', '');
     const size = Number(response.headers.get('content-range')?.split('/')[1]);
     // Only a piece is taken. The content address may answer a range with all of the content, which is up to a
-    // gigabyte: an answer that is not a piece (206, saying which version and of how many bytes) is not read
-    if (response.status !== 206 || !versionRead || !Number.isInteger(size)) {
+    // gigabyte: an answer that is not a piece (206) is not read
+    if ((response.status !== 206 && !nothingThere) || !versionRead || !Number.isInteger(size)) {
       await response.body?.cancel();
       throw new Error(`The content address answered a range with ${response.status}, and not with a piece.`);
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    // What a 416 carries is its refusal, and none of the content
+    if (nothingThere) await response.body?.cancel();
+    const bytes = nothingThere ? new Uint8Array() : new Uint8Array(await response.arrayBuffer());
 
     const last = from + bytes.length >= size;
     const whole = last ? bytes.length : wholeCharacters(bytes);

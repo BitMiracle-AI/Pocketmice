@@ -360,6 +360,30 @@ test('a cursor at the end of the content, or past it, reads nothing more', async
   }
 });
 
+test('which version an empty content is, and that it is empty, come from one answer: a write in between does not pass for what was read', async () => {
+  const getFileContent = fileContentTools.find(({ name }) => name === 'getFileContent');
+  assert.ok(getFileContent);
+  const empty = '11111111-1111-4111-8111-111111111111';
+  const written = '22222222-2222-4222-8222-222222222222';
+  const sent: string[] = [];
+
+  // The content address says the file is empty, of the version it has at that moment. Asked a moment later what
+  // the file is, the api would name the version somebody has written since: a caller told that one is empty would
+  // write over content it never saw
+  const called = await getFileContent.run({ spaceId: SOME_ID, fileId: SOME_ID, versionId: null }, async (path) => {
+    sent.push(path.split('?')[0] ?? '');
+    return path.startsWith('/api/content')
+      ? new Response('{}', { status: 416, headers: { 'content-range': 'bytes */0', etag: `"${empty}"` } })
+      : Response.json({ file: { version: { id: written } } });
+  });
+
+  assert.deepEqual(
+    called.content.map(({ text }) => JSON.parse(text)),
+    [{ versionId: empty, size: 0, nextCursor: null }]
+  );
+  assert.deepEqual(sent, ['/api/content']);
+});
+
 test('getFileContent takes a piece of the content and nothing else: an answer that is all of it is not read', async () => {
   const getFileContent = fileContentTools.find(({ name }) => name === 'getFileContent');
   assert.ok(getFileContent);
