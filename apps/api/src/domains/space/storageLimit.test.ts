@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readdir } from 'node:fs/promises';
 import { test } from 'node:test';
 import { createApiKey } from '@pocketmice/contract/domains/apiKey';
 import {
@@ -118,12 +117,6 @@ async function held(spaceId: string, asPerson: CurrentUser) {
   );
 }
 
-/** How many objects the storage really holds */
-async function storedObjects() {
-  const entries = await readdir(api.storageDir, { recursive: true, withFileTypes: true });
-  return entries.filter((entry) => entry.isFile()).length;
-}
-
 test('what a space holds is every version of every file in it, the versions before the current one and the trash included; any member may ask, and any key', async () => {
   const ada = await api.addPerson('Ada');
   const linus = await api.addPerson('Linus');
@@ -230,7 +223,7 @@ test('an upload that would take the space past its limit is refused before its b
   const spaceId = await makeSpace(ada);
   await limitSpace(ada, spaceId, 100);
   const notes = await upload(ada, spaceId, { name: 'notes.md' }, 60);
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   assert.deepEqual(await refused(await put(ada, spaceId, { name: 'more.md' }, 41)), [
     413,
@@ -239,7 +232,7 @@ test('an upload that would take the space past its limit is refused before its b
   // The version written over stays, so a new version adds all of its bytes: one byte over 60 is not 1 in place of 60
   assert.deepEqual(await refused(await put(ada, spaceId, { over: notes }, 41)), [413, 'SPACE_STORAGE_LIMIT_EXCEEDED']);
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   const made = await api.as(ada)(getFileByPath, { spaceId, path: '/more.md' });
   assert.equal(!made.ok && made.code, 'NOT_FOUND');
   const current = await api.as(ada)(getFile, { spaceId, fileId: notes.id });
@@ -275,7 +268,7 @@ test('what a member holds is what they wrote, also through their keys: a write t
   // Somebody else has written more than she may hold: it is not hers, and does not count against her
   await upload(linus, spaceId, { name: 'early.md' }, 100);
   const hers = await upload(agent, spaceId, { name: 'by-the-agent.md' }, 30);
-  const before = await storedObjects();
+  const before = api.storedObjects();
   assert.deepEqual(await refused(await put(grace, spaceId, { name: 'more.md' }, 21)), [
     413,
     'MEMBER_STORAGE_LIMIT_EXCEEDED'
@@ -284,7 +277,7 @@ test('what a member holds is what they wrote, also through their keys: a write t
     413,
     'MEMBER_STORAGE_LIMIT_EXCEEDED'
   ]);
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   await upload(grace, spaceId, { name: 'more.md' }, 20);
 
   // Somebody else is not held by her limit, and what they write is theirs
@@ -391,7 +384,7 @@ test('restoreFileVersion adds a version as large as the old one: refused when th
   const first = await upload(ada, spaceId, { name: 'notes.md' }, 60);
   const second = await upload(ada, spaceId, { over: first }, 10);
   const input = { spaceId, fileId: first.id, versionId: first.version.id, baseVersionId: second.version.id };
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   await limitSpace(ada, spaceId, 129);
   const overSpace = await api.as(ada)(restoreFileVersion, input);
@@ -402,7 +395,7 @@ test('restoreFileVersion adds a version as large as the old one: refused when th
   const overMember = await api.as(grace)(restoreFileVersion, input);
   assert.equal(!overMember.ok && overMember.code, 'MEMBER_STORAGE_LIMIT_EXCEEDED');
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   const current = await api.as(ada)(getFile, { spaceId, fileId: first.id });
   assert.equal(current.ok && current.data.file.version?.id, second.version.id);
 

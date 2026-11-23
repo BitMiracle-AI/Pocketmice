@@ -10,7 +10,6 @@ import { createAuth } from './domains/auth/auth.ts';
 import { prepareSignIn } from './domains/prepareSignIn.ts';
 import { mailFromEnv, requireEnv, requireOrigins, storageFromEnv } from './env.ts';
 import { createSmtpMailer, printEmail } from './external/mail/mailer.ts';
-import { createFolderStorage } from './external/storage/folderStorage.ts';
 import { createS3Storage } from './external/storage/s3Storage.ts';
 import { logInternalError } from './http/errorLog.ts';
 
@@ -25,11 +24,8 @@ const DB_STATEMENT_SECONDS = 30;
 /** The pool of database connections. The sign-in library and the operations share it */
 export const db = connectDb(requireEnv('DATABASE_URL'), { queryTimeoutSeconds: DB_STATEMENT_SECONDS });
 
-const storageConfig = storageFromEnv();
-
-/** Where the bytes of files are kept: the folder or the bucket the environment names */
-export const storage =
-  storageConfig.kind === 'folder' ? createFolderStorage(storageConfig.dir) : createS3Storage(storageConfig);
+/** Where the bytes of files are kept: the bucket the environment names */
+export const storage = createS3Storage(storageFromEnv());
 
 /** The web pages allowed to call the api. The sign-in library and the cross-origin settings use this one list */
 export const webOrigins = requireOrigins('WEB_ORIGINS');

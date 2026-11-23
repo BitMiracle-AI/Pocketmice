@@ -49,36 +49,23 @@ export function hostFromEnv(name: string, fallback: string): string {
 }
 
 /** Where the bytes of files are kept: a folder on this machine, or a bucket of an S3-compatible service */
-export type StorageConfig =
-  | { kind: 'folder'; dir: string }
-  | {
-      kind: 's3';
-      bucket: string;
-      region: string;
-      accessKeyId: string;
-      secretAccessKey: string;
-      /** The address of the service. Left out for AWS, which is found from the region */
-      endpoint?: string;
-      /** Whether the bucket is named in the path of the address and not in its host */
-      forcePathStyle: boolean;
-    };
+/** The bucket the bytes of files are kept in, and how it is reached */
+export interface StorageConfig {
+  bucket: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  /** The address of the service. Left out for AWS, which is found from the region */
+  endpoint?: string;
+  /** Whether the bucket is named in the path of the address and not in its host */
+  forcePathStyle: boolean;
+}
 
 /**
- * Reads where the bytes of files are kept. Exactly one of the two is configured: STORAGE_DIR for a folder, or
- * S3_BUCKET with the rest of its group for a bucket. Both, or neither, is an error: the server never guesses where
- * people's files go, and never falls back on a place nobody chose.
+ * Reads where the bytes of files are kept: a bucket of an S3-compatible service, named by S3_BUCKET with the rest
+ * of its group. There is no default: the server never guesses where people's files go.
  */
 export function storageFromEnv(): StorageConfig {
-  const dir = process.env.STORAGE_DIR;
-  const bucket = process.env.S3_BUCKET;
-  if (dir && bucket) {
-    throw new Error('Both STORAGE_DIR and S3_BUCKET are set. Set one: files are kept in one place.');
-  }
-  if (dir) return { kind: 'folder', dir };
-  if (!bucket) {
-    throw new Error('Neither STORAGE_DIR nor S3_BUCKET is set. Set one: see apps/api/.env.example.');
-  }
-
   const pathStyle = process.env.S3_FORCE_PATH_STYLE;
   if (pathStyle && pathStyle !== 'true' && pathStyle !== 'false') {
     throw new Error(`Environment variable S3_FORCE_PATH_STYLE must be true or false, got "${pathStyle}".`);
@@ -91,8 +78,7 @@ export function storageFromEnv(): StorageConfig {
     );
   }
   return {
-    kind: 's3',
-    bucket,
+    bucket: requireEnv('S3_BUCKET'),
     region: requireEnv('S3_REGION'),
     accessKeyId: requireEnv('S3_ACCESS_KEY_ID'),
     secretAccessKey: requireEnv('S3_SECRET_ACCESS_KEY'),

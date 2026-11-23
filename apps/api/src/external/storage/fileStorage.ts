@@ -5,8 +5,8 @@ import type { Readable } from 'node:stream';
  * each a run of bytes under a key, and an object never changes once it is stored: it is read, copied, and at some
  * point removed.
  * The api names an object after the version whose content it is, so a key is always an id (see assertKey).
- * There are two of these: a folder on the disk of the machine the api runs on (folderStorage.ts) and a bucket of
- * an S3-compatible service (s3Storage.ts). fileStorage.test.ts puts both through the same tests.
+ * It is a bucket of an S3-compatible service (s3Storage.ts), and nothing else: what a running server keeps its
+ * bytes in is what the tests and a developer's machine keep them in, so each is the same path through the code.
  */
 export interface FileStorage {
   /**

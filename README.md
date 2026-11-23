@@ -28,7 +28,7 @@ hand back what they make.
 - Three ways in for agents: an HTTP API with a TypeScript SDK, an MCP server, and an agent skill. An agent calls the
   same API as a person, with an API key that person made. What it does is done as that person; a key can be
   read-only, and no key decides who gets into a space.
-- A server you can run yourself, on Postgres, with the files in a folder on its disk or in an S3-compatible bucket.
+- A server you can run yourself, on Postgres, with the files in an S3-compatible bucket.
   People sign in with an email address and a password; a server that is given an SMTP server to send mail through
   signs them in with a code sent to their address instead.
 
@@ -211,8 +211,8 @@ docker build -f apps/api/Dockerfile -t pocketmice-api .
 
 A container applies the migrations that have not run yet and then starts the API on port 11210, on every address
 the container has. It takes its configuration from the environment, with the variables of
-[`apps/api/.env.example`](apps/api/.env.example). When the files are kept in a folder, mount a volume at `/data`
-and set `STORAGE_DIR=/data/storage`: without a volume the files are gone with the container.
+[`apps/api/.env.example`](apps/api/.env.example). It keeps nothing on its own disk: what the files are is in the
+database, and their content is in the bucket.
 
 Keep the database, and every backup of it, the way you keep a credential. It holds each API key as it is, not a
 hash of it: that is how the person who made a key copies it again whenever they are signed in. So whoever can read
@@ -344,7 +344,8 @@ disagree.
 
 ## Development
 
-You need Node 26 or later, pnpm 11 and a Postgres server.
+You need Node 26 or later, pnpm 11, a Postgres server, and a bucket of an S3-compatible service for the content
+of files (see [`apps/api/.env.example`](apps/api/.env.example) for what serves in development).
 
 Create a role and a database for Pocketmice. The role needs the right to create databases, for the tests: every
 test file creates a temporary database of its own and drops it when done.
@@ -358,7 +359,7 @@ Then:
 
 ```sh
 pnpm install
-cp apps/api/.env.example apps/api/.env    # fill in DATABASE_URL and BETTER_AUTH_SECRET; files go to ./data/storage
+cp apps/api/.env.example apps/api/.env    # fill in DATABASE_URL, BETTER_AUTH_SECRET and the bucket (S3_*)
 cp apps/app/.env.example apps/app/.env    # the address of the API, as the web app reaches it
 pnpm --filter @pocketmice/api migrate
 pnpm dev

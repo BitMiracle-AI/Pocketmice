@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
 import { Readable, Writable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
 import { pipeline } from 'node:stream/promises';
@@ -98,12 +97,6 @@ function get(who: Who, query: Record<string, string>, headers: Record<string, st
 async function failure(response: Response) {
   const body = (await response.json()) as { error?: { code: string } };
   return [response.status, body.error?.code];
-}
-
-/** How many objects the storage really holds */
-async function storedObjects() {
-  const entries = await readdir(api.storageDir, { recursive: true, withFileTypes: true });
-  return entries.filter((entry) => entry.isFile()).length;
 }
 
 test('an upload makes a file with its content as the first version, and a download gives the same bytes back', async () => {
@@ -256,7 +249,7 @@ test('writing over a version that is no longer the current one is CONFLICT: nobo
   const base = { spaceId, fileId: first.id, baseVersionId: first.version.id };
   // Both read the same version. Grace writes first
   assert.equal((await put(grace, base, 'what Grace wrote')).status, 200);
-  const stored = await storedObjects();
+  const stored = api.storedObjects();
 
   const late = await put(ada, base, 'what Ada wrote, not having seen Grace write');
 
@@ -264,7 +257,7 @@ test('writing over a version that is no longer the current one is CONFLICT: nobo
   assert.equal(await (await get(ada, { spaceId, fileId: first.id })).text(), 'what Grace wrote');
   // The refused write left neither a version nor bytes
   assert.equal((await api.db.select().from(fileVersions).where(eq(fileVersions.fileId, first.id))).length, 2);
-  assert.equal(await storedObjects(), stored);
+  assert.equal(api.storedObjects(), stored);
   // Having read it again, Ada writes
   const current = await api.as(ada)(getFile, { spaceId, fileId: first.id });
   assert.ok(current.ok && current.data.file.version);
@@ -277,14 +270,14 @@ test('of two writes over the same version sent at the same moment, exactly one i
   const spaceId = await makeSpace(ada);
   const first = await upload(ada, { spaceId, name: 'notes.md' }, 'the original');
   const base = { spaceId, fileId: first.id, baseVersionId: first.version.id };
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   const answers = await Promise.all(['a', 'b', 'c', 'd', 'e'].map((content) => put(ada, base, content)));
 
   assert.deepEqual(answers.map((answer) => answer.status).sort(), [200, 409, 409, 409, 409]);
   assert.equal((await api.db.select().from(fileVersions).where(eq(fileVersions.fileId, first.id))).length, 2);
   // The four that were refused left no bytes
-  assert.equal(await storedObjects(), before + 1);
+  assert.equal(api.storedObjects(), before + 1);
 });
 
 /** Stores this content the way an upload does, ready to become a version */
@@ -336,13 +329,13 @@ test('an upload under a name that is taken is CONFLICT, refused before its bytes
   const spaceId = await makeSpace(ada);
   const reports = await makeFolder(ada, spaceId, null, 'Reports');
   await upload(ada, { spaceId, name: 'notes.md' }, 'the original');
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   for (const name of ['notes.md', 'Reports']) {
     assert.deepEqual(await failure(await put(ada, { spaceId, name }, 'another')), [409, 'CONFLICT'], name);
   }
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   // The same name in another folder is another name
   assert.equal((await put(ada, { spaceId, parentId: reports, name: 'notes.md' }, 'another')).status, 200);
 });
@@ -350,7 +343,7 @@ test('an upload under a name that is taken is CONFLICT, refused before its bytes
 test('of two uploads under the same name sent at the same moment, one makes the file and the other leaves no bytes', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   const answers = await Promise.all(
     ['a', 'b', 'c', 'd'].map((content) => put(ada, { spaceId, name: 'same.md' }, content))
@@ -359,7 +352,7 @@ test('of two uploads under the same name sent at the same moment, one makes the 
   assert.deepEqual(answers.map((answer) => answer.status).sort(), [200, 409, 409, 409]);
   const listed = await api.as(ada)(getFiles, { spaceId, parentId: null });
   assert.deepEqual(listed.ok && listed.data.files.map((file) => file.name), ['same.md']);
-  assert.equal(await storedObjects(), before + 1);
+  assert.equal(api.storedObjects(), before + 1);
 });
 
 test('an upload that names a place or a file that is not there is NOT_FOUND, and one over a folder is CONFLICT', async () => {
@@ -370,7 +363,7 @@ test('an upload that names a place or a file that is not there is NOT_FOUND, and
   const elsewhere = await upload(ada, { spaceId: otherSpaceId, name: 'elsewhere.md' }, 'x');
   const trashed = await upload(ada, { spaceId, name: 'trashed.md' }, 'x');
   await api.as(ada)(trashFile, { spaceId, fileId: trashed.id });
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   for (const [query, expected] of [
     [{ spaceId, parentId: NOBODY, name: 'a.md' }, [404, 'NOT_FOUND']],
@@ -383,14 +376,14 @@ test('an upload that names a place or a file that is not there is NOT_FOUND, and
     assert.deepEqual(await failure(await put(ada, query, 'content')), expected, JSON.stringify(query));
   }
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
 });
 
 test('an upload whose query or headers do not say what is needed is INVALID_INPUT, and one too large INPUT_TOO_LARGE', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
   const file = await upload(ada, { spaceId, name: 'notes.md' }, 'x');
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   for (const query of [
     { name: 'a.md' },
@@ -414,7 +407,7 @@ test('an upload whose query or headers do not say what is needed is INVALID_INPU
   const tooLarge = await put(ada, { spaceId, name: 'a.md' }, 'x', { 'content-length': String(MAX_FILE_BYTES + 1) });
   assert.deepEqual(await failure(tooLarge), [413, 'INPUT_TOO_LARGE']);
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
 });
 
 test('one range of the content is answered as that range; a range with nothing in it is 416', async () => {
@@ -520,7 +513,7 @@ test('who may use the content address is decided as for an operation: the role, 
   const newFile = { spaceId, name: 'theirs.md' };
   const over = { spaceId, fileId: file.id, baseVersionId: file.version.id };
   const read = { spaceId, fileId: file.id };
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   for (const [who, uploads, download] of [
     // A viewer, and a read-only key of the owner, read and do not write
@@ -535,7 +528,7 @@ test('who may use the content address is decided as for an operation: the role, 
     assert.equal((await get(who, read)).status, download);
   }
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   assert.equal(await (await get(ada, read)).text(), 'the original');
   // A web page that is not on the list is refused, with or without anyone signed in
   const elsewhere = await api.send(ada, `${FILE_CONTENT_PATH}?${new URLSearchParams(read)}`, {
@@ -638,7 +631,7 @@ test('restoreFileVersion brings an old version back as a new one with bytes of i
   const first = await upload(ada, { spaceId, name: 'notes.md' }, 'the good version');
   const response = await put(ada, { spaceId, fileId: first.id, baseVersionId: first.version.id }, 'ruined');
   const second = ((await response.json()) as { file: Uploaded }).file;
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   const restored = await api.as(grace)(restoreFileVersion, {
     spaceId,
@@ -660,7 +653,7 @@ test('restoreFileVersion brings an old version back as a new one with bytes of i
     second.version.id,
     first.version.id
   ]);
-  assert.equal(await storedObjects(), before + 1);
+  assert.equal(api.storedObjects(), before + 1);
 });
 
 test('restoreFileVersion is a write: a viewer and a read-only key are refused, and nothing is stored', async () => {
@@ -672,7 +665,7 @@ test('restoreFileVersion is a write: a viewer and a read-only key are refused, a
   const response = await put(ada, { spaceId, fileId: first.id, baseVersionId: first.version.id }, 'ruined');
   const second = ((await response.json()) as { file: Uploaded }).file;
   const reader = await makeKey(ada, 'read');
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   for (const call of [api.as(grace), api.withKey(reader.key)]) {
     const restored = await call(restoreFileVersion, {
@@ -684,7 +677,7 @@ test('restoreFileVersion is a write: a viewer and a read-only key are refused, a
     assert.equal(!restored.ok && restored.code, 'FORBIDDEN');
   }
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   assert.equal(await (await get(ada, { spaceId, fileId: first.id })).text(), 'ruined');
 });
 
@@ -695,7 +688,7 @@ test('restoreFileVersion is refused over a version the caller has not seen, and 
   const other = await upload(ada, { spaceId, name: 'other.md' }, 'other');
   const response = await put(ada, { spaceId, fileId: first.id, baseVersionId: first.version.id }, 'two');
   const second = ((await response.json()) as { file: Uploaded }).file;
-  const before = await storedObjects();
+  const before = api.storedObjects();
   const restore = (versionId: string, baseVersionId: string, fileId = first.id) =>
     api.as(ada)(restoreFileVersion, { spaceId, fileId, versionId, baseVersionId });
 
@@ -710,7 +703,7 @@ test('restoreFileVersion is refused over a version the caller has not seen, and 
 
   const same = await restore(second.version.id, second.version.id);
   assert.equal(same.ok && same.data.file.version?.id, second.version.id);
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   assert.equal((await api.db.select().from(fileVersions).where(eq(fileVersions.fileId, first.id))).length, 2);
 });
 
@@ -799,7 +792,7 @@ test('renaming and moving a file leave its content alone, and it is found again 
 test('an upload that breaks off is refused, and leaves neither a file nor bytes', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
-  const before = await storedObjects();
+  const before = api.storedObjects();
   // The body gives some bytes and then fails, the way a connection that went away does
   async function* breaking() {
     yield randomBytes(100_000);
@@ -816,5 +809,5 @@ test('an upload that breaks off is refused, and leaves neither a file nor bytes'
   assert.deepEqual(await failure(response), [400, 'INVALID_INPUT']);
   const listed = await api.as(ada)(getFiles, { spaceId, parentId: null });
   assert.deepEqual(listed.ok && listed.data.files, []);
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
 });

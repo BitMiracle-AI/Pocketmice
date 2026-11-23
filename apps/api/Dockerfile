@@ -7,8 +7,7 @@
 # container runs: the list is in .env.example. There is no .env in the image.
 # The code is not compiled: Node runs the TypeScript as it is, the same as in development.
 #
-# Files kept in a folder (STORAGE_DIR) are gone with the container unless that folder is on a volume. /data is
-# there for it: mount a volume at /data and set STORAGE_DIR=/data/storage.
+# The container keeps nothing on its disk: what the files are is in the database, their content in the bucket.
 #
 # Two stages: the first installs the dependencies, the second takes only the result. pnpm itself and the cache of
 # what it downloaded stay in the first.
@@ -38,10 +37,6 @@ RUN --mount=type=cache,target=/pnpm-store \
 
 FROM node:26-alpine
 COPY --from=install /repo /repo
-
-# Where a volume for the files goes. It belongs to the user the api runs as: a new volume mounted here takes that
-# over, and the api can write to it
-RUN mkdir /data && chown node:node /data
 
 ENV NODE_ENV=production
 # Every address the container has: the proxy is outside the container and cannot reach 127.0.0.1 in it. Who can

@@ -77,7 +77,6 @@ function withEnv<Result>(names: string[], settings: Record<string, string>, run:
 /** Runs with exactly these storage settings in the environment */
 function withStorageEnv<Result>(settings: Record<string, string>, run: () => Result): Result {
   const names = [
-    'STORAGE_DIR',
     'S3_BUCKET',
     'S3_REGION',
     'S3_ACCESS_KEY_ID',
@@ -95,13 +94,8 @@ function withMailEnv<Result>(settings: Record<string, string>, run: () => Result
 
 const S3 = { S3_BUCKET: 'files', S3_REGION: 'us-east-1', S3_ACCESS_KEY_ID: 'id', S3_SECRET_ACCESS_KEY: 'secret' };
 
-test('files are kept in a folder or in a bucket, whichever is configured', () => {
-  assert.deepEqual(withStorageEnv({ STORAGE_DIR: './data/storage' }, storageFromEnv), {
-    kind: 'folder',
-    dir: './data/storage'
-  });
+test('files are kept in the bucket the environment names', () => {
   assert.deepEqual(withStorageEnv(S3, storageFromEnv), {
-    kind: 's3',
     bucket: 'files',
     region: 'us-east-1',
     accessKeyId: 'id',
@@ -112,15 +106,11 @@ test('files are kept in a folder or in a bucket, whichever is configured', () =>
     { ...S3, S3_ENDPOINT: 'http://localhost:9000', S3_FORCE_PATH_STYLE: 'true' },
     storageFromEnv
   );
-  assert.deepEqual(
-    [minio.kind === 's3' && minio.endpoint, minio.kind === 's3' && minio.forcePathStyle],
-    ['http://localhost:9000', true]
-  );
+  assert.deepEqual([minio.endpoint, minio.forcePathStyle], ['http://localhost:9000', true]);
 });
 
-test('both places configured, neither, or a bucket with part of its settings missing or wrong is an error', () => {
-  assert.throws(() => withStorageEnv({ ...S3, STORAGE_DIR: './data/storage' }, storageFromEnv), /Both STORAGE_DIR/);
-  assert.throws(() => withStorageEnv({}, storageFromEnv), /Neither STORAGE_DIR nor S3_BUCKET/);
+test('no bucket, or a bucket with part of its settings missing or wrong, is an error', () => {
+  assert.throws(() => withStorageEnv({}, storageFromEnv), /Missing environment variable S3_BUCKET/);
   assert.throws(
     () => withStorageEnv({ ...S3, S3_SECRET_ACCESS_KEY: '' }, storageFromEnv),
     /Missing environment variable S3_SECRET_ACCESS_KEY/

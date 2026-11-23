@@ -1,11 +1,8 @@
-// The setup the tests of the domains share: a temporary database and a temporary folder for the storage, people in
+// The setup the tests of the domains share: a temporary database and a bucket of their own for the storage, people in
 // the database, and calling the api the way a web page or an agent does. It is not a test, and nothing a running server uses imports it.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
 import type { Server } from 'node:http';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { after, afterEach, before } from 'node:test';
 import { createAdaptorServer } from '@hono/node-server';
 import { type ApiClient, createApiClient } from '@pocketmice/client/api';
@@ -17,7 +14,8 @@ import { eq } from 'drizzle-orm';
 import { createApp } from '../app.ts';
 import { requireEnv } from '../env.ts';
 import type { FileStorage } from '../external/storage/fileStorage.ts';
-import { createFolderStorage } from '../external/storage/folderStorage.ts';
+import { type MiniS3, startMiniS3 } from '../external/storage/miniS3.testing.ts';
+import { createS3Storage } from '../external/storage/s3Storage.ts';
 import { describeError } from '../http/errorLog.ts';
 import type { CurrentUser } from '../http/operation.ts';
 import { identifyCaller } from './apiKey/identifyCaller.ts';
@@ -38,10 +36,10 @@ const TEST_USER_HEADER = 'x-test-user';
 export interface TestApi {
   /** The temporary database of this test file */
   readonly db: Db;
-  /** The storage of this test file: a temporary folder */
+  /** The storage of this test file: a bucket of the small S3 of miniS3.testing.ts, which keeps it in memory */
   readonly storage: FileStorage;
-  /** The folder that storage is: a test looks into it to see what is really kept */
-  readonly storageDir: string;
+  /** How many objects that bucket really holds: what a test asks to see what is kept, and what is gone */
+  storedObjects: () => number;
   /**
    * Adds a person who signed up under this name: their user row, and what every signed-in person has (see
    * prepareSignIn). The sign-in library is not involved; it is tested in domains/auth/auth.test.ts.
@@ -71,14 +69,14 @@ export interface TestApi {
 }
 
 /**
- * Call it once at the top of a test file. The file gets a temporary database and a temporary folder of its own,
- * both removed when the file is done, and an api on top of them with every operation, the content address, the
+ * Call it once at the top of a test file. The file gets a temporary database and a bucket of its own, both gone
+ * when the file is done, and an api on top of them with every operation, the content address, the
  * MCP entrance and the events of the spaces.
  */
 export function useTestApi(): TestApi {
   let testDb: TestDb | undefined;
   let db: Db | undefined;
-  let stored: { storage: FileStorage; dir: string } | undefined;
+  let stored: { storage: FileStorage; bucket: MiniS3 } | undefined;
   let app: ReturnType<typeof createApp> | undefined;
   let server: Server | undefined;
   let listening: Promise<string> | undefined;
@@ -88,9 +86,16 @@ export function useTestApi(): TestApi {
     testDb = await createTestDb(requireEnv('DATABASE_URL'));
     const connected = connectDb(testDb.url);
     db = connected;
-    const dir = await mkdtemp(join(tmpdir(), 'pocketmice-test-storage-'));
-    const storage = createFolderStorage(dir);
-    stored = { storage, dir };
+    const bucket = await startMiniS3();
+    const storage = createS3Storage({
+      endpoint: bucket.url,
+      bucket: 'files',
+      region: 'us-east-1',
+      accessKeyId: 'test',
+      secretAccessKey: 'test',
+      forcePathStyle: true
+    });
+    stored = { storage, bucket };
     const reportError = (error: unknown, where: string) => reported.push({ error, where });
     app = createApp({
       // The sign-in library has no part in these tests
@@ -139,7 +144,7 @@ export function useTestApi(): TestApi {
     // Disconnect first, then drop: a database someone is connected to cannot be dropped
     await db?.$client.end();
     await testDb?.drop();
-    if (stored) await rm(stored.dir, { recursive: true, force: true });
+    await stored?.bucket.close();
   });
 
   function ready() {
@@ -156,8 +161,8 @@ export function useTestApi(): TestApi {
       return ready().storage;
     },
 
-    get storageDir() {
-      return ready().dir;
+    storedObjects() {
+      return ready().bucket.objects.size;
     },
 
     async send(who, path, init = {}) {

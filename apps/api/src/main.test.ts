@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { type ChildProcess, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
 import { type AddressInfo, connect, createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createApiClient } from '@pocketmice/client/api';
@@ -16,11 +13,12 @@ import { getServerInfo } from '@pocketmice/contract/domains/server';
 import { createSpace } from '@pocketmice/contract/domains/space';
 import { createTestDb, type TestDb } from '@pocketmice/db/testing';
 import { requireEnv } from './env.ts';
+import { type MiniS3, startMiniS3 } from './external/storage/miniS3.testing.ts';
 import { describeError } from './http/errorLog.ts';
 import { callTool, connectMcp } from './http/mcpClient.testing.ts';
 
-// The process as it runs: main.ts, started the way `pnpm start` starts it, on a temporary database and a temporary
-// folder, and called over a real connection.
+// The process as it runs: main.ts, started the way `pnpm start` starts it, on a temporary database and a bucket
+// of its own (the small S3 of miniS3.testing.ts), and called over a real connection.
 // Every other test builds an api of its own (useTestApi in domains/testing.ts), in memory or on a port. That goes
 // past two things, and only this file goes through them: what main.ts sets on the server and does when told to
 // stop, and the set that instances.ts builds from the environment (the database, the storage, the sign-in). A
@@ -36,7 +34,7 @@ const START_MS = 30_000;
 const TEST_MS = 30_000;
 
 let testDb: TestDb | undefined;
-let storageDir: string | undefined;
+let bucket: MiniS3 | undefined;
 let api: ChildProcess | undefined;
 let base = '';
 /** What the process printed, shown when it fails to start */
@@ -54,7 +52,7 @@ async function freePort(): Promise<number> {
 
 before(async () => {
   testDb = await createTestDb(requireEnv('DATABASE_URL'));
-  storageDir = await mkdtemp(join(tmpdir(), 'pocketmice-test-main-'));
+  bucket = await startMiniS3();
   const port = await freePort();
   base = `http://127.0.0.1:${port}`;
 
@@ -66,7 +64,12 @@ before(async () => {
       BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
       API_URL: base,
       WEB_ORIGINS: WEB_ORIGIN,
-      STORAGE_DIR: storageDir,
+      S3_BUCKET: 'files',
+      S3_REGION: 'us-east-1',
+      S3_ACCESS_KEY_ID: 'test',
+      S3_SECRET_ACCESS_KEY: 'test',
+      S3_ENDPOINT: bucket.url,
+      S3_FORCE_PATH_STYLE: 'true',
       PORT: String(port)
     },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -96,7 +99,7 @@ after(async () => {
     await once(api, 'exit');
   }
   await testDb?.drop();
-  if (storageDir) await rm(storageDir, { recursive: true, force: true });
+  await bucket?.close();
 });
 
 /** The address of the content of a file, with this query */

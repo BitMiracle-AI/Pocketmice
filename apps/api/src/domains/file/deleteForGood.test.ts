@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readdir } from 'node:fs/promises';
 import { test } from 'node:test';
 import { createApiKey } from '@pocketmice/contract/domains/apiKey';
 import {
@@ -89,12 +88,6 @@ async function hasBytes(versionId: string) {
   }
 }
 
-/** How many objects the storage really holds */
-async function storedObjects() {
-  const entries = await readdir(api.storageDir, { recursive: true, withFileTypes: true });
-  return entries.filter((entry) => entry.isFile()).length;
-}
-
 test('deleteFile deletes a trashed file for good: its row, every version of it, and their bytes', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
@@ -130,7 +123,7 @@ test('deleteFile of a trashed folder deletes everything in it, however deep, als
   const outside = await write(ada, spaceId, { parentId: null, name: 'outside.md' }, 'outside');
   await trash(ada, spaceId, earlier.id);
   await trash(ada, spaceId, reports.id);
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   assert.deepEqual(await api.as(ada)(deleteFile, { spaceId, fileId: reports.id }), { ok: true, data: {} });
 
@@ -139,7 +132,7 @@ test('deleteFile of a trashed folder deletes everything in it, however deep, als
     left.map((row) => row.name),
     ['outside.md']
   );
-  assert.equal(await storedObjects(), before - 3);
+  assert.equal(api.storedObjects(), before - 3);
   for (const gone of [deep, direct, earlier]) assert.equal(await hasBytes(gone.version?.id ?? ''), false);
   assert.equal(await hasBytes(outside.version?.id ?? ''), true);
 });
@@ -154,14 +147,14 @@ test('deleteFile only deletes what was put in the trash itself: anything else is
   await trash(ada, spaceId, reports.id);
   const elsewhere = await write(ada, otherSpaceId, { parentId: null, name: 'elsewhere.md' }, 'elsewhere');
   await trash(ada, otherSpaceId, elsewhere.id);
-  const before = await storedObjects();
+  const before = api.storedObjects();
 
   for (const fileId of [live.id, inside.id, elsewhere.id, NOBODY]) {
     const result = await api.as(ada)(deleteFile, { spaceId, fileId });
     assert.equal(!result.ok && result.code, 'NOT_FOUND', fileId);
   }
 
-  assert.equal(await storedObjects(), before);
+  assert.equal(api.storedObjects(), before);
   assert.equal((await api.as(ada)(getFile, { spaceId, fileId: live.id })).ok, true);
   assert.equal((await api.as(ada)(restoreFile, { spaceId, fileId: reports.id })).ok, true);
   assert.equal((await api.as(ada)(getFile, { spaceId, fileId: inside.id })).ok, true);
