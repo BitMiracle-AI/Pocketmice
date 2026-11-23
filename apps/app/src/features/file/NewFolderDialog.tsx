@@ -57,7 +57,7 @@ export function NewFolderDialog({
             <DialogTitle>{fileText.folderTitle}</DialogTitle>
           </DialogHeader>
           <Field data-invalid={problem !== null || undefined}>
-            <FieldLabel htmlFor="new-folder-name">{fileText.folderNameLabel}</FieldLabel>
+            <FieldLabel htmlFor="new-folder-name">{fileText.nameLabel}</FieldLabel>
             <Input
               id="new-folder-name"
               autoFocus

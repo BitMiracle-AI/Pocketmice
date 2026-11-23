@@ -20,16 +20,23 @@ import type { Space } from '@/features/space/spaces';
 import { uploadFiles } from '@/features/upload/uploads';
 import { readQuery } from '@/lib/api';
 import { formatSize, formatWhen } from '@/lib/format';
+import { DescriptionDialog } from './DescriptionDialog';
 import { downloadFile } from './download';
 import { FileIcon } from './FileIcon';
+import { type FileAction, FileMenu } from './FileMenu';
 import { foldersAbove } from './fileOrder';
 import { type DriveFile, folderQuery } from './files';
+import { MoveDialog } from './MoveDialog';
 import { NewFolderDialog } from './NewFolderDialog';
+import { RenameDialog } from './RenameDialog';
 import { fileText } from './text';
+import { moveToTrash } from './trash';
 
 // What is in a folder of a space, or directly in the space: the way up, what an editor can do there, and the list.
 // The list has no lines between its rows and one line of type per row: the description of a file follows its name
 // on the same line, in grey, and is cut where the room ends.
+// A row ends with what can be done with it: a file can be downloaded by anyone who sees it, and an editor has a
+// menu that renames it, describes it, moves it and puts it in the trash.
 
 /**
  * The columns of the list: the name takes what is left, then who wrote it last, when, how large, and what can be
@@ -37,10 +44,21 @@ import { fileText } from './text';
  * that is narrow drops who first, then when, then how large.
  */
 const COLUMNS =
-  'grid grid-cols-[minmax(0,1fr)_1.75rem] items-center gap-x-5 px-3 @lg:grid-cols-[minmax(0,1fr)_4.5rem_1.75rem] @2xl:grid-cols-[minmax(0,1fr)_8.5rem_4.5rem_1.75rem] @4xl:grid-cols-[minmax(0,1fr)_16rem_8.5rem_4.5rem_1.75rem]';
+  'grid grid-cols-[minmax(0,1fr)_3.625rem] items-center gap-x-5 px-3 @lg:grid-cols-[minmax(0,1fr)_4.5rem_3.625rem] @2xl:grid-cols-[minmax(0,1fr)_8.5rem_4.5rem_3.625rem] @4xl:grid-cols-[minmax(0,1fr)_16rem_8.5rem_4.5rem_3.625rem]';
 const WHO = 'hidden min-w-0 @4xl:flex';
 const WHEN = 'hidden truncate @2xl:block';
 const SIZE = 'hidden text-right @lg:block';
+
+/**
+ * A button at the end of a row. Where a pointer can hover, it shows when the row is pointed at, when it has the
+ * focus, and while the menu it opens is open; on a touch screen it is always there. It is above the link that
+ * covers the row of a folder.
+ */
+const ROW_BUTTON =
+  'relative z-10 text-muted-foreground group-hover/row:opacity-100 hover:bg-foreground/8 focus-visible:opacity-100 data-popup-open:opacity-100 [@media(hover:hover)]:opacity-0';
+
+/** What is being done to one file of the list in a dialog: the dialog of that is open */
+type Acting = { file: DriveFile; what: Exclude<FileAction, 'trash'> } | null;
 
 /** The page of what is directly in the space */
 export function SpaceFilesPage() {
@@ -86,6 +104,7 @@ function FilesView({ folder }: { folder: DriveFile | null }) {
   const trail = useTrail(space, folder);
   const picker = useRef<HTMLInputElement>(null);
   const [naming, setNaming] = useState(false);
+  const [acting, setActing] = useState<Acting>(null);
 
   const canEdit = roleCovers(space.role, 'editor');
   const folders = files.filter((file) => file.kind === 'folder').length;
@@ -155,7 +174,17 @@ function FilesView({ folder }: { folder: DriveFile | null }) {
             </div>
             <ul className="pt-1.5">
               {files.map((file) => (
-                <FileRow key={file.id} file={file} spaceId={space.id} />
+                <FileRow
+                  key={file.id}
+                  file={file}
+                  spaceId={space.id}
+                  // Putting it in the trash takes no dialog: it can be undone, and the page says so
+                  onPick={
+                    canEdit
+                      ? (what) => (what === 'trash' ? void moveToTrash(space.id, file) : setActing({ file, what }))
+                      : undefined
+                  }
+                />
               ))}
             </ul>
           </div>
@@ -163,11 +192,31 @@ function FilesView({ folder }: { folder: DriveFile | null }) {
       </Page>
 
       <NewFolderDialog spaceId={space.id} parentId={folderId} open={naming} onOpenChange={setNaming} />
+      <RenameDialog
+        spaceId={space.id}
+        file={acting?.what === 'rename' ? acting.file : null}
+        onClose={() => setActing(null)}
+      />
+      <DescriptionDialog
+        spaceId={space.id}
+        file={acting?.what === 'describe' ? acting.file : null}
+        onClose={() => setActing(null)}
+      />
+      <MoveDialog file={acting?.what === 'move' ? acting.file : null} from={folder} onClose={() => setActing(null)} />
     </>
   );
 }
 
-function FileRow({ file, spaceId }: { file: DriveFile; spaceId: string }) {
+/** One row of the list. onPick is there for an editor: what was picked from the menu of the row */
+function FileRow({
+  file,
+  spaceId,
+  onPick
+}: {
+  file: DriveFile;
+  spaceId: string;
+  onPick: ((action: FileAction) => void) | undefined;
+}) {
   const isFolder = file.kind === 'folder';
   return (
     <li className={cn(COLUMNS, 'group/row relative h-10 rounded-xl text-sm hover:bg-muted/70')}>
@@ -200,22 +249,21 @@ function FileRow({ file, spaceId }: { file: DriveFile; spaceId: string }) {
         {file.version && formatSize(file.version.size)}
       </span>
 
-      {isFolder ? (
-        <span />
-      ) : (
-        // Where a pointer can hover, the button shows when the row is pointed at or the button has the focus;
-        // on a touch screen it is always there
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={fileText.download(file.name)}
-          title={fileText.download(file.name)}
-          onClick={() => downloadFile(spaceId, file)}
-          className="text-muted-foreground group-hover/row:opacity-100 hover:bg-foreground/8 focus-visible:opacity-100 [@media(hover:hover)]:opacity-0"
-        >
-          <HugeiconsIcon icon={Download04Icon} strokeWidth={2} />
-        </Button>
-      )}
+      <div className="flex items-center justify-end gap-0.5">
+        {!isFolder && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={fileText.download(file.name)}
+            title={fileText.download(file.name)}
+            onClick={() => downloadFile(spaceId, file)}
+            className={ROW_BUTTON}
+          >
+            <HugeiconsIcon icon={Download04Icon} strokeWidth={2} />
+          </Button>
+        )}
+        {onPick && <FileMenu file={file} onPick={onPick} className={ROW_BUTTON} />}
+      </div>
     </li>
   );
 }

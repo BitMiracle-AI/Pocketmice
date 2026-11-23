@@ -24,9 +24,41 @@ export const en = {
   emptyHintViewer: 'Nothing has been put here yet.',
   download: (name: string) => `Download ${name}`,
   fileGone: 'That file is no longer here.',
+  /** Said of a file or a folder that something was asked of, and that is gone: renamed away, moved, or trashed */
+  itemGone: 'It is no longer here.',
+
+  /** What the button at the end of a row is called, for whoever cannot see its three dots */
+  more: (name: string) => `More about ${name}`,
+  rename: 'Rename',
+  addDescription: 'Add description',
+  editDescription: 'Edit description',
+  move: 'Move',
+  toTrash: 'Move to trash',
+
+  renameTitle: 'Rename',
+  renameSave: 'Rename',
+  describeTitle: (name: string) => `Describe “${name}”`,
+  describeHint: 'What it holds, where it came from, what to do with it. People and agents both read it.',
+  describeLabel: 'Description',
+  save: 'Save',
+
+  moveTitle: (name: string) => `Move “${name}”`,
+  moveUp: 'Up one folder',
+  moveNoFolders: 'There are no folders in here.',
+  moveAlreadyHere: 'It is in this folder now.',
+  moveTaken: (name: string) => `This folder already has something called “${name}”.`,
+  moveConflict: 'It cannot be moved here: the name is taken, or folders would nest too deep.',
+  moveGone: 'It, or the folder it was going into, is no longer here.',
+  moveHere: 'Move here',
+  moved: (name: string, folder: string) => `Moved “${name}” to “${folder}”`,
+
+  trashed: (name: string) => `Moved “${name}” to the trash`,
+  undo: 'Undo',
+  restoreConflict: 'It could not be put back: its name is taken where it was, or the folder it was in is in the trash.',
+  restoreGone: 'It is no longer in the trash.',
 
   folderTitle: 'New folder',
-  folderNameLabel: 'Name',
+  nameLabel: 'Name',
   folderPlaceholder: 'Untitled folder',
   folderCreate: 'Create',
   cancel: 'Cancel',

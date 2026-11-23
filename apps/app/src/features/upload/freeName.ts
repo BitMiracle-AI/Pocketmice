@@ -1,4 +1,5 @@
 import { FILE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/file';
+import { stemLength } from '../file/fileName.ts';
 
 /**
  * A name close to name that is not among taken: the number in brackets goes before the last extension, and counts
@@ -7,10 +8,9 @@ import { FILE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/file';
  * A name that would be longer than a name may be loses the end of its stem, never its extension.
  */
 export function freeName(name: string, taken: ReadonlySet<string>): string {
-  // A dot at the very start is part of the name, not the start of an extension: .env has none
-  const dot = name.lastIndexOf('.');
-  const stem = dot > 0 ? name.slice(0, dot) : name;
-  const extension = dot > 0 ? name.slice(dot) : '';
+  const cut = stemLength(name);
+  const stem = name.slice(0, cut);
+  const extension = name.slice(cut);
   const numbered = /^(.*) \((\d+)\)$/.exec(stem);
   const base = numbered?.[1] ?? stem;
 
