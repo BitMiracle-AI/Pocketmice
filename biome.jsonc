@@ -9,6 +9,13 @@
     // Both exclusions are files a tool generates
     "includes": ["**", "!packages/db/migrations", "!packages/db/src/schema/auth.ts"]
   },
+  "css": {
+    "parser": {
+      // The index.css shadcn generates for the app is written with Tailwind's own syntax (@theme, @apply), which
+      // is not parsed unless this is on
+      "tailwindDirectives": true
+    }
+  },
   "linter": {
     "rules": {
       "suspicious": {
@@ -166,6 +173,52 @@
                     "message": "Code in http/ does not read environment variables or import instances.ts. Take what you need as a parameter: main.ts passes it in."
                   }
                 ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // This block must stay. Biome turns the React rules on by itself when it finds a react dependency, but no
+      // longer once linter.rules is written at the top level, as it is above. Without this block the rules on the
+      // dependencies of a hook, on where a hook is called and on an index used as a key are off in the app, and
+      // nothing says so.
+      "includes": ["apps/app/**"],
+      "linter": {
+        "domains": {
+          "react": "recommended"
+        }
+      }
+    },
+    {
+      // From here down are the kinds of file whose name is written another way; a later block replaces an earlier
+      // one. A component file has the name of the component it exports (LoginPage.tsx exports LoginPage): the name
+      // of a .tsx file must be one of the names it exports.
+      "includes": ["apps/app/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "filenameCases": ["export"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // The components of shadcn keep the lowercase names with hyphens its tool gives them (alert-dialog.tsx)
+      "includes": ["apps/app/src/components/ui/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "filenameCases": ["kebab-case"]
               }
             }
           }

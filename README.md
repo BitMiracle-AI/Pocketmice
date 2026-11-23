@@ -31,6 +31,7 @@ the same files: they read what people give them and hand back what they make.
 
 ```
 apps/api            the API server (Hono on Node)
+apps/app            the web app (Vite and React). It has its UI components and no page yet
 packages/contract   the definition of every operation: its input, its output, its error codes
 packages/client     the code every caller shares to call the API
 packages/db         the database: tables, connection and migrations (Drizzle on Postgres)
