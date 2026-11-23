@@ -81,7 +81,6 @@ export const zhHans: typeof en = {
   searchFound: '找到的文件和文件夹',
   searchIn: '位置',
 
-  open: (name) => `打开 ${name}`,
   downloadFile: '下载',
   versionsTitle: '版本',
   versionsHint: '每次写入这个文件都会留下一个版本，最上面的是它现在的内容。',

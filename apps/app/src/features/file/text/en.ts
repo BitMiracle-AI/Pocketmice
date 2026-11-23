@@ -95,7 +95,6 @@ export const en = {
   searchFound: 'What was found',
   searchIn: 'In',
 
-  open: (name: string) => `Open ${name}`,
   downloadFile: 'Download',
   versionsTitle: 'Versions',
   versionsHint: 'Every write to this file is kept. The one at the top is its content now.',
