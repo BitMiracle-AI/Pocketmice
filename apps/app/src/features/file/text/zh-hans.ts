@@ -76,9 +76,9 @@ export const zhHans: typeof en = {
   searchClear: '清除',
   searchStartTitle: '按词找文件或文件夹',
   searchStartHint: '每个词都要出现在名称或描述里，不分大小写。不看文件的内容，也不看它所在文件夹的名称。',
-  searchNothingTitle: (words) => `没有匹配「${words}」的内容`,
+  searchNothingTitle: (words) => `没有匹配「${words}」的文件或文件夹`,
   searchNothingHint: '每个词都要出现在文件或文件夹的名称或描述里。词越少，找到的越多。',
-  searchFound: '找到的内容',
+  searchFound: '找到的文件和文件夹',
   searchIn: '位置',
 
   open: (name) => `打开 ${name}`,
