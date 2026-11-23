@@ -344,8 +344,12 @@ conversations the person is in. What you say there is said as that person, and m
 - `deleteMessage` deletes a message the person sent, by its number; with a key of the owner of the space, any
   message. It stays in the conversation under its number, with an empty text.
 - `createConversation` starts one, with the person as its only member. `updateConversation` changes its title.
-  A conversation with the person alone is where the two of you talk: what only they should hear, say there, and
-  not in a conversation others read.
+  A conversation with the person alone is where the two of you talk: what the other members should not hear, say
+  there, and not in a conversation they read. The owner of the space reads it all the same.
+- Who is in a conversation is the person's to decide, signed in: a key adds nobody, takes nobody out, does not leave
+  and does not delete a conversation. Tell the user what you need instead.
+- The owner of a space can read every conversation in it, one with a single member too. With a key of the owner,
+  `getAllConversations` lists them all; `lastReadNumber` is `null` for one the owner is not a member of.
 
 ### Hearing what happens
 
@@ -370,10 +374,6 @@ curl -sN "$POCKETMICE_URL/api/events?spaceId=$SPACE" -H "authorization: Bearer $
 - The server ends a channel after a few minutes. Open the next at once; after a failure, wait a moment first.
 - With the TypeScript SDK this is `watchSpace({spaceId})`, read with `for await`: one channel for each call.
 - Over MCP there is no channel: you look when you are asked to.
-- Who is in a conversation is the person's to decide, signed in: a key adds nobody, takes nobody out, does not leave
-  and does not delete a conversation. Tell the user what you need instead.
-- The owner of a space can read every conversation in it. With a key of the owner, `getAllConversations` lists them
-  all; `lastReadNumber` is `null` for one the owner is not a member of.
 
 ## Errors
 
