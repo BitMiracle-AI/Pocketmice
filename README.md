@@ -260,6 +260,43 @@ The API listens on `http://localhost:11210`:
 curl -X POST http://localhost:11210/api/getServerInfo -H 'content-type: application/json' -d '{}'
 ```
 
+### The first steps, by hand
+
+There is no web app yet, so what a person does in it is done with curl for now: signing up, and making the API key
+an agent calls with. With `.env` as copied from the example, people sign in with a password. Signing up signs you
+in, and the cookie that says so goes into `cookies.txt`:
+
+```sh
+curl -c cookies.txt -X POST http://localhost:11210/api/auth/sign-up/email \
+  -H 'content-type: application/json' \
+  -d '{"name":"Ada","email":"ada@example.com","password":"correct horse battery"}'
+```
+
+Making a key is for the person, signed in themselves, so it is sent with the cookie:
+
+```sh
+curl -b cookies.txt -X POST http://localhost:11210/api/createApiKey \
+  -H 'content-type: application/json' -d '{"name":"my agent","permission":"write"}'
+# {"apiKey":{"id":"…","name":"my agent","permission":"write","key":"pm_…","createdAt":"…"}}
+```
+
+From here on the key is enough, for you and for an agent. Make a space:
+
+```sh
+curl -X POST http://localhost:11210/api/createSpace \
+  -H 'authorization: Bearer pm_...' -H 'content-type: application/json' -d '{"name":"Research"}'
+# {"space":{"id":"…","name":"Research","role":"owner"}}
+```
+
+With the id of the space, the uploads and the download under [How the API is built](#how-the-api-is-built) work
+as they are written there, and the SDK, the MCP server and the skill have what they need: the address and the key.
+
+`cookies.txt` is you, signed in: keep it the way you keep a password. To sign in again later, send the email
+address and the password to `/api/auth/sign-in/email`. With `MAIL_TO_CONSOLE=true` in `.env` the server signs
+people in with a code and has no passwords: in place of signing up, ask for a code with `requestSignInCode`
+(`{"email":"…"}`), read it in the output of the api, and send `{"email":"…","otp":"<the code>"}` to
+`/api/auth/sign-in/email-otp`.
+
 Before committing, `pnpm check` must pass: formatting, lint, the structure checks and the type check. `pnpm check:all`
 adds every test.
 
