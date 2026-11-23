@@ -35,7 +35,7 @@ the same files: they read what people give them and hand back what they make.
 
 ```
 apps/api            the API server (Hono on Node)
-apps/app            the web app (Vite and React). It has its UI components and no page yet
+apps/app            the web app (Vite and React). People can sign in to it; its other pages are not there yet
 packages/contract   the definition of every operation: its input, its output, its error codes
 packages/client     the code every caller shares to call the API
 packages/sdk        the TypeScript SDK: the drive, for a program that holds an API key
@@ -258,11 +258,13 @@ Then:
 ```sh
 pnpm install
 cp apps/api/.env.example apps/api/.env    # fill in DATABASE_URL and BETTER_AUTH_SECRET; files go to ./data/storage
+cp apps/app/.env.example apps/app/.env    # the address of the API, as the web app reaches it
 pnpm --filter @pocketmice/api migrate
 pnpm dev
 ```
 
-The API listens on `http://localhost:11210`:
+`pnpm dev` starts the API and the web app together. The web app is at `http://localhost:11211`, and the API listens
+on `http://localhost:11210`:
 
 ```sh
 curl -X POST http://localhost:11210/api/getServerInfo -H 'content-type: application/json' -d '{}'
