@@ -15,13 +15,14 @@ type Acting = { file: DriveFile; what: Exclude<FileAction, 'trash'> } | null;
 
 /**
  * What a page with file menus holds: pick is what a menu calls with what was picked, and dialogs is handed to
- * FileDialogs as it is. trashed is called once a file is in the trash, for a page that has to go elsewhere then.
+ * FileDialogs as it is. leave is for the page of the file itself: where it goes once the file is in the trash
+ * (see moveToTrash).
  */
-export function useFileActions(spaceId: string, trashed?: (file: DriveFile) => void) {
+export function useFileActions(spaceId: string, leave?: () => Promise<void>) {
   const [acting, setActing] = useState<Acting>(null);
   return {
     pick(file: DriveFile, what: FileAction): void {
-      if (what === 'trash') void moveToTrash(spaceId, file).then((gone) => gone && trashed?.(file));
+      if (what === 'trash') void moveToTrash(spaceId, file, leave);
       else setActing({ file, what });
     },
     dialogs: { spaceId, acting, onClose: () => setActing(null) }

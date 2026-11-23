@@ -16,13 +16,21 @@ const UNDO_FOR_MS = 8000;
 /**
  * Puts a file or a folder in the trash, and says so with a way to undo it. Answers whether it is gone from where
  * it was: one that turns out to be gone already is gone, which is what was asked for.
+ * leave is for the page of the file itself, which has nothing to show once the file is gone: it goes elsewhere in
+ * it, after the file is in the trash and before the space is read again. Read again under that page, the file is
+ * "not here", and the page would say so for the moment it takes to leave (FileOrFolderPage).
  */
-export async function moveToTrash(spaceId: string, file: Pick<DriveFile, 'id' | 'name'>): Promise<boolean> {
+export async function moveToTrash(
+  spaceId: string,
+  file: Pick<DriveFile, 'id' | 'name'>,
+  leave?: () => Promise<void>
+): Promise<boolean> {
   const result = await call(trashFile, { spaceId, fileId: file.id });
   if (!result.ok && result.code !== 'NOT_FOUND') {
     toast.add({ type: 'error', title: failureText(result.code, {}) });
     return false;
   }
+  await leave?.();
   spaceChanged(spaceId);
   if (!result.ok) return true;
 
