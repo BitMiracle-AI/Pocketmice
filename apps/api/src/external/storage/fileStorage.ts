@@ -28,12 +28,38 @@ export interface FileStorage {
   copy: (from: string, to: string) => Promise<void>;
   /** Removes the objects under these keys. A key with nothing under it is not an error: it is gone, as asked */
   delete: (keys: string[]) => Promise<void>;
+  /**
+   * An address the object under key is fetched from with a GET, by whoever holds the address and by nothing else
+   * they hold: it is signed, and good for this many seconds from now. A Range header fetches a part of the object.
+   * The answer is a file to save, called saveAs, and its type is that of bytes, as every object is stored: content
+   * somebody uploaded must not be shown as a page, or run, by whoever opens the address.
+   * It is the storage's own address, and not the api's: the bytes go from the storage to the caller, and do not
+   * pass through the api.
+   * Nothing is asked of the storage to make one. Whether there is an object under the key is not found out here:
+   * an address for nothing is answered with a refusal when it is fetched.
+   */
+  downloadUrl: (key: string, download: { saveAs: string; seconds: number }) => Promise<string>;
 }
 
 /** A run of bytes inside an object: from start to end, both counted from 0 and both included */
 export interface ByteRange {
   start: number;
   end: number;
+}
+
+/**
+ * What tells whoever is sent some bytes to save them as a file called name: the content-disposition of an
+ * attachment. The name is written the way that holds any character (RFC 5987), since a name may be in any script.
+ * encodeURIComponent leaves four characters as they are that this way of writing does not allow: ' ( ) *. They are
+ * written out too. Left as it is, a ' ends the name early for a browser: Chrome then drops the whole name, and
+ * "it's done.md" is saved under a name of the browser's own.
+ */
+export function attachmentHeader(name: string): string {
+  const written = encodeURIComponent(name).replace(
+    /['()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+  return `attachment; filename*=UTF-8''${written}`;
 }
 
 /** There is nothing under the key that was asked for */

@@ -57,6 +57,8 @@ export interface StorageConfig {
   secretAccessKey: string;
   /** The address of the service. Left out for AWS, which is found from the region */
   endpoint?: string;
+  /** The address of the service as callers reach it, when that is another one than endpoint */
+  publicEndpoint?: string;
   /** Whether the bucket is named in the path of the address and not in its host */
   forcePathStyle: boolean;
 }
@@ -70,21 +72,30 @@ export function storageFromEnv(): StorageConfig {
   if (pathStyle && pathStyle !== 'true' && pathStyle !== 'false') {
     throw new Error(`Environment variable S3_FORCE_PATH_STYLE must be true or false, got "${pathStyle}".`);
   }
-  const endpoint = process.env.S3_ENDPOINT;
-  // Written without its scheme, localhost:9000 still reads as an address: one whose scheme is "localhost"
-  if (endpoint && !(URL.canParse(endpoint) && /^https?:$/.test(new URL(endpoint).protocol))) {
-    throw new Error(
-      `Environment variable S3_ENDPOINT is not an address: "${endpoint}". Write it with its scheme, like http://localhost:9000.`
-    );
-  }
+  const endpoint = addressFromEnv('S3_ENDPOINT');
+  const publicEndpoint = addressFromEnv('S3_PUBLIC_ENDPOINT');
   return {
     bucket: requireEnv('S3_BUCKET'),
     region: requireEnv('S3_REGION'),
     accessKeyId: requireEnv('S3_ACCESS_KEY_ID'),
     secretAccessKey: requireEnv('S3_SECRET_ACCESS_KEY'),
     ...(endpoint && { endpoint }),
+    ...(publicEndpoint && { publicEndpoint }),
     forcePathStyle: pathStyle === 'true'
   };
+}
+
+/** Reads an address of the storage service that may be left out. One that is not an address is an error */
+function addressFromEnv(name: string): string | undefined {
+  const address = process.env[name];
+  if (!address) return undefined;
+  // Written without its scheme, localhost:9000 still reads as an address: one whose scheme is "localhost"
+  if (!(URL.canParse(address) && /^https?:$/.test(new URL(address).protocol))) {
+    throw new Error(
+      `Environment variable ${name} is not an address: "${address}". Write it with its scheme, like http://localhost:9000.`
+    );
+  }
+  return address;
 }
 
 /**

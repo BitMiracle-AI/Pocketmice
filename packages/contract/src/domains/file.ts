@@ -223,6 +223,9 @@ export const FILE_CONTENT_PATH = '/api/fileContent';
 /** The content of a file has at most this many bytes */
 export const MAX_FILE_BYTES = 1024 * 1024 * 1024;
 
+/** For how long the address getFileDownloadUrl answers with can be fetched from, in seconds */
+export const DOWNLOAD_URL_SECONDS = 300;
+
 /**
  * What a caller hands to fileContentPath for each of the three queries below. For a new file parentId may be null,
  * which is how every operation says "directly in the space"; in the query itself it is left out.
@@ -316,6 +319,26 @@ export const getFile = operation({
   minRole: 'viewer',
   input: z.object({ spaceId: id, fileId: id }),
   output: z.object({ file }),
+  errors: ['NOT_FOUND']
+});
+
+export const getFileDownloadUrl = operation({
+  name: 'getFileDownloadUrl',
+  description:
+    'Where to download the content of a file from: of the version versionId, or of its content now when ' +
+    'versionId is null. Answers with url, an address a GET fetches the bytes from, and version, the version they ' +
+    'are (its id, its size, its sha256, who wrote it and when). The address is of the storage the files are kept ' +
+    'in, not of this server: fetch it as it is, without the API key or the sign-in. A Range header fetches a ' +
+    'part. It answers with the bytes as a file to save, under the name of the file. The address works for ' +
+    `${DOWNLOAD_URL_SECONDS / 60} minutes, for whoever holds it: do not pass it on or keep it, ask for another. ` +
+    'When the content now was asked for, version.id is the baseVersionId to write over the file with. ' +
+    'NOT_FOUND: there is no such file, it is a folder, or it has no such version.',
+  kind: 'read',
+  access: 'authenticated',
+  belongsTo: 'space',
+  minRole: 'viewer',
+  input: z.object({ spaceId: id, fileId: id, versionId: id.nullable() }),
+  output: z.object({ url: z.string(), version: fileVersion }),
   errors: ['NOT_FOUND']
 });
 

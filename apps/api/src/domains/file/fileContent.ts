@@ -12,7 +12,7 @@ import { fileVersions } from '@pocketmice/db/schema/file';
 import { and, eq } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import type { z } from 'zod';
-import type { ByteRange, FileStorage } from '../../external/storage/fileStorage.ts';
+import { attachmentHeader, type ByteRange, type FileStorage } from '../../external/storage/fileStorage.ts';
 import {
   type AdmissionDeps,
   type AdmittedCaller,
@@ -184,20 +184,6 @@ export function rangeOf(header: string | undefined, size: number): ByteRange | '
   return start >= size || end < start ? 'none' : { start, end };
 }
 
-/**
- * The name of a file as the header that names a download carries it: the way that holds any character (RFC 5987),
- * since a name may be in any script.
- * encodeURIComponent leaves four characters as they are that this way of writing does not allow: ' ( ) *. They are
- * written out too. Left as it is, a ' ends the name early for a browser: Chrome then drops the whole name, and
- * "it's done.md" is saved as "content".
- */
-function headerName(name: string): string {
-  return encodeURIComponent(name).replace(
-    /['()*]/g,
-    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
-  );
-}
-
 async function download(c: Context, deps: FileContentDeps): Promise<Response> {
   const caller = await admitCaller(c, { access: 'authenticated', kind: 'read' }, deps);
   if (caller instanceof Response) return caller;
@@ -220,7 +206,7 @@ async function download(c: Context, deps: FileContentDeps): Promise<Response> {
   const etag = `"${versionId}"`;
   const headers: Record<string, string> = {
     'content-type': 'application/octet-stream',
-    'content-disposition': `attachment; filename*=UTF-8''${headerName(found.row.name)}`,
+    'content-disposition': attachmentHeader(found.row.name),
     'x-content-type-options': 'nosniff',
     'accept-ranges': 'bytes',
     etag,

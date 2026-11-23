@@ -82,6 +82,7 @@ function withStorageEnv<Result>(settings: Record<string, string>, run: () => Res
     'S3_ACCESS_KEY_ID',
     'S3_SECRET_ACCESS_KEY',
     'S3_ENDPOINT',
+    'S3_PUBLIC_ENDPOINT',
     'S3_FORCE_PATH_STYLE'
   ];
   return withEnv(names, settings, run);
@@ -107,6 +108,14 @@ test('files are kept in the bucket the environment names', () => {
     storageFromEnv
   );
   assert.deepEqual([minio.endpoint, minio.forcePathStyle], ['http://localhost:9000', true]);
+
+  // A server that reaches its bucket over an inner network says where callers reach it
+  const inner = withStorageEnv(
+    { ...S3, S3_ENDPOINT: 'https://s3.inner.example.com', S3_PUBLIC_ENDPOINT: 'https://s3.example.com' },
+    storageFromEnv
+  );
+  assert.deepEqual([inner.endpoint, inner.publicEndpoint], ['https://s3.inner.example.com', 'https://s3.example.com']);
+  assert.equal(minio.publicEndpoint, undefined);
 });
 
 test('no bucket, or a bucket with part of its settings missing or wrong, is an error', () => {
@@ -118,6 +127,11 @@ test('no bucket, or a bucket with part of its settings missing or wrong, is an e
   assert.throws(() => withStorageEnv({ ...S3, S3_FORCE_PATH_STYLE: 'yes' }, storageFromEnv), /true or false/);
   for (const endpoint of ['localhost:9000', 'minio', 'ftp://localhost:9000']) {
     assert.throws(() => withStorageEnv({ ...S3, S3_ENDPOINT: endpoint }, storageFromEnv), /not an address/, endpoint);
+    assert.throws(
+      () => withStorageEnv({ ...S3, S3_PUBLIC_ENDPOINT: endpoint }, storageFromEnv),
+      /S3_PUBLIC_ENDPOINT is not an address/,
+      endpoint
+    );
   }
 });
 

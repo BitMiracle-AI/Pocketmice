@@ -1,7 +1,8 @@
 import type { Readable } from 'node:stream';
 import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
-import { assertKey, type FileStorage, MissingObject } from './fileStorage.ts';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { assertKey, attachmentHeader, type FileStorage, MissingObject } from './fileStorage.ts';
 
 export interface S3Options {
   bucket: string;
@@ -10,6 +11,12 @@ export interface S3Options {
   secretAccessKey: string;
   /** The address of the service, scheme included. Left out for AWS, which is found from the region */
   endpoint?: string;
+  /**
+   * The address of the service as the callers of the api reach it, when that is not endpoint: a server that
+   * reaches its bucket over the inner network of its provider gives the address the world reaches the bucket at.
+   * Download addresses are signed for this one. Left out, they are signed for endpoint.
+   */
+  publicEndpoint?: string;
   /** Whether the bucket is named in the path of the address and not in its host. MinIO needs it */
   forcePathStyle: boolean;
   /** How many bytes a part of an upload is. Left out, PART_BYTES. The tests pass the smallest S3 allows */
@@ -27,6 +34,9 @@ const PARTS_AT_ONCE = 4;
 
 /** How many objects are removed at the same time at most */
 const REMOVALS_AT_ONCE = 32;
+
+/** The type every object is stored with: bytes, which no browser shows as a page or runs */
+const STORED_AS = 'application/octet-stream';
 
 /** How long a connection to the service may take to open, and how long it may then stay silent, in milliseconds */
 const CONNECT_MS = 10_000;
@@ -50,16 +60,19 @@ function isNamed(error: unknown, ...names: string[]): boolean {
  */
 export function createS3Storage(options: S3Options): FileStorage {
   const { bucket } = options;
-  const client = new S3Client({
+  const settings = {
     region: options.region,
-    ...(options.endpoint && { endpoint: options.endpoint }),
     forcePathStyle: options.forcePathStyle,
     credentials: { accessKeyId: options.accessKeyId, secretAccessKey: options.secretAccessKey },
     requestChecksumCalculation: 'WHEN_REQUIRED',
     responseChecksumValidation: 'WHEN_REQUIRED',
     // Without these a service that stops answering is waited on for ever, and so is the request that waits for it
     requestHandler: { connectionTimeout: CONNECT_MS, socketTimeout: SILENT_MS }
-  });
+  } as const;
+  const client = new S3Client({ ...settings, ...(options.endpoint && { endpoint: options.endpoint }) });
+  // An address is signed for the host it names. One that callers fetch from is signed by a client that names the
+  // host they reach, which sends nothing itself
+  const signer = options.publicEndpoint ? new S3Client({ ...settings, endpoint: options.publicEndpoint }) : client;
 
   return {
     async put(key, bytes) {
@@ -67,7 +80,9 @@ export function createS3Storage(options: S3Options): FileStorage {
       // When it fails, Upload takes back the parts that had arrived: nothing is left under the key
       await new Upload({
         client,
-        params: { Bucket: bucket, Key: key, Body: bytes },
+        // Every object is stored as bytes of no particular kind, whatever it holds: that is the type it is
+        // handed out with, to whoever fetches it by a download address
+        params: { Bucket: bucket, Key: key, Body: bytes, ContentType: STORED_AS },
         partSize: options.partBytes ?? PART_BYTES,
         queueSize: PARTS_AT_ONCE
       }).done();
@@ -99,6 +114,18 @@ export function createS3Storage(options: S3Options): FileStorage {
       } catch (error) {
         throw isNamed(error, 'NoSuchKey') ? new MissingObject(from) : error;
       }
+    },
+
+    async downloadUrl(key, { saveAs, seconds }) {
+      assertKey(key);
+      // The address carries the name to save under, and the signature covers it: changed by hand, the address is
+      // refused. The type is not said here, it is the one the object was stored with (STORED_AS): a service may
+      // refuse an address that says the type. Alibaba Cloud OSS does, at its own domain, with 400
+      return getSignedUrl(
+        signer,
+        new GetObjectCommand({ Bucket: bucket, Key: key, ResponseContentDisposition: attachmentHeader(saveAs) }),
+        { expiresIn: seconds }
+      );
     },
 
     async delete(keys) {

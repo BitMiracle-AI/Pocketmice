@@ -24,6 +24,7 @@ import { deleteFile } from './file/deleteFile.ts';
 import { emptyTrash } from './file/emptyTrash.ts';
 import { getFile } from './file/getFile.ts';
 import { getFileByPath } from './file/getFileByPath.ts';
+import { getFileDownloadUrl } from './file/getFileDownloadUrl.ts';
 import { getFiles } from './file/getFiles.ts';
 import { getFileVersions } from './file/getFileVersions.ts';
 import { getMatchingFiles } from './file/getMatchingFiles.ts';
@@ -99,6 +100,7 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     getFiles(deps),
     getFile(deps),
     getFileByPath(deps),
+    getFileDownloadUrl(deps),
     getMatchingFiles(deps),
     createFolder(deps),
     updateFile(deps),

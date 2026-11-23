@@ -428,6 +428,7 @@ role `owner`; the conversations take no role, and any member of the space talks.
 | `getFileByPath`        | read  | `{spaceId, path}`                                              | `{file}`                                                             | `NOT_FOUND`             |
 | `getMatchingFiles`     | read  | `{spaceId, folderId, query, kind?, limit?, cursor?}`           | `{files, nextCursor}`                                                | `NOT_FOUND`             |
 | `getFileVersions`      | read  | `{spaceId, fileId, limit?, cursor?}`                           | `{versions, nextCursor}`                                             | `NOT_FOUND`             |
+| `getFileDownloadUrl`   | read  | `{spaceId, fileId, versionId}`                                 | `{url, version}`: where to fetch the bytes from, for 5 minutes       | `NOT_FOUND`             |
 | `getTrashedFiles`      | read  | `{spaceId, limit?, cursor?}`                                   | `{files, nextCursor}`                                                |                         |
 | `getConversations`     | read  | `{spaceId, limit?, cursor?}`                                   | `{conversations, nextCursor}`: the ones the person is in             |                         |
 | `getAllConversations`  | read  | `{spaceId, limit?, cursor?}`                                   | `{conversations, nextCursor}`: every one, for the owner              |                         |
