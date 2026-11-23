@@ -193,7 +193,11 @@ export function mountEvents(app: Hono, deps: EventsDeps): void {
       // A proxy in between neither changes it nor keeps it
       'cache-control': 'no-cache, no-transform',
       // A proxy that would collect the answer before passing it on (nginx) is told not to
-      'x-accel-buffering': 'no'
+      'x-accel-buffering': 'no',
+      // The connection ends with the channel. Kept, it would hold up a process that is told to stop: closing the
+      // server closes the connections that carry nothing at that moment, and this one still carries the channel
+      // being ended. With one channel open the process took its whole ten seconds to stop, and 14 ms with this
+      connection: 'close'
     });
   });
 }
