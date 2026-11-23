@@ -67,6 +67,11 @@ export const fileKind = z.enum(FILE_KINDS);
  * So whatever text of a file is compared comes in through this: its name, a path, its description and what is
  * looked for. Each is turned into the first of the two ways (the form Unicode calls NFC) before anything else is
  * asked of it, and that is how it is kept and answered.
+ * NFC does one thing more, which nobody asked for and which is left as it is. A few hundred characters that
+ * Unicode has only for the sake of older encodings become the character they stand for: the ohm sign becomes the
+ * letter omega. Among them are old forms of Japanese characters, drawn a little differently from the usual one
+ * (U+FA19 for U+795E), so a name written with one of those comes back written with the usual one. Keeping them
+ * would take a rule of our own in the place of NFC.
  */
 const sameWriting = z.string().normalize('NFC');
 

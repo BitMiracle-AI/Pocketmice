@@ -501,21 +501,22 @@ test('a folder is moved with the folders in it: the deepest of them counts, also
   const half = FOLDER_DEPTH_MAX / 2;
   const under = await makeChain(ada, spaceId, null, 'Under', half + 1);
   const tall = await makeChain(ada, spaceId, null, 'Tall', half);
-  const [top, bottom] = [tall.at(0), tall.at(-1)];
+  const [top, second, bottom] = [tall.at(0), tall.at(1), tall.at(-1)];
   const [fits, tooDeep] = [under.at(half - 1), under.at(half)];
-  assert.ok(top && bottom && fits && tooDeep);
+  assert.ok(top && second && bottom && fits && tooDeep);
 
   // One folder too deep for the last of the folders inside it, though the folder that is moved would be fine
   const refused = await api.as(ada)(moveFile, { spaceId, fileId: top.id, parentId: tooDeep.id });
   assert.equal(!refused.ok && refused.code, 'CONFLICT');
   assert.equal(await pathOf(ada, spaceId, top.id), top.path);
 
-  // The deepest is in the trash: it still counts, since restoring it puts it back where it was
-  const trashed = await api.as(ada)(trashFile, { spaceId, fileId: bottom.id });
+  // A folder inside it is put in the trash, and the folders below that one are in the trash with it. They all
+  // still count, the deepest too: restoring the one that was trashed puts every one of them back where it was
+  const trashed = await api.as(ada)(trashFile, { spaceId, fileId: second.id });
   assert.ok(trashed.ok);
   const stillRefused = await api.as(ada)(moveFile, { spaceId, fileId: top.id, parentId: tooDeep.id });
   assert.equal(!stillRefused.ok && stillRefused.code, 'CONFLICT');
-  const restored = await api.as(ada)(restoreFile, { spaceId, fileId: bottom.id });
+  const restored = await api.as(ada)(restoreFile, { spaceId, fileId: second.id });
   assert.ok(restored.ok);
 
   // One folder higher, the last of them is exactly as deep as folders nest. The file in it is not one level more

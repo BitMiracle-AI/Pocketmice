@@ -184,7 +184,8 @@ The answer is the new file, as `getFile` answers.
   a query cannot say `null`.)
 - `--url-query` encodes the name for the address, which a name with a space or any non-ASCII character needs. It
   takes curl 7.87 or later. With an older curl, percent-encode the name yourself and put the query in the address:
-  `…/api/content?spaceId=<space>&name=Q3%20notes.md`.
+  `…/api/content?spaceId=<space>&name=Q3%20notes.md`. Encode a `+` too, as `%2B`: left as it is, it arrives as a
+  space, and the file is made under the wrong name without a word.
 - The content must come from a file. `-T -` (from standard input) is refused, because it sends no length. For text
   you have in hand, write it to a temporary file first, or use `-X PUT --data-binary @-` in place of `-T`. The same
   goes for writing over a file.
@@ -249,8 +250,9 @@ A description is up to 1024 characters of plain words about a file or a folder: 
 what to do with it. When you make a file that others will come across, give it one: `getMatchingFiles` looks in
 descriptions, so the words you write there are the words it will be found by.
 
-Unlike content, a name and a description have no versions: the one you replace is gone. Before you write a new
-description, read the one the file has, and when you replace one, tell the user what it said.
+Unlike content, a name, a description and the folder a file is in have no versions: the one you replace is gone,
+and nothing says what it was. Before you write a new description, read the one the file has, and when you replace
+one, tell the user what it said.
 
 ## Versions
 
@@ -354,4 +356,4 @@ And the address the content goes through, `/api/content`:
 - Other people and other agents write here too. Between two of your calls anything may have changed: a `CONFLICT`
   or a `NOT_FOUND` after a call that worked a moment ago is the drive telling you so, not a fault.
 - Nothing you can call destroys the content of a file: a version you write over stays, and what you trash can be
-  restored. Only a name or a description you replace is gone.
+  restored. Only a name or a description you replace is gone, and where a file was before you moved it.

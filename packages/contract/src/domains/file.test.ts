@@ -54,6 +54,11 @@ test('a character that can be written in two ways is written one way: in a name,
   // Korean typed on macOS comes the same way: the parts of a syllable one by one
   assert.equal(fileName.parse('\u1112\u1161\u11ab'), '\ud55c');
 
+  // Only two ways of writing one character are brought together. A character that is another one, however alike,
+  // stays: the wide A of Chinese and Japanese typing is not A, and the one letter \ufb01 is not f and i
+  assert.equal(fileName.parse('\uff21.txt'), '\uff21.txt');
+  assert.equal(fileName.parse('\ufb01le.txt'), '\ufb01le.txt');
+
   // What is counted is what is kept: as many é as a name has characters, each written as two
   assert.equal(fileName.parse('e\u0301'.repeat(FILE_NAME_MAX_LENGTH)).length, FILE_NAME_MAX_LENGTH);
 });
