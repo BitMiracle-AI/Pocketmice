@@ -1,13 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { SearchPage } from '@/features/file/SearchPage';
+import { wordsOf } from '@/features/file/searchWords';
 
-// Looking for a file of the space by words. What is looked for is in the address (?q=…). The router reads 2026
-// there as a number and true as a yes: whatever it made of it is taken as the words it was written as.
+// Looking for a file of the space by words. What is looked for is in the address (?q=…).
 export const Route = createFileRoute('/_app/spaces/$spaceId/search')({
-  validateSearch: (search: Record<string, unknown>): { q?: string } => {
-    const words = ['string', 'number', 'boolean'].includes(typeof search.q) ? String(search.q).trim() : '';
-    return { q: words === '' ? undefined : words };
-  },
+  validateSearch: (search: Record<string, unknown>): { q?: string } => ({ q: wordsOf(search.q) }),
   component: SearchRoute
 });
 
