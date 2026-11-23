@@ -183,13 +183,17 @@ try {
   output. The methods are made from the definitions in `packages/contract`, not written a second time. What only
   the person does, like making a key or deleting for good, is not there.
 - The content of files has three methods: `uploadFile`, `uploadFileVersion` and `downloadFile`. Content is text,
-  bytes or a `Blob`, and not a stream: the server takes no upload without a length. For a file on disk, Node has
-  `openAsBlob`.
+  bytes or a `Blob`, and not a stream: the server takes no upload without a length. A file on disk goes up as the
+  `Blob` that Node's `openAsBlob` gives for it, not as its bytes read into memory: content that is in memory is
+  sent in one piece, which Node's `fetch` gives five minutes, so a large upload over a slow line is cut off.
 - A method that fails throws a `PocketmiceError`, and nothing else. Decide what to do by its `code`, which is the
-  error code the server answered with, or `UNREACHABLE` when the server was not reached.
+  error code the server answered with, or one of three the SDK arrives at itself: `UNREACHABLE` when the server
+  was not reached, `BAD_RESPONSE` when what came back is not what was agreed, `UNEXPECTED` when sending the request
+  failed any other way. What was thrown underneath is the error's `cause`.
 - A method is one request. Writing to a path whose folders may be missing takes several: the
   [skill](#agent-skill) says which.
-- It uses no module of Node, so it should run wherever there is a `fetch`. It has been tried on Node only.
+- It uses no module of Node, so it should run wherever there is a `fetch`. It has been tried on Node, and in
+  Chrome from a web page the server allows (`WEB_ORIGINS`): the server answers no other page.
 
 ## MCP server
 

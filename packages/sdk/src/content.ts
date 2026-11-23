@@ -18,8 +18,14 @@ import { errorOf, PocketmiceError } from './pocketmiceError.ts';
 /**
  * What can be uploaded: text (sent as UTF-8), bytes, or a Blob. Each of them says how long it is, and the server
  * takes no upload without a length: that is why a stream is not among them.
- * For a file on disk, Node has openAsBlob (in node:fs). Node still holds much of a large Blob in memory while it is
- * sent: an 800 MB file took about 570 MB, measured once on Node 26.
+ * A file on disk is uploaded as the Blob that Node's openAsBlob (in node:fs) gives for it, and not as its bytes
+ * read into memory. Why, as measured on Node 26:
+ * - Node's fetch hands content that is in memory to the connection as one piece, whatever its size, and gives the
+ *   sending of a piece five minutes. An upload from memory that takes longer fails with UNREACHABLE, however well
+ *   it is going: about 40 MB over a line of 1 Mbit/s is that long. The Blob of a file goes out 64 KB at a time,
+ *   and has as long as the server gives a request.
+ * - The Blob of a file is not read into memory whole. Node still holds much of it while it is sent: an 800 MB file
+ *   took about 570 MB.
  */
 export type Content = string | Uint8Array | Blob;
 
