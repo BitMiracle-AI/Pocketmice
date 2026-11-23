@@ -210,7 +210,7 @@ for (const era of ERAS) {
     assert.equal(write?.description, renameNote.description);
     assert.deepEqual(write?.inputSchema.required, ['spaceId', 'noteId', 'title']);
     assert.deepEqual(Object.keys(write?.inputSchema.properties ?? {}), ['spaceId', 'noteId', 'title', 'notify']);
-    // Nothing a key can do is beyond undoing, so no write is marked as one that destroys
+    // No key destroys content, so no write is marked as one that destroys
     assert.deepEqual(write?.annotations, { readOnlyHint: false, destructiveHint: false });
 
     const read = named('getSettings');

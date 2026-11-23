@@ -161,8 +161,10 @@ export function mountMcp(app: Hono, deps: McpDeps): void {
           {
             description,
             inputSchema: input,
-            // Nothing a key can do is beyond undoing: what cannot be undone is kept for the person themselves, and
-            // is not a tool
+            // No write is marked as one that destroys. What destroys content, deleting for good, is kept for the
+            // person themselves and is not a tool: with a key, a write to a file is a new version and deleting is
+            // the trash. A name, a description or a folder that is changed has no history (see file.ts in the
+            // contract): the mark is about what is lost for good, and is not set for those
             annotations: kind === 'read' ? { readOnlyHint: true } : { readOnlyHint: false, destructiveHint: false }
           },
           async (checked): Promise<ToolResult> => {
