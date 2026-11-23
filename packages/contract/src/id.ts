@@ -2,8 +2,9 @@ import { z } from 'zod';
 
 /**
  * An id in the input of an operation. Every kind of thing uses this same one.
- * A field of an input that is called id, or whose name ends in Id, must be exactly this: operation() checks it when
- * the operation is defined, so no operation can accept ids in a spelling of its own.
+ * A field of an input that is called id, or whose name ends in Id, must be exactly this, or this made nullable for a
+ * field where null means "none" (id.nullable()): operation() checks it when the operation is defined, so no
+ * operation can accept ids in a spelling of its own.
  *
  * Only a lowercase uuid is accepted, so an id has one spelling. A database compares uuids without regard to case,
  * but code compares them as strings ("is this the caller's own?"): accept uppercase, and the same id becomes two

@@ -3,6 +3,15 @@ import type { Implementation } from '../http/operation.ts';
 import { createApiKey } from './apiKey/createApiKey.ts';
 import { deleteApiKey } from './apiKey/deleteApiKey.ts';
 import { getApiKeys } from './apiKey/getApiKeys.ts';
+import { createFolder } from './file/createFolder.ts';
+import { getFile } from './file/getFile.ts';
+import { getFileByPath } from './file/getFileByPath.ts';
+import { getFiles } from './file/getFiles.ts';
+import { getTrashedFiles } from './file/getTrashedFiles.ts';
+import { moveFile } from './file/moveFile.ts';
+import { restoreFile } from './file/restoreFile.ts';
+import { trashFile } from './file/trashFile.ts';
+import { updateFile } from './file/updateFile.ts';
 import { createInvite } from './invite/createInvite.ts';
 import { deleteInvite } from './invite/deleteInvite.ts';
 import { getInvites } from './invite/getInvites.ts';
@@ -45,6 +54,15 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     joinSpace(deps),
     getApiKeys(deps),
     createApiKey(deps),
-    deleteApiKey(deps)
+    deleteApiKey(deps),
+    getFiles(deps),
+    getFile(deps),
+    getFileByPath(deps),
+    createFolder(deps),
+    updateFile(deps),
+    moveFile(deps),
+    trashFile(deps),
+    restoreFile(deps),
+    getTrashedFiles(deps)
   ];
 }

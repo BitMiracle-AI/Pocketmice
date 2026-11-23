@@ -67,6 +67,12 @@ test('an input field called id or ending in Id must be the shared id', () => {
 
   // The shared id itself is accepted, and so is a field that merely contains the letters
   define(z.object({ id, fileId: id, idea: z.string(), valid: z.boolean() }));
+
+  // So is the shared id made nullable, for a field where null means "none" — and nothing else made nullable, nor
+  // the shared id wrapped any other way
+  define(z.object({ parentId: id.nullable() }));
+  assert.throws(() => define(z.object({ parentId: z.uuid().nullable() })), /takes "parentId" in its input/);
+  assert.throws(() => define(z.object({ parentId: id.optional() })), /takes "parentId" in its input/);
 });
 
 test('the address of an operation is /api/ followed by its name', () => {

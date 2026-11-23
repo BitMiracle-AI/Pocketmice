@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { DeclaredErrorCode } from './errors.ts';
 import { id } from './id.ts';
 import type { SpaceRole } from './spaceRole.ts';
@@ -95,7 +95,7 @@ interface OperationsOfASpaceAreNotPublic {
  * Defines an operation. A definition that is wrong fails here, when the file loads, not when someone calls it:
  * - the name breaks the rule above;
  * - the name says read (it starts with get) and the kind says write, or the other way round;
- * - an input field called id, or ending in Id, is not the shared id (see id.ts).
+ * - an input field called id, or ending in Id, is not the shared id, nor that id made nullable (see id.ts).
  */
 export function operation<
   Kind extends 'read' | 'write',
@@ -118,13 +118,18 @@ export function operation<
     );
   }
   for (const [field, schema] of Object.entries(definition.input.shape)) {
-    if ((field === 'id' || field.endsWith('Id')) && schema !== id) {
+    if ((field === 'id' || field.endsWith('Id')) && !isSharedId(schema)) {
       throw new Error(
-        `Operation ${definition.name} takes "${field}" in its input with its own rule. Use the id from @pocketmice/contract/id: an id is accepted in one spelling only.`
+        `Operation ${definition.name} takes "${field}" in its input with its own rule. Use the id from @pocketmice/contract/id, or id.nullable(): an id is accepted in one spelling only.`
       );
     }
   }
   return definition;
+}
+
+/** Whether a field of an input is the shared id, or the shared id made nullable: an id, or null for "none" */
+function isSharedId(schema: unknown): boolean {
+  return schema === id || (schema instanceof z.ZodNullable && schema.unwrap() === id);
 }
 
 /** Whether value is the definition of an operation. Used to pick the operations out of what a file exports */

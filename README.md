@@ -4,8 +4,8 @@
 the same files: they read what people give them and hand back what they make.
 
 > **Status: just started.** What exists is the foundation and the first pieces on it: signing up and signing in,
-> profiles, spaces with their members, invites, and API keys for agents. There are no files yet, and nothing here
-> is usable.
+> profiles, spaces with their members, invites, API keys for agents, and the tree of folders in a space with its
+> trash. Files cannot be uploaded yet, and nothing here is usable.
 
 ## What is planned
 
