@@ -13,6 +13,8 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppSettingsKeysRouteImport } from './routes/_app/settings/keys'
 import { Route as AppSpacesSpaceIdRouteImport } from './routes/_app/spaces/$spaceId'
 import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app/spaces/$spaceId/index'
 import { Route as AppSpacesSpaceIdFilesFileIdRouteImport } from './routes/_app/spaces/$spaceId/files/$fileId'
@@ -36,6 +38,16 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsKeysRoute = AppSettingsKeysRouteImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSpacesSpaceIdRoute = AppSpacesSpaceIdRouteImport.update({
   id: '/spaces/$spaceId',
   path: '/spaces/$spaceId',
@@ -57,6 +69,8 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/settings': typeof AppSettingsRouteWithChildren
+  '/settings/keys': typeof AppSettingsKeysRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
@@ -64,7 +78,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/settings': typeof AppSettingsRouteWithChildren
   '/': typeof AppIndexRoute
+  '/settings/keys': typeof AppSettingsKeysRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
 }
@@ -73,7 +89,9 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_app/settings': typeof AppSettingsRouteWithChildren
   '/_app/': typeof AppIndexRoute
+  '/_app/settings/keys': typeof AppSettingsKeysRoute
   '/_app/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
   '/_app/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
@@ -84,6 +102,8 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
+    | '/settings'
+    | '/settings/keys'
     | '/spaces/$spaceId'
     | '/spaces/$spaceId/'
     | '/spaces/$spaceId/files/$fileId'
@@ -91,7 +111,9 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/signup'
+    | '/settings'
     | '/'
+    | '/settings/keys'
     | '/spaces/$spaceId'
     | '/spaces/$spaceId/files/$fileId'
   id:
@@ -99,7 +121,9 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/signup'
+    | '/_app/settings'
     | '/_app/'
+    | '/_app/settings/keys'
     | '/_app/spaces/$spaceId'
     | '/_app/spaces/$spaceId/'
     | '/_app/spaces/$spaceId/files/$fileId'
@@ -141,6 +165,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/keys': {
+      id: '/_app/settings/keys'
+      path: '/keys'
+      fullPath: '/settings/keys'
+      preLoaderRoute: typeof AppSettingsKeysRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/_app/spaces/$spaceId': {
       id: '/_app/spaces/$spaceId'
       path: '/spaces/$spaceId'
@@ -165,6 +203,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSettingsRouteChildren {
+  AppSettingsKeysRoute: typeof AppSettingsKeysRoute
+}
+
+const AppSettingsRouteChildren: AppSettingsRouteChildren = {
+  AppSettingsKeysRoute: AppSettingsKeysRoute,
+}
+
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
+  AppSettingsRouteChildren,
+)
+
 interface AppSpacesSpaceIdRouteChildren {
   AppSpacesSpaceIdIndexRoute: typeof AppSpacesSpaceIdIndexRoute
   AppSpacesSpaceIdFilesFileIdRoute: typeof AppSpacesSpaceIdFilesFileIdRoute
@@ -179,11 +229,13 @@ const AppSpacesSpaceIdRouteWithChildren =
   AppSpacesSpaceIdRoute._addFileChildren(AppSpacesSpaceIdRouteChildren)
 
 interface AppRouteChildren {
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
   AppSpacesSpaceIdRoute: typeof AppSpacesSpaceIdRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppSettingsRoute: AppSettingsRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
   AppSpacesSpaceIdRoute: AppSpacesSpaceIdRouteWithChildren,
 }

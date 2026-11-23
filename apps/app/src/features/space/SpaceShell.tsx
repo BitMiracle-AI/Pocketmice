@@ -1,4 +1,4 @@
-import { Folder01Icon } from '@hugeicons/core-free-icons';
+import { Folder01Icon, Key01Icon } from '@hugeicons/core-free-icons';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SidebarGroup, SidebarMenu } from '@/components/ui/sidebar';
@@ -23,6 +23,16 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
     <CurrentSpaceProvider space={space}>
       <Shell
         top={<SpaceSwitch />}
+        // The keys are the person's and not this space's, so the way to them is at the bottom, next to who is
+        // signed in. The address says which space the person came from, for the way back
+        bottom={
+          <NavRow
+            link={<Link to="/settings/keys" search={{ space: spaceId }} />}
+            icon={Key01Icon}
+            label={shellText.apiKeys}
+            active={false}
+          />
+        }
         nav={
           <SidebarGroup>
             <SidebarMenu>

@@ -10,13 +10,14 @@ import { shellText } from './text';
 
 /**
  * What a page inside the frame shows in its place when it failed to load: what happened, and a button that tries
- * again. The frame stays, so the person can still go elsewhere.
+ * again. The frame stays, so the person can still go elsewhere. title is what the bar at the top calls the page;
+ * left out, the files.
  */
-export function PageError({ error }: ErrorComponentProps) {
+export function PageError({ error, title = shellText.files }: ErrorComponentProps & { title?: string }) {
   const router = useRouter();
   return (
     <>
-      <MainBar trail={[]} title={shellText.files} />
+      <MainBar trail={[]} title={title} />
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
