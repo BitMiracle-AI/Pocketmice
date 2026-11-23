@@ -4,10 +4,12 @@
 the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
-> invites, API keys for agents, and files — folders, upload and download, versions, a trash. There is no web app
-> yet: the way in is the HTTP API, for a program the [TypeScript SDK](#typescript-sdk), which is in this repository
-> and not on npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it
-> the API. Nothing here is ready for production.
+> invites, API keys for agents, and files — folders, upload and download, versions, a trash. The web app has its
+> first pages: signing in, spaces, the files of a space (folders, upload, download) and API keys. What it does not
+> do yet (members and invites, the trash, versions, renaming and moving) is done through the HTTP API. For a
+> program there is the [TypeScript SDK](#typescript-sdk), which is in this repository and not on npm yet, and for
+> an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it the API. Nothing here is
+> ready for production.
 
 ## What is planned
 
@@ -35,7 +37,7 @@ the same files: they read what people give them and hand back what they make.
 
 ```
 apps/api            the API server (Hono on Node)
-apps/app            the web app (Vite and React). People can sign in to it; its other pages are not there yet
+apps/app            the web app (Vite and React): signing in, spaces, files and API keys
 packages/contract   the definition of every operation: its input, its output, its error codes
 packages/client     the code every caller shares to call the API
 packages/sdk        the TypeScript SDK: the drive, for a program that holds an API key
@@ -271,9 +273,10 @@ curl -X POST http://localhost:11210/api/getServerInfo -H 'content-type: applicat
 
 ### The first steps, by hand
 
-There is no web app yet, so what a person does in it is done with curl for now: signing up, and making the API key
-an agent calls with. With `.env` as copied from the example, people sign in with a password. Signing up signs you
-in, and the cookie that says so goes into `cookies.txt`:
+With `pnpm dev` these steps are done in the web app, at `http://localhost:11211`: sign up, make a space, and make
+the API key an agent calls with, under "API keys". A server that runs the API alone, as the container image does,
+has no web app, and there they are done with curl. With `.env` as copied from the example, people sign in with a
+password. Signing up signs you in, and the cookie that says so goes into `cookies.txt`:
 
 ```sh
 curl -c cookies.txt -X POST http://localhost:11210/api/auth/sign-up/email \
