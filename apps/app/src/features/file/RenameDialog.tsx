@@ -1,4 +1,4 @@
-import { FILE_NAME_MAX_LENGTH, fileName, updateFile } from '@pocketmice/contract/domains/file';
+import { FILE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/file';
 import { type FormEvent, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,9 +6,8 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useLastGiven } from '@/hooks/useLastGiven';
-import { call, failureText, spaceChanged } from '@/lib/api';
 import { stemLength } from './fileName';
-import type { DriveFile } from './files';
+import { type DriveFile, renameFile } from './files';
 import { fileText } from './text';
 
 /**
@@ -42,19 +41,10 @@ function RenameForm({ spaceId, file, onDone }: { spaceId: string; file: DriveFil
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    const checked = fileName.safeParse(name);
-    if (!checked.success) return setProblem(name.trim() === '' ? fileText.nameMissing : fileText.nameInvalid);
-    if (checked.data === file.name) return onDone();
-
     setBusy(true);
-    const result = await call(updateFile, { spaceId, fileId: file.id, name: checked.data });
+    const failed = await renameFile(spaceId, file, name);
     setBusy(false);
-    if (!result.ok) {
-      // The list that still shows it is out of date
-      if (result.code === 'NOT_FOUND') spaceChanged(spaceId);
-      return setProblem(failureText(result.code, { CONFLICT: fileText.nameTaken, NOT_FOUND: fileText.itemGone }));
-    }
-    spaceChanged(spaceId);
+    if (failed !== null) return setProblem(failed);
     onDone();
   };
 

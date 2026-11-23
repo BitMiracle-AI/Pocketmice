@@ -1,6 +1,6 @@
 import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { getFile, moveFile } from '@pocketmice/contract/domains/file';
+import { getFile } from '@pocketmice/contract/domains/file';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,9 @@ import { toast } from '@/components/ui/toast';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { SpaceMark } from '@/features/space/SpaceMark';
 import { useLastGiven } from '@/hooks/useLastGiven';
-import { ApiFailure, call, failureText, queryClient, readQuery, spaceChanged, thrownText } from '@/lib/api';
+import { ApiFailure, queryClient, readQuery, thrownText } from '@/lib/api';
 import { FileIcon } from './FileIcon';
-import { type DriveFile, folderQuery } from './files';
+import { type DriveFile, folderQuery, moveFileTo } from './files';
 import { fileText } from './text';
 
 /** A folder the dialog is looking into: what it takes to name it, to move into it and to go up from it */
@@ -98,14 +98,9 @@ function MoveForm({ file, from, onDone }: { file: DriveFile; from: Place | null;
   const move = async () => {
     if (busy) return;
     setBusy(true);
-    const result = await call(moveFile, { spaceId: space.id, fileId: file.id, parentId: at?.id ?? null });
+    const failed = await moveFileTo(space.id, file, at?.id ?? null);
     setBusy(false);
-    if (!result.ok) {
-      // What the dialog and the page show may be what led here: both are asked for again
-      if (result.code === 'CONFLICT' || result.code === 'NOT_FOUND') spaceChanged(space.id);
-      return setProblem(failureText(result.code, { CONFLICT: fileText.moveConflict, NOT_FOUND: fileText.moveGone }));
-    }
-    spaceChanged(space.id);
+    if (failed !== null) return setProblem(failed);
     toast.add({ title: fileText.moved(file.name, at?.name ?? space.name) });
     onDone();
   };

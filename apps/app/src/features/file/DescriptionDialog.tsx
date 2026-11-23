@@ -1,4 +1,4 @@
-import { FILE_DESCRIPTION_MAX_LENGTH, fileDescription, updateFile } from '@pocketmice/contract/domains/file';
+import { FILE_DESCRIPTION_MAX_LENGTH } from '@pocketmice/contract/domains/file';
 import { type FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,8 +14,7 @@ import { Field, FieldError } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useLastGiven } from '@/hooks/useLastGiven';
-import { call, failureText, spaceChanged } from '@/lib/api';
-import type { DriveFile } from './files';
+import { type DriveFile, describeFile } from './files';
 import { fileText } from './text';
 
 /**
@@ -48,19 +47,10 @@ function DescriptionForm({ spaceId, file, onDone }: { spaceId: string; file: Dri
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    const checked = fileDescription.safeParse(text);
-    if (!checked.success) return setProblem(failureText('INVALID_INPUT', {}));
-    if (checked.data === file.description) return onDone();
-
     setBusy(true);
-    const result = await call(updateFile, { spaceId, fileId: file.id, description: checked.data });
+    const failed = await describeFile(spaceId, file, text);
     setBusy(false);
-    if (!result.ok) {
-      if (result.code === 'NOT_FOUND') spaceChanged(spaceId);
-      // CONFLICT is about a name, which is not being changed here: it has its sentence all the same
-      return setProblem(failureText(result.code, { CONFLICT: fileText.nameTaken, NOT_FOUND: fileText.itemGone }));
-    }
-    spaceChanged(spaceId);
+    if (failed !== null) return setProblem(failed);
     onDone();
   };
 

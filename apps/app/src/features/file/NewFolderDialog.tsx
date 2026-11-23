@@ -1,11 +1,11 @@
-import { createFolder, FILE_NAME_MAX_LENGTH, fileName } from '@pocketmice/contract/domains/file';
+import { FILE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/file';
 import { type FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { call, failureText, spaceChanged } from '@/lib/api';
+import { makeFolder } from './files';
 import { fileText } from './text';
 
 /**
@@ -36,16 +36,10 @@ export function NewFolderDialog({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    const checked = fileName.safeParse(name);
-    if (!checked.success) return setProblem(name.trim() === '' ? fileText.nameMissing : fileText.nameInvalid);
-
     setBusy(true);
-    const result = await call(createFolder, { spaceId, parentId, name: checked.data });
+    const failed = await makeFolder(spaceId, parentId, name);
     setBusy(false);
-    if (!result.ok) {
-      return setProblem(failureText(result.code, { CONFLICT: fileText.nameTaken, NOT_FOUND: fileText.parentGone }));
-    }
-    spaceChanged(spaceId);
+    if (failed !== null) return setProblem(failed);
     close();
   };
 
