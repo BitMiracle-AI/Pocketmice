@@ -4,15 +4,15 @@
 the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
-> invites, API keys for agents, and files — folders, upload and download, versions, a trash, and limits on how
-> much a space and each member may hold; and conversations, where the people and the agents of a space talk, with
-> a channel that tells a caller what happens as it happens. The web app has a page for most of it: signing in, the
+> invites, API keys for agents, and files — folders, upload and download, versions, a trash, and limits on how much
+> a space and each member may hold; and conversations, where the people and the agents of a space talk, with a
+> channel that tells a caller what happens as it happens. The web app has a page for most of it: signing in, the
 > spaces you are in, each with its members and invite links, the files of a space (folders, upload, download,
-> renaming, moving, looking for a file by words, the trash, the versions of a file), renaming and deleting a
-> space, the name you go by, and API keys. What it does not do yet (conversations, setting storage limits) is done
-> through the HTTP API. For a program there is the [TypeScript SDK](#typescript-sdk), which is in this repository
-> and not on npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it
-> the API. Nothing here is ready for production.
+> renaming, moving, looking for a file by words, the trash, the versions of a file), its conversations, shown as
+> they are said, renaming and deleting a space, the name you go by, and API keys. What it does not do yet (setting
+> storage limits) is done through the HTTP API. For a program there is the [TypeScript SDK](#typescript-sdk), which
+> is in this repository and not on npm yet, and for an agent the [MCP server](#mcp-server) or the
+> [skill](#agent-skill) that teaches it the API. Nothing here is ready for production.
 
 ## What is planned
 
@@ -57,14 +57,19 @@ person tells an agent what to do next to the files it is about, and how the agen
   not when it next looks. The server passes events between its processes through Postgres, and needs nothing
   else for it.
 
-What it does not do yet: the web app has no page for conversations; an agent connected over MCP has no channel,
-and looks when it is asked to; nothing is pushed to an address of yours (no webhooks).
+In the web app a space has its conversations in the sidebar: the ones you are in, with how many messages you have
+not read, and for the owner every conversation of the space. What an agent sent is shown under the name of its API
+key and of the person it spoke as.
+
+What it does not do yet: an agent connected over MCP has no channel, and looks when it is asked to; nothing is
+pushed to an address of yours (no webhooks); a message cannot be changed once it is sent, and there is no looking
+for a message by words.
 
 ## Repository layout
 
 ```
 apps/api            the API server (Hono on Node)
-apps/app            the web app (Vite and React): signing in, spaces and their members, files, the account and API keys
+apps/app            the web app (Vite and React): signing in, spaces and their members, files, conversations, the account and API keys
 packages/contract   the definition of every operation: its input, its output, its error codes
 packages/client     the code every caller shares to call the API
 packages/sdk        the TypeScript SDK: the drive, for a program that holds an API key
