@@ -1,9 +1,9 @@
-import { ArrowDown01Icon, HardDriveIcon, UserRemove01Icon } from '@hugeicons/core-free-icons';
+import { HardDriveIcon, MoreHorizontalIcon, UserRemove01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { grantableRole } from '@pocketmice/contract/spaceRole';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Page, PageHead } from '@/components/Page';
+import { Page } from '@/components/Page';
 import { PersonAvatar } from '@/components/PersonAvatar';
 import {
   AlertDialog,
@@ -17,20 +17,20 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { InviteLinks } from '@/features/invite/InviteLinks';
-import { MainBar } from '@/features/shell/MainBar';
+import { PageBar } from '@/features/shell/PageBar';
 import { shellText } from '@/features/shell/text';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLastGiven } from '@/hooks/useLastGiven';
@@ -42,10 +42,10 @@ import { spaceHolds, spaceSizeQuery, useNoLongerIn } from './spaces';
 import { spaceText } from './text';
 
 // Who is in a space, what each may do there, and how much of it each holds. Every member sees the list, and over
-// it how much the space holds in all. The owner changes the role of someone else, sets how much a member may hold
-// (their own row included), or takes someone out, from the role at the end of the row; under the list are the
-// invite links, which only the owner sees. Anyone but the owner can leave: the owner cannot, and their own role
-// does not change.
+// it how much the space holds in all. The owner gives someone else another role where the role is said, and from
+// the menu at the end of a row sets how much a member may hold (their own row included) or takes someone out;
+// under the list are the invite links, which only the owner sees. Anyone but the owner can leave: the owner
+// cannot, and their own role does not change.
 
 /** The roles that can be given, in the order they are offered: the one that may do more first */
 const OFFERED = [...grantableRole.options].reverse();
@@ -94,105 +94,125 @@ export function MembersPage() {
 
   return (
     <>
-      <MainBar trail={[]} title={shellText.members} />
-
-      <Page>
-        <PageHead title={shellText.members} hint={spaceText.membersHints[space.role]}>
-          {!isOwner && (
+      <PageBar
+        title={shellText.members}
+        actions={
+          !isOwner && (
             <Button variant="outline" onClick={() => setAsking('leave')}>
               {spaceText.leave}
             </Button>
+          )
+        }
+      />
+
+      <Page>
+        <Card>
+          <CardHeader>
+            <CardTitle>{spaceText.storageTitle}</CardTitle>
+            <CardDescription>{spaceHolds(size)}</CardDescription>
+          </CardHeader>
+          {size.storageLimit !== null && (
+            <CardContent>
+              {/* The sentence over it says the same in words, so the bar is for the eye alone */}
+              <Progress
+                aria-hidden="true"
+                value={size.storageSize >= size.storageLimit ? 100 : (size.storageSize / size.storageLimit) * 100}
+              />
+            </CardContent>
           )}
-        </PageHead>
+        </Card>
 
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">{spaceHolds(size)}</p>
-
-          <ItemGroup aria-label={spaceText.membersLabel}>
-            {members.map((member) => (
-              <Item key={member.userId} variant="outline" size="sm">
-                <ItemMedia>
-                  <PersonAvatar name={member.name} />
-                </ItemMedia>
-                <ItemContent className="min-w-0">
-                  <ItemTitle>
-                    <span className="truncate">{member.name}</span>
-                    {member.userId === user.id && <Badge variant="secondary">{spaceText.you}</Badge>}
-                  </ItemTitle>
-                  <ItemDescription className="text-xs">
-                    {member.storageLimit === null
-                      ? spaceText.holds(formatSize(member.storageSize))
-                      : spaceText.holdsOf(formatSize(member.storageSize), formatSize(member.storageLimit))}
-                  </ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  {isOwner ? (
-                    // What the owner does to a member is in the menu their role opens. The owner's own row has
-                    // the storage limit and nothing else: their role does not change, and they cannot be removed
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={
-                              member.role === 'owner'
-                                ? spaceText.changeLimit(member.name)
-                                : spaceText.changeRole(member.name)
-                            }
-                            disabled={changing !== null}
-                            className="text-muted-foreground"
-                          />
-                        }
+        <Card>
+          <CardHeader>
+            <CardTitle>{shellText.members}</CardTitle>
+            <CardDescription>{spaceText.membersHints[space.role]}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ItemGroup aria-label={spaceText.membersLabel}>
+              {members.map((member) => (
+                <Item key={member.userId} variant="outline" size="sm">
+                  <ItemMedia>
+                    <PersonAvatar name={member.name} />
+                  </ItemMedia>
+                  <ItemContent className="min-w-0">
+                    <ItemTitle>
+                      <span className="truncate">{member.name}</span>
+                      {member.userId === user.id && <Badge variant="secondary">{spaceText.you}</Badge>}
+                    </ItemTitle>
+                    <ItemDescription>
+                      {member.storageLimit === null
+                        ? spaceText.holds(formatSize(member.storageSize))
+                        : spaceText.holdsOf(formatSize(member.storageSize), formatSize(member.storageLimit))}
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    {changing === member.userId && <Spinner />}
+                    {isOwner && member.role !== 'owner' ? (
+                      // The owner gives someone else another role where the role is said; the row waits until
+                      // the api has answered
+                      <Select
+                        value={member.role}
+                        items={OFFERED.map((role) => ({ value: role, label: spaceText.roles[role] }))}
+                        disabled={changing !== null}
+                        onValueChange={(role) => change(member, role as GrantableRole)}
                       >
-                        {spaceText.roles[member.role]}
-                        {changing === member.userId ? (
-                          <Spinner data-icon="inline-end" />
-                        ) : (
-                          <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} data-icon="inline-end" />
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="min-w-64">
-                        {member.role !== 'owner' && (
-                          <>
-                            <DropdownMenuRadioGroup
-                              value={member.role}
-                              onValueChange={(value) => change(member, value as GrantableRole)}
-                            >
-                              {OFFERED.map((role) => (
-                                // Picking a role closes the menu, as picking anything else in it does: the row
-                                // then says the role, and waits for the api
-                                <DropdownMenuRadioItem key={role} value={role} closeOnClick>
-                                  <span className="flex flex-col gap-0.5">
-                                    <span>{spaceText.roles[role]}</span>
-                                    <span className="text-xs text-muted-foreground">{spaceText.roleHints[role]}</span>
+                        <SelectTrigger size="sm" aria-label={spaceText.changeRole(member.name)}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="end" alignItemWithTrigger={false} className="w-72">
+                          <SelectGroup>
+                            {OFFERED.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                <span className="flex flex-col gap-0.5">
+                                  <span>{spaceText.roles[role]}</span>
+                                  <span className="text-xs font-normal whitespace-normal text-muted-foreground">
+                                    {spaceText.roleHints[role]}
                                   </span>
-                                </DropdownMenuRadioItem>
-                              ))}
-                            </DropdownMenuRadioGroup>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        <DropdownMenuItem onClick={() => setLimiting(member)}>
-                          <HugeiconsIcon icon={HardDriveIcon} strokeWidth={2} />
-                          {spaceText.storageLimitItem}
-                        </DropdownMenuItem>
-                        {member.role !== 'owner' && (
-                          <DropdownMenuItem variant="destructive" onClick={() => setAsking({ member })}>
-                            <HugeiconsIcon icon={UserRemove01Icon} strokeWidth={2} />
-                            {spaceText.removeMember}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{spaceText.roles[member.role]}</span>
+                    )}
+                    {isOwner && (
+                      // What else the owner does to a member. The owner's own row has the storage limit and
+                      // nothing else: their role does not change, and they cannot be removed
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={spaceText.changeLimit(member.name)}
+                              disabled={changing !== null}
+                            />
+                          }
+                        >
+                          <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={2} />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-48">
+                          <DropdownMenuItem onClick={() => setLimiting(member)}>
+                            <HugeiconsIcon icon={HardDriveIcon} strokeWidth={2} />
+                            {spaceText.storageLimitItem}
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    <span className="px-2.5 text-sm text-muted-foreground">{spaceText.roles[member.role]}</span>
-                  )}
-                </ItemActions>
-              </Item>
-            ))}
-          </ItemGroup>
-        </div>
+                          {member.role !== 'owner' && (
+                            <DropdownMenuItem variant="destructive" onClick={() => setAsking({ member })}>
+                              <HugeiconsIcon icon={UserRemove01Icon} strokeWidth={2} />
+                              {spaceText.removeMember}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </ItemActions>
+                </Item>
+              ))}
+            </ItemGroup>
+          </CardContent>
+        </Card>
 
         {isOwner && <InviteLinks spaceId={space.id} />}
       </Page>

@@ -1,8 +1,10 @@
+import { Settings01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { SPACE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/space';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { Page, PageHead } from '@/components/Page';
-import { SavedField } from '@/components/SavedField';
+import { Page } from '@/components/Page';
+import { SavedCard } from '@/components/SavedCard';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -13,12 +15,14 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
-import { MainBar } from '@/features/shell/MainBar';
+import { PageBar } from '@/features/shell/PageBar';
 import { commonText } from '@/lib/text';
 import { useCurrentSpace } from './CurrentSpaceProvider';
 import { StorageLimitField } from './StorageLimitField';
@@ -54,46 +58,44 @@ export function SpaceSettingsPage() {
   if (space.role !== 'owner') {
     return (
       <>
-        <MainBar trail={[]} title={spaceText.settingsTitle} />
-        <Page>
-          <PageHead title={spaceText.settingsTitle} hint={spaceText.settingsOwnerOnly} />
-        </Page>
+        <PageBar title={spaceText.settingsTitle} />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
+            </EmptyMedia>
+            <EmptyTitle>{spaceText.settingsTitle}</EmptyTitle>
+            <EmptyDescription>{spaceText.settingsOwnerOnly}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </>
     );
   }
   return (
     <>
-      <MainBar trail={[]} title={spaceText.settingsTitle} />
+      <PageBar title={spaceText.settingsTitle} />
 
       <Page>
-        <PageHead title={spaceText.settingsTitle} hint={spaceText.settingsHint} />
-
-        <div className="flex max-w-md flex-col gap-7">
-          <SavedField
-            id="space-name"
-            label={spaceText.nameLabel}
-            hint={spaceText.renameHint}
-            value={space.name}
-            maxLength={SPACE_NAME_MAX_LENGTH}
-            save={rename}
-          />
-          <SpaceStorage spaceId={space.id} />
-        </div>
-
-        <section
-          aria-labelledby="delete-space-title"
-          className="mt-4 flex flex-col gap-3 rounded-2xl border border-destructive/30 p-4 sm:flex-row sm:items-center sm:gap-4"
-        >
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <h2 id="delete-space-title" className="font-heading text-sm font-medium">
-              {spaceText.deleteSpaceTitle}
-            </h2>
-            <p className="text-sm text-pretty text-muted-foreground">{spaceText.deleteSpaceHint}</p>
-          </div>
-          <Button variant="destructive" onClick={() => setAsking(true)} className="shrink-0 self-start sm:self-center">
-            {spaceText.deleteSpace}
-          </Button>
-        </section>
+        <SavedCard
+          id="space-name"
+          title={spaceText.nameLabel}
+          hint={spaceText.renameHint}
+          value={space.name}
+          maxLength={SPACE_NAME_MAX_LENGTH}
+          save={rename}
+        />
+        <SpaceStorage spaceId={space.id} />
+        <Card>
+          <CardHeader>
+            <CardTitle>{spaceText.deleteSpaceTitle}</CardTitle>
+            <CardDescription>{spaceText.deleteSpaceHint}</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button variant="destructive" onClick={() => setAsking(true)}>
+              {spaceText.deleteSpace}
+            </Button>
+          </CardFooter>
+        </Card>
       </Page>
 
       <AlertDialog open={asking} onOpenChange={(open) => !deleting && setAsking(open)}>
@@ -108,7 +110,7 @@ export function SpaceSettingsPage() {
 
 /**
  * How much the space holds, with a bar that says how much of its limit that is when it has one, and the field the
- * limit is set in. The field is saved by itself, as the name over it is: the button is off while what is typed is
+ * limit is set in. The card is saved by itself, as the name over it is: the button is off while what is typed is
  * the limit that is there.
  */
 function SpaceStorage({ spaceId }: { spaceId: string }) {
@@ -134,39 +136,36 @@ function SpaceStorage({ spaceId }: { spaceId: string }) {
   };
 
   return (
-    <section aria-labelledby="space-storage-title" className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
-        <h2 id="space-storage-title" className="font-heading text-sm font-medium">
-          {spaceText.storageTitle}
-        </h2>
-        <p className="text-sm text-muted-foreground">{spaceHolds(size)}</p>
-        {size.storageLimit !== null && (
-          // The sentence over it says the same in words, so the bar is for the eye alone
-          <Progress
-            aria-hidden="true"
-            value={noRoom ? 100 : (size.storageSize / size.storageLimit) * 100}
-            className={noRoom ? '[&_[data-slot=progress-indicator]]:bg-destructive' : undefined}
+    <Card>
+      <form onSubmit={submit} noValidate className="contents">
+        <CardHeader>
+          <CardTitle>{spaceText.storageTitle}</CardTitle>
+          <CardDescription>{spaceHolds(size)}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          {size.storageLimit !== null && (
+            // The sentence over it says the same in words, so the bar is for the eye alone
+            <Progress aria-hidden="true" value={noRoom ? 100 : (size.storageSize / size.storageLimit) * 100} />
+          )}
+          <StorageLimitField
+            id="space-limit"
+            hint={spaceText.spaceLimitHint}
+            problem={problem}
+            typed={typed}
+            onTyped={(next) => {
+              setTyped(next);
+              setProblem(null);
+            }}
           />
-        )}
-      </div>
-      <form onSubmit={submit} noValidate>
-        <StorageLimitField
-          id="space-limit"
-          hint={spaceText.spaceLimitHint}
-          problem={problem}
-          typed={typed}
-          onTyped={(next) => {
-            setTyped(next);
-            setProblem(null);
-          }}
-        >
-          <Button type="submit" disabled={busy || unchanged} className="shrink-0">
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" disabled={busy || unchanged}>
             {busy && <Spinner data-icon="inline-start" />}
             {commonText.save}
           </Button>
-        </StorageLimitField>
+        </CardFooter>
       </form>
-    </section>
+    </Card>
   );
 }
 

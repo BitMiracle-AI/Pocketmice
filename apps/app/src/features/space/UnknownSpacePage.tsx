@@ -1,12 +1,17 @@
-import { Alone, AloneHeading, AloneWayHome } from '@/components/Alone';
+import { FolderOffIcon } from '@hugeicons/core-free-icons';
+import { Link } from '@tanstack/react-router';
+import { EmptyPage } from '@/components/EmptyPage';
+import { Button } from '@/components/ui/button';
+import { commonText } from '@/lib/text';
 import { spaceText } from './text';
 
 /** What an address shows that names a space the person is not in, or one that does not exist: the two look alike */
 export function UnknownSpacePage() {
   return (
-    <Alone>
-      <AloneHeading title={spaceText.unknownTitle}>{spaceText.unknownDescription}</AloneHeading>
-      <AloneWayHome />
-    </Alone>
+    <EmptyPage icon={FolderOffIcon} title={spaceText.unknownTitle} description={spaceText.unknownDescription}>
+      <Button variant="outline" nativeButton={false} render={<Link to="/" />}>
+        {commonText.toHome}
+      </Button>
+    </EmptyPage>
   );
 }

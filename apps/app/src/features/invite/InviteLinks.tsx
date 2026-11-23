@@ -14,6 +14,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
@@ -22,15 +23,6 @@ import { formatDate, formatSize } from '@/lib/format';
 import { type Invite, inviteLink, invitesQuery, removeInvite } from './invites';
 import { NewInviteDialog } from './NewInviteDialog';
 import { inviteText } from './text';
-
-/** The dot between two things an invite says of itself in its row */
-function Dot() {
-  return (
-    <span aria-hidden="true" className="px-1.5 text-muted-foreground/50">
-      ·
-    </span>
-  );
-}
 
 /**
  * The invite links to a space, on the page of its members: the owner makes one, copies it to send it, and deletes
@@ -69,70 +61,55 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
   };
 
   return (
-    <section aria-labelledby="invites-title" className="flex flex-col gap-4 pt-4">
-      {/* On a narrow window the button goes under what the links are, which then has the whole width to say it */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2 id="invites-title" className="font-heading text-sm font-medium">
-            {inviteText.title}
-          </h2>
-          <p className="max-w-xl text-sm text-pretty text-muted-foreground">{inviteText.hint}</p>
-        </div>
-        <Button variant="outline" onClick={() => setAdding(true)} className="shrink-0 self-start">
-          <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
-          {inviteText.newLink}
-        </Button>
-      </div>
-
-      {invites.length === 0 ? (
-        <p className="rounded-2xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-          {inviteText.empty}
-        </p>
-      ) : (
-        <ItemGroup aria-label={inviteText.listLabel}>
-          {invites.map((invite) => (
-            <Item key={invite.id} variant="outline" size="sm">
-              <ItemMedia>
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                >
-                  <HugeiconsIcon icon={Link01Icon} strokeWidth={2} className="size-4" />
-                </span>
-              </ItemMedia>
-              <ItemContent className="min-w-0">
-                <ItemTitle className="w-full">
-                  <code className="truncate font-mono text-xs font-normal">{inviteLink(invite.id)}</code>
-                </ItemTitle>
-                <ItemDescription className="text-xs">
-                  {inviteText.joinsAs[invite.role]}
-                  {invite.storageLimit !== null && (
-                    <>
-                      <Dot />
-                      {inviteText.limit(formatSize(invite.storageLimit))}
-                    </>
-                  )}
-                  <Dot />
-                  {inviteText.expires(formatDate(invite.expiresAt))}
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions className="gap-0.5">
-                <CopyButton text={inviteLink(invite.id)} label={inviteText.copyOf} onFailed={copyFailed} />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={inviteText.removeOf}
-                  title={inviteText.removeOf}
-                  onClick={() => setRemoving(invite)}
-                  className="text-muted-foreground"
-                >
-                  <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-                </Button>
-              </ItemActions>
-            </Item>
-          ))}
-        </ItemGroup>
-      )}
+    <Card>
+      <CardHeader>
+        <CardTitle>{inviteText.title}</CardTitle>
+        <CardDescription>{inviteText.hint}</CardDescription>
+        <CardAction>
+          {/* On a narrow window the button keeps its icon and drops its words, which stay as its name */}
+          <Button variant="outline" aria-label={inviteText.newLink} onClick={() => setAdding(true)}>
+            <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
+            <span className="hidden sm:inline">{inviteText.newLink}</span>
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {invites.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{inviteText.empty}</p>
+        ) : (
+          <ItemGroup aria-label={inviteText.listLabel}>
+            {invites.map((invite) => (
+              <Item key={invite.id} variant="outline" size="sm">
+                <ItemMedia variant="icon">
+                  <HugeiconsIcon icon={Link01Icon} strokeWidth={2} />
+                </ItemMedia>
+                <ItemContent className="min-w-0">
+                  <ItemTitle className="w-full">
+                    <code className="truncate font-mono text-xs font-normal">{inviteLink(invite.id)}</code>
+                  </ItemTitle>
+                  <ItemDescription>
+                    {inviteText.joinsAs[invite.role]}
+                    {invite.storageLimit !== null && <> · {inviteText.limit(formatSize(invite.storageLimit))}</>} ·{' '}
+                    {inviteText.expires(formatDate(invite.expiresAt))}
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <CopyButton text={inviteLink(invite.id)} label={inviteText.copyOf} onFailed={copyFailed} />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={inviteText.removeOf}
+                    title={inviteText.removeOf}
+                    onClick={() => setRemoving(invite)}
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
+                  </Button>
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>
+        )}
+      </CardContent>
 
       <NewInviteDialog spaceId={spaceId} open={adding} onOpenChange={setAdding} onCreated={made} />
 
@@ -151,6 +128,6 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </section>
+    </Card>
   );
 }
