@@ -282,7 +282,10 @@ try {
         if (event.type === 'open' || event.type === 'message') await answerWhatIsWaiting();
       }
     } catch (error) {
-      // UNREACHABLE: the server was not reached, or the channel broke. Wait a moment, then open the next
+      // UNREACHABLE: the server was not reached, or the channel broke. Wait a moment, then open the next.
+      // Anything else does not get better by asking again: the key no longer works, the person is out of the
+      // space, or answerWhatIsWaiting threw
+      if (!(error instanceof PocketmiceError) || error.code !== 'UNREACHABLE') throw error;
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
