@@ -5,6 +5,7 @@ export const zhHans: typeof en = {
   trash: '回收站',
   members: '成员',
   settings: '设置',
+  account: '账号',
   apiKeys: 'API key',
   backToFiles: '回到文件',
   theme: '主题',

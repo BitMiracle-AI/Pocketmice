@@ -6,6 +6,7 @@ export const en = {
   trash: 'Trash',
   members: 'Members',
   settings: 'Settings',
+  account: 'Account',
   apiKeys: 'API keys',
   backToFiles: 'Back to files',
   theme: 'Theme',

@@ -26,6 +26,7 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
   return (
     <CurrentSpaceProvider space={space}>
       <Shell
+        space={spaceId}
         top={<SpaceSwitch />}
         // The keys are the person's and not this space's, so the way to them is at the bottom, next to who is
         // signed in. The address says which space the person came from, for the way back

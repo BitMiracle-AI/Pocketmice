@@ -24,6 +24,7 @@ export function Shell({
   top,
   nav,
   bottom,
+  space,
   children
 }: {
   /** The top of the sidebar: where the page is, and the way to elsewhere */
@@ -32,6 +33,8 @@ export function Shell({
   nav: ReactNode;
   /** Rows at the bottom of the sidebar, above who is signed in */
   bottom?: ReactNode;
+  /** The space the page is in, or came from: the settings carry it along, for the way back */
+  space: string | undefined;
   /** The page */
   children: ReactNode;
 }) {
@@ -45,7 +48,7 @@ export function Shell({
         <SidebarFooter>
           <SidebarMenu>
             {bottom}
-            <UserMenu />
+            <UserMenu space={space} />
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
