@@ -207,16 +207,11 @@ const trashedFile = file.extend({
 });
 
 /**
- * The address the content of files goes through. It is not an operation: what is sent, or answered, is the bytes of
- * a file.
- * PUT uploads. The body is the content, sent with a content-length (not in chunks) and no larger than
+ * The address the content of files is uploaded to. It is not an operation: what is sent is the bytes of a file.
+ * A PUT uploads. The body is the content, sent with a content-length (not in chunks) and no larger than
  * MAX_FILE_BYTES; the query says what it is (newFileQuery or newVersionQuery). The answer is the file, as getFile
  * answers.
- * GET downloads. The query says which file (contentQuery), and the answer is its bytes, always as a download and
- * never as a page to show. Its etag is the id of the version that was sent. One range of it can be asked for with
- * a Range header; sent with If-Range and that etag, the range is answered only while the file still has that
- * version, and otherwise the whole content is. A HEAD is answered as the GET would be, without the bytes: how
- * large the content is, and which version it is.
+ * A download does not come through here: getFileDownloadUrl answers with the address the bytes are fetched from.
  */
 export const FILE_CONTENT_PATH = '/api/fileContent';
 
@@ -227,19 +222,18 @@ export const MAX_FILE_BYTES = 1024 * 1024 * 1024;
 export const DOWNLOAD_URL_SECONDS = 300;
 
 /**
- * What a caller hands to fileContentPath for each of the three queries below. For a new file parentId may be null,
+ * What a caller hands to fileContentPath for each of the two queries below. For a new file parentId may be null,
  * which is how every operation says "directly in the space"; in the query itself it is left out.
  */
 export type NewFileQuery = Omit<z.input<typeof newFileQuery>, 'parentId'> & { parentId?: string | null };
 export type NewVersionQuery = z.input<typeof newVersionQuery>;
-export type ContentQuery = z.input<typeof contentQuery>;
 
 /**
- * The address of one request to the content, after the host: FILE_CONTENT_PATH with its query. Every caller builds
+ * The address of one upload, after the host: FILE_CONTENT_PATH with its query. Every caller builds
  * it here, so that a name is written into a query the one way that is right, and "none" is said the one way a
  * query can say it: a field that is null, or left out, is not written.
  */
-export function fileContentPath(query: NewFileQuery | NewVersionQuery | ContentQuery): string {
+export function fileContentPath(query: NewFileQuery | NewVersionQuery): string {
   const written = new URLSearchParams();
   for (const [field, value] of Object.entries(query)) {
     if (value !== undefined && value !== null) written.set(field, value);
@@ -264,12 +258,6 @@ export const newFileQuery = z.strictObject({ spaceId: id, parentId: id.optional(
  * content is added to what is held.
  */
 export const newVersionQuery = z.strictObject({ spaceId: id, fileId: id, baseVersionId: id });
-
-/**
- * The query of a download: the content of a file now, or of the version versionId of it.
- * NOT_FOUND: there is no such file, it is a folder, or it has no such version.
- */
-export const contentQuery = z.strictObject({ spaceId: id, fileId: id, versionId: id.optional() });
 
 export const createFolder = operation({
   name: 'createFolder',

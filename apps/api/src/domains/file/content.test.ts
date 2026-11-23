@@ -10,6 +10,7 @@ import {
   FILE_CONTENT_PATH,
   getFile,
   getFileByPath,
+  getFileDownloadUrl,
   getFiles,
   getFileVersions,
   MAX_FILE_BYTES,
@@ -18,13 +19,13 @@ import {
   updateFile
 } from '@pocketmice/contract/domains/file';
 import { createSpace } from '@pocketmice/contract/domains/space';
+import { operationPath } from '@pocketmice/contract/operation';
 import { files, fileVersions } from '@pocketmice/db/schema/file';
 import { spaceMembers } from '@pocketmice/db/schema/space';
 import { eq } from 'drizzle-orm';
 import type { FileStorage } from '../../external/storage/fileStorage.ts';
 import { ApiError, type CurrentUser } from '../../http/operation.ts';
 import { NOBODY, useTestApi } from '../testing.ts';
-import { rangeOf } from './fileContent.ts';
 import { addVersionRow, createFileRow, storeContent } from './writeContent.ts';
 
 const api = useTestApi();
@@ -88,9 +89,20 @@ async function upload(who: Who, query: Record<string, string>, content: Buffer |
   return answer.file;
 }
 
-/** Sends a download */
-function get(who: Who, query: Record<string, string>, headers: Record<string, string> = {}) {
-  return api.send(who, `${FILE_CONTENT_PATH}?${new URLSearchParams(query)}`, { headers });
+/**
+ * Downloads the way every caller does: asks the api where the bytes are (getFileDownloadUrl) and fetches them
+ * there, from the storage. When the api refuses, the answer is its refusal. What getFileDownloadUrl itself
+ * answers, and refuses, is tested in getFileDownloadUrl.test.ts
+ */
+async function get(who: Who, query: { spaceId: string; fileId: string; versionId?: string }) {
+  const asked = await api.send(who, operationPath(getFileDownloadUrl), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...query, versionId: query.versionId ?? null })
+  });
+  if (!asked.ok) return asked;
+  const { url } = (await asked.json()) as { url: string };
+  return fetch(url);
 }
 
 /** The error code and the status of a failed response */
@@ -143,79 +155,6 @@ test('an upload without parentId goes directly into the space, and a file of no 
   assert.equal((await response.arrayBuffer()).byteLength, 0);
 });
 
-test('a download is always a file to save, under its name, and says which version it is', async () => {
-  const ada = await api.addPerson('Ada');
-  const spaceId = await makeSpace(ada);
-  // Content that a browser would run if it were shown as a page
-  const page = '<script>alert(1)</script>';
-  const file = await upload(ada, { spaceId, name: '报告 final.html' }, page);
-
-  const response = await get(ada, { spaceId, fileId: file.id });
-
-  assert.equal(response.headers.get('content-type'), 'application/octet-stream');
-  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-  assert.equal(
-    response.headers.get('content-disposition'),
-    `attachment; filename*=UTF-8''${encodeURIComponent('报告 final.html')}`
-  );
-  assert.equal(response.headers.get('etag'), `"${file.version.id}"`);
-  assert.equal(response.headers.get('content-length'), String(Buffer.byteLength(page)));
-  assert.equal(response.headers.get('accept-ranges'), 'bytes');
-  assert.equal(await response.text(), page);
-});
-
-test("a download keeps its name when the name has a ' or ( ) * in it", async () => {
-  const ada = await api.addPerson('Ada');
-  const spaceId = await makeSpace(ada);
-  const file = await upload(ada, { spaceId, name: "it's done (1) *.md" }, 'x');
-
-  const response = await get(ada, { spaceId, fileId: file.id });
-
-  // Each of the four written out. A browser that meets a ' as it is gives up on the name: Chrome saves the file as
-  // "content"
-  assert.equal(
-    response.headers.get('content-disposition'),
-    "attachment; filename*=UTF-8''it%27s%20done%20%281%29%20%2A.md"
-  );
-});
-
-// Regression: the app hands a HEAD to the function that answers a GET, and drops the body of what it returns. The
-// download fetched the bytes all the same, and the stream nobody read stayed open: with the folder storage, Node
-// ended the whole process when it came across the file left open
-test('a HEAD of the content is answered as a GET would be, without the bytes, and does not fetch them', async () => {
-  const ada = await api.addPerson('Ada');
-  const spaceId = await makeSpace(ada);
-  const file = await upload(ada, { spaceId, name: 'report.md' }, 'twelve bytes');
-  const address = `${FILE_CONTENT_PATH}?${new URLSearchParams({ spaceId, fileId: file.id })}`;
-  // The storage the api was built on, with its get counted for the length of this test
-  const { storage } = api;
-  const { get: fetch } = storage;
-  let fetched = 0;
-  storage.get = (...asked) => {
-    fetched += 1;
-    return fetch(...asked);
-  };
-
-  try {
-    const whole = await api.send(ada, address, { method: 'HEAD' });
-    const part = await api.send(ada, address, { method: 'HEAD', headers: { range: 'bytes=0-5' } });
-
-    assert.deepEqual(
-      [whole.status, whole.headers.get('content-length'), whole.headers.get('etag'), await whole.text()],
-      [200, '12', `"${file.version.id}"`, '']
-    );
-    assert.deepEqual(
-      [part.status, part.headers.get('content-length'), part.headers.get('content-range'), await part.text()],
-      [206, '6', 'bytes 0-5/12', '']
-    );
-    assert.equal(fetched, 0);
-    assert.equal(await (await get(ada, { spaceId, fileId: file.id })).text(), 'twelve bytes');
-    assert.equal(fetched, 1);
-  } finally {
-    storage.get = fetch;
-  }
-});
-
 test('writing over a file adds a version in place of the one named; the versions before it stay and can be downloaded', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
@@ -231,7 +170,6 @@ test('writing over a file adds a version in place of the one named; the versions
   assert.equal(await (await get(ada, { spaceId, fileId: first.id })).text(), 'two, longer');
   // The version before it is still there, by its id
   const old = await get(ada, { spaceId, fileId: first.id, versionId: first.version.id });
-  assert.equal(old.headers.get('etag'), `"${first.version.id}"`);
   assert.equal(await old.text(), 'one');
   const versions = await api.as(ada)(getFileVersions, { spaceId, fileId: first.id });
   assert.deepEqual(versions.ok && versions.data.versions.map((version) => version.id), [
@@ -410,99 +348,7 @@ test('an upload whose query or headers do not say what is needed is INVALID_INPU
   assert.equal(api.storedObjects(), before);
 });
 
-test('one range of the content is answered as that range; a range with nothing in it is 416', async () => {
-  const ada = await api.addPerson('Ada');
-  const spaceId = await makeSpace(ada);
-  const content = randomBytes(10_000);
-  const file = await upload(ada, { spaceId, name: 'data.bin' }, content);
-  const query = { spaceId, fileId: file.id };
-
-  for (const [range, start, end] of [
-    ['bytes=0-0', 0, 0],
-    ['bytes=1000-1999', 1000, 1999],
-    ['bytes=9000-', 9000, 9999],
-    ['bytes=-100', 9900, 9999],
-    // Past the end, it is cut off at the end
-    ['bytes=9990-20000', 9990, 9999]
-  ] as const) {
-    const response = await get(ada, query, { range });
-    assert.equal(response.status, 206, range);
-    assert.equal(response.headers.get('content-range'), `bytes ${start}-${end}/10000`, range);
-    assert.equal(response.headers.get('content-length'), String(end - start + 1), range);
-    assert.deepEqual(Buffer.from(await response.arrayBuffer()), content.subarray(start, end + 1), range);
-  }
-
-  const beyond = await get(ada, query, { range: 'bytes=10000-' });
-  assert.equal(beyond.status, 416);
-  assert.equal(beyond.headers.get('content-range'), 'bytes */10000');
-  // It says which version has nothing there, as every answer to a download says which version it is about
-  assert.equal(beyond.headers.get('etag'), `"${file.version.id}"`);
-  // A header this address does not serve is not an error: the whole content is sent
-  for (const range of ['bytes=0-1,5-6', 'lines=1-2', 'bytes=abc']) {
-    const whole = await get(ada, query, { range });
-    assert.equal(whole.status, 200, range);
-    assert.equal((await whole.arrayBuffer()).byteLength, 10_000, range);
-  }
-});
-
-test('a download that goes on from an earlier one gets a range only of the version it began with', async () => {
-  const ada = await api.addPerson('Ada');
-  const spaceId = await makeSpace(ada);
-  const first = await upload(ada, { spaceId, name: 'data.bin' }, 'first version');
-  const query = { spaceId, fileId: first.id };
-  const began = await get(ada, query, { range: 'bytes=0-4' });
-  const etag = began.headers.get('etag') ?? '';
-  assert.equal(await began.text(), 'first');
-
-  // Still the same version: the rest of it
-  const rest = await get(ada, query, { range: 'bytes=5-', 'if-range': etag });
-  assert.deepEqual([rest.status, await rest.text()], [206, ' version']);
-
-  // Somebody wrote in between. The rest of the new version would be glued onto the beginning of the old one, so
-  // the whole of the new one is sent
-  const written = await put(ada, { ...query, baseVersionId: first.version.id }, 'second version, longer');
-  assert.equal(written.status, 200);
-  const whole = await get(ada, query, { range: 'bytes=5-', 'if-range': etag });
-  assert.deepEqual([whole.status, await whole.text()], [200, 'second version, longer']);
-  assert.notEqual(whole.headers.get('etag'), etag);
-});
-
-test('rangeOf reads the three ways a range is written, against the size of the content', () => {
-  assert.deepEqual(rangeOf('bytes=0-499', 1000), { start: 0, end: 499 });
-  assert.deepEqual(rangeOf('bytes=500-', 1000), { start: 500, end: 999 });
-  assert.deepEqual(rangeOf('bytes=-200', 1000), { start: 800, end: 999 });
-  assert.deepEqual(rangeOf('bytes=-5000', 1000), { start: 0, end: 999 });
-  assert.equal(rangeOf('bytes=1000-', 1000), 'none');
-  assert.equal(rangeOf('bytes=5-2', 1000), 'none');
-  assert.equal(rangeOf('bytes=-0', 1000), 'none');
-  assert.equal(rangeOf('bytes=0-', 0), 'none');
-  assert.equal(rangeOf(undefined, 1000), null);
-  assert.equal(rangeOf('bytes=-', 1000), null);
-});
-
-test('a download of what is not there is NOT_FOUND: no such file, a folder, a file in the trash, a version of another file', async () => {
-  const ada = await api.addPerson('Ada');
-  const spaceId = await makeSpace(ada);
-  const reports = await makeFolder(ada, spaceId, null, 'Reports');
-  const file = await upload(ada, { spaceId, name: 'notes.md' }, 'x');
-  const other = await upload(ada, { spaceId, name: 'other.md' }, 'y');
-  const trashed = await upload(ada, { spaceId, name: 'trashed.md' }, 'z');
-  await api.as(ada)(trashFile, { spaceId, fileId: trashed.id });
-
-  const queries: Record<string, string>[] = [
-    { spaceId, fileId: NOBODY },
-    { spaceId, fileId: reports },
-    { spaceId, fileId: trashed.id },
-    { spaceId, fileId: file.id, versionId: other.version.id },
-    { spaceId, fileId: file.id, versionId: NOBODY }
-  ];
-  for (const query of queries) {
-    assert.deepEqual(await failure(await get(ada, query)), [404, 'NOT_FOUND'], JSON.stringify(query));
-  }
-  assert.deepEqual(await failure(await get(ada, { spaceId })), [400, 'INVALID_INPUT']);
-});
-
-test('who may use the content address is decided as for an operation: the role, the key, the membership, the sign-in', async () => {
+test('who may upload, and who may download, is decided as for an operation: the role, the key, the membership, the sign-in', async () => {
   const ada = await api.addPerson('Ada');
   const grace = await api.addPerson('Grace');
   const stranger = await api.addPerson('Edsger');
@@ -531,10 +377,9 @@ test('who may use the content address is decided as for an operation: the role, 
   assert.equal(api.storedObjects(), before);
   assert.equal(await (await get(ada, read)).text(), 'the original');
   // A web page that is not on the list is refused, with or without anyone signed in
-  const elsewhere = await api.send(ada, `${FILE_CONTENT_PATH}?${new URLSearchParams(read)}`, {
-    headers: { origin: 'https://elsewhere.example' }
-  });
+  const elsewhere = await put(ada, newFile, 'x', { origin: 'https://elsewhere.example' });
   assert.deepEqual(await failure(elsewhere), [403, 'FORBIDDEN']);
+  assert.equal(api.storedObjects(), before);
 });
 
 test('what an agent writes belongs to its person, and every version records the key it came through, also once the key is deleted', async () => {

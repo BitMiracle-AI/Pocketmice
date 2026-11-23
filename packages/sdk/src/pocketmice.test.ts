@@ -42,9 +42,18 @@ function refusal(status: number, code: string, message = 'No.'): Response {
   return json(status, { error: { code, message } });
 }
 
-/** A download of this content, which is the version VERSION */
-function download(content: BodyInit): Response {
-  return new Response(content, { headers: { etag: `"${VERSION}"` } });
+/** Where the stand-in says the bytes of a download are: an address of a storage, and not of the server */
+const STORAGE = 'https://bucket.example.com/files/content?X-Amz-Signature=signed';
+
+/**
+ * A stand-in for a download: the server answers getFileDownloadUrl with STORAGE and the version VERSION, and the
+ * storage answers with what `storage` returns
+ */
+function downloads(storage: () => Response | Promise<Response>): Fetch {
+  return async (url) =>
+    url === `${SERVER}/api/getFileDownloadUrl`
+      ? json(200, { url: STORAGE, version: { id: VERSION, size: 7 } })
+      : storage();
 }
 
 /** What a call that must fail threw, which must be a PocketmiceError */
@@ -414,8 +423,8 @@ test('uploadFileVersion is a PUT that names the file and the version being repla
   assert.deepEqual(await bytesSent(sent[0]?.init), new TextEncoder().encode('# hello, again'));
 });
 
-test('downloadFile is a GET, and answers with the version that was sent and its bytes, read one of three ways', async () => {
-  const { drive, sent } = setup(async () => download('# héllo'));
+test('downloadFile asks the server where the bytes are, with the key, and fetches them there without it', async () => {
+  const { drive, sent } = setup(downloads(() => new Response('# héllo')));
 
   const asText = await drive.downloadFile({ spaceId: SPACE, fileId: FILE });
   assert.equal(asText.versionId, VERSION);
@@ -424,47 +433,33 @@ test('downloadFile is a GET, and answers with the version that was sent and its 
   const asBytes = await drive.downloadFile({ spaceId: SPACE, fileId: FILE, versionId: VERSION });
   assert.deepEqual(await asBytes.bytes(), new TextEncoder().encode('# héllo'));
 
-  const asStream = await drive.downloadFile({ spaceId: SPACE, fileId: FILE });
+  const asStream = await drive.downloadFile({ spaceId: SPACE, fileId: FILE, versionId: null });
   assert.equal(await new Response(asStream.body).text(), '# héllo');
 
+  const asked = (versionId: string | null) => [
+    `${SERVER}/api/getFileDownloadUrl`,
+    'Bearer pm_test',
+    JSON.stringify({ spaceId: SPACE, fileId: FILE, versionId })
+  ];
   assert.deepEqual(
-    sent.map(({ url, init }) => ({ ...addressOf(url), init })),
+    sent.map(({ url, init }) => [url, (init.headers as Record<string, string> | undefined)?.authorization, init.body]),
     [
-      {
-        origin: SERVER,
-        pathname: '/api/fileContent',
-        query: { spaceId: SPACE, fileId: FILE },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
-      },
-      {
-        origin: SERVER,
-        pathname: '/api/fileContent',
-        query: { spaceId: SPACE, fileId: FILE, versionId: VERSION },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
-      },
-      {
-        origin: SERVER,
-        pathname: '/api/fileContent',
-        query: { spaceId: SPACE, fileId: FILE },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
-      }
+      // Left out, the version is said as null: the content now
+      asked(null),
+      [STORAGE, undefined, undefined],
+      asked(VERSION),
+      [STORAGE, undefined, undefined],
+      asked(null),
+      [STORAGE, undefined, undefined]
     ]
   );
-});
-
-test('a download whose etag a proxy marked as weak still says which version it is', async () => {
-  // What nginx makes of the etag of an answer it compresses
-  const { drive } = setup(async () => new Response('# hello', { headers: { etag: `W/"${VERSION}"` } }));
-
-  const download = await drive.downloadFile({ spaceId: SPACE, fileId: FILE });
-
-  assert.equal(download.versionId, VERSION);
-  assert.equal(await download.text(), '# hello');
+  // The storage is sent nothing of the holder of the key: the address is all it asks
+  assert.deepEqual(sent[1]?.init, { method: 'GET' });
 });
 
 test('a download of content that is empty has no bytes, and still says which version it is', async () => {
   // An answer with no body at all, as a runtime may give one for content of no bytes
-  const { drive } = setup(async () => download(null as unknown as BodyInit));
+  const { drive } = setup(downloads(() => new Response(null)));
 
   const empty = await drive.downloadFile({ spaceId: SPACE, fileId: FILE });
   assert.equal(empty.versionId, VERSION);
@@ -516,25 +511,43 @@ test('an answer from the content that is not what was agreed is BAD_RESPONSE', a
   assert.equal(noFile.code, 'BAD_RESPONSE');
   assert.match(noFile.message, /status 200, but the body is not JSON/);
 
-  // A download that does not say which version it is cannot be written over safely
-  const noEtag = setup(async () => new Response('# hello'));
-  const noVersion = await thrownBy(noEtag.drive.downloadFile({ spaceId: SPACE, fileId: FILE }));
-  assert.equal(noVersion.code, 'BAD_RESPONSE');
-  assert.match(noVersion.message, /without saying which version/);
+  // A storage that refuses the address the server gave: what it answers with is its own, and is never handed over
+  // as the content of the file
+  const refused = setup(downloads(() => new Response('<Error><Code>AccessDenied</Code></Error>', { status: 403 })));
+  const noBytes = await thrownBy(refused.drive.downloadFile({ spaceId: SPACE, fileId: FILE }));
+  assert.equal(noBytes.code, 'BAD_RESPONSE');
+  assert.equal(noBytes.operation, 'downloadFile');
+  assert.match(noBytes.message, /storage answered downloadFile with status 403/);
 });
 
-test('a download without a version whose connection has broken too is still only a BAD_RESPONSE', async () => {
+test('a storage that is not reached is UNREACHABLE, like a server that is not', async () => {
+  const down = new TypeError('fetch failed');
+  const { drive } = setup(
+    downloads(() => {
+      throw down;
+    })
+  );
+
+  const error = await thrownBy(drive.downloadFile({ spaceId: SPACE, fileId: FILE }));
+
+  assert.deepEqual([error.code, error.operation, error.cause], ['UNREACHABLE', 'downloadFile', down]);
+});
+
+test('a download the storage refuses, whose connection has broken too, is still only a BAD_RESPONSE', async () => {
   // Letting go of bytes that are not wanted fails when the connection already broke. Nobody is waiting for that:
   // left unhandled, it would end the whole program
   const { drive } = setup(
-    async () =>
-      new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.error(new TypeError('terminated'));
-          }
-        })
-      )
+    downloads(
+      () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(new TypeError('terminated'));
+            }
+          }),
+          { status: 403 }
+        )
+    )
   );
   const unhandled: unknown[] = [];
   const note = (reason: unknown) => unhandled.push(reason);
@@ -551,13 +564,16 @@ test('a download without a version whose connection has broken too is still only
 
 test('a download that breaks off while it is read is UNREACHABLE', async () => {
   const brokeOff = new TypeError('terminated');
-  const { drive } = setup(async () =>
-    download(
-      new ReadableStream({
-        start(controller) {
-          controller.error(brokeOff);
-        }
-      })
+  const { drive } = setup(
+    downloads(
+      () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.error(brokeOff);
+            }
+          })
+        )
     )
   );
 

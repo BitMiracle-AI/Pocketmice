@@ -1,19 +1,22 @@
-import { failureOf, failureOfThrown } from '@pocketmice/client/api';
+import { createApiClient, failureOf, failureOfThrown } from '@pocketmice/client/api';
 import {
-  type ContentQuery,
   fileContentPath,
   type getFile,
+  getFileDownloadUrl,
   type NewFileQuery,
   type NewVersionQuery
 } from '@pocketmice/contract/domains/file';
 import { DECLARED_ERROR_STATUS, type DeclaredErrorCode } from '@pocketmice/contract/errors';
-import type { OutputOf } from '@pocketmice/contract/operation';
+import type { InputOf, OutputOf } from '@pocketmice/contract/operation';
 import { errorOf, PocketmiceError } from './pocketmiceError.ts';
 
-// The content of files: the three methods that are not operations. Bytes do not go through operations. They go
-// through one address (FILE_CONTENT_PATH in the contract, where its rules are), and these methods are the requests
-// to it. They take what its queries take, and read like the operations in the two places where the address itself
-// does not: parentId is null for "directly in the space", and the version a download was is an id, not an etag.
+// The content of files: the three methods that are not operations. Bytes do not go through operations.
+// The two that upload are each one request to the address the content is sent to (FILE_CONTENT_PATH in the
+// contract, where its rules are). They take what its queries take, and read like the operations in the one place
+// where the address itself does not: parentId is null for "directly in the space".
+// The one that downloads is two requests, the only method here that is: it asks the operation getFileDownloadUrl
+// where the bytes are, and fetches them from the address that answers with. That address is the storage's own,
+// not the server's, and holding it is all the storage asks: the API key is not sent there.
 
 /**
  * What can be uploaded: text (sent as UTF-8), bytes, or a Blob. Each of them says how long it is, and the server
@@ -107,10 +110,14 @@ export interface ContentMethods {
    */
   uploadFileVersion: (input: NewVersionQuery & { content: Content }) => Promise<FileAnswer>;
   /**
-   * The content of a file now, or of the version versionId of it.
-   * NOT_FOUND: there is no such file, it is a folder, or it has no such version.
+   * The content of a file now, or of the version versionId of it: versionId is null, or left out, for the content
+   * now.
+   * NOT_FOUND: there is no such file, it is a folder, or it has no such version. BAD_RESPONSE: the storage did not
+   * hand the bytes out at the address the server gave for them.
    */
-  downloadFile: (input: ContentQuery) => Promise<Download>;
+  downloadFile: (
+    input: Omit<InputOf<typeof getFileDownloadUrl>, 'versionId'> & { versionId?: string | null }
+  ) => Promise<Download>;
 }
 
 /**
@@ -120,10 +127,23 @@ export interface ContentMethods {
 const DECLARED = Object.keys(DECLARED_ERROR_STATUS) as DeclaredErrorCode[];
 
 /** Sends one request as the holder of the key (see pocketmice.ts) */
-type Send = (url: string, init: { method: string; body?: BodyInit }) => Promise<Response>;
+type Send = (
+  url: string,
+  init: { method: string; headers?: Record<string, string>; body?: BodyInit; signal?: AbortSignal }
+) => Promise<Response>;
 
-/** The three methods, sending their requests to the server at baseUrl */
-export function contentMethods(baseUrl: string, send: Send): ContentMethods {
+/**
+ * The three methods, sending their requests to the server at baseUrl. fetchFrom fetches an address that is not the
+ * server's, with nothing of the caller sent along: the address the bytes of a download are at.
+ */
+export function contentMethods(
+  baseUrl: string,
+  send: Send,
+  fetchFrom: (url: string) => Promise<Response>
+): ContentMethods {
+  // Nothing is recorded here when a call fails unexpectedly: what was thrown is the cause of the error thrown
+  const call = createApiClient({ baseUrl, fetch: send, reportError: () => {} });
+
   /** Reads the body of an answer. One that breaks off half way is the server not reached */
   async function read<Read>(name: string, body: () => Promise<Read>): Promise<Read> {
     try {
@@ -191,27 +211,30 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
       return upload('uploadFileVersion', query, content);
     },
 
-    async downloadFile(query) {
-      const response = await request('downloadFile', query, { method: 'GET' });
+    async downloadFile({ versionId: wanted = null, ...file }) {
+      const asked = await call(getFileDownloadUrl, { ...file, versionId: wanted });
+      if (!asked.ok) throw errorOf(asked, 'downloadFile');
+      const { url, version } = asked.data;
 
-      // The etag of a download is the id of the version that was sent, in the quotes an etag is written in. A proxy
-      // that compresses what it passes on writes W/ before them, which says the bytes are not the same ones any
-      // more (nginx does, told to compress every kind of content). The version is the same one
-      const versionId = /^(?:W\/)?"(.+)"$/.exec(response.headers.get('etag') ?? '')?.[1];
-      if (versionId === undefined) {
-        // The bytes are not wanted any more: left unread, they would keep the connection busy. Letting go of them
-        // fails when the connection has already broken, which nobody waits to hear: a failure nobody handles would
-        // end the program
+      let response: Response;
+      try {
+        response = await fetchFrom(url);
+      } catch (thrown) {
+        throw errorOf(failureOfThrown(thrown, 'downloadFile'), 'downloadFile');
+      }
+      if (!response.ok) {
+        // What a storage answers a refusal with is its own, and not the content: it is not handed over, and not
+        // read. Letting go of it fails when the connection has already broken, which nobody waits to hear: a
+        // failure nobody handles would end the program
         response.body?.cancel().catch(() => {});
         throw new PocketmiceError(
           'BAD_RESPONSE',
-          'The server answered downloadFile without saying which version it sent.',
+          `The storage answered downloadFile with status ${response.status} at the address the server gave.`,
           'downloadFile'
         );
       }
-
       return {
-        versionId,
+        versionId: version.id,
         text: () => read('downloadFile', () => response.text()),
         bytes: () => read('downloadFile', async () => new Uint8Array(await response.arrayBuffer())),
         // An answer may come without a body when the content is empty

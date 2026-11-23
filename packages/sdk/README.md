@@ -78,6 +78,11 @@ The content has three methods: `uploadFile`, `uploadFileVersion` and `downloadFi
 
 - A download says which version it is (`versionId`) and hands out its bytes once: all of them with `text()` or
   `bytes()`, or as they arrive with `body`, a stream, for content too large to hold.
+- A download is two requests: `downloadFile` asks the server where the bytes are (the operation
+  `getFileDownloadUrl`) and fetches them from the address it answers with, which is the bucket the files are kept
+  in and not the server. The API key is not sent there. So the program has to reach that bucket too; when it
+  cannot, `downloadFile` fails with `UNREACHABLE`. A `fetch` passed to `createPocketmice` is called for both
+  requests.
 - Writing over a file names the version the new content was made from (`baseVersionId`). When somebody wrote to
   the file in between, the upload fails with `CONFLICT` and nothing is written.
 

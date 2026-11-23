@@ -7,6 +7,7 @@ import {
   FILE_CONTENT_PATH,
   getFile,
   getFileByPath,
+  getFileDownloadUrl,
   restoreFileVersion,
   trashFile,
   updateFile
@@ -434,9 +435,9 @@ test('a limit under what is held is taken as it is, and only adding bytes is ref
 
   const folder = await api.as(ada)(createFolder, { spaceId, parentId: null, name: 'Reports' });
   const renamed = await api.as(ada)(updateFile, { spaceId, fileId: notes.id, name: 'renamed.md' });
-  const read = await api.send(ada, `${FILE_CONTENT_PATH}?${new URLSearchParams({ spaceId, fileId: notes.id })}`);
+  const read = await api.as(ada)(getFileDownloadUrl, { spaceId, fileId: notes.id, versionId: null });
   const trashed = await api.as(ada)(trashFile, { spaceId, fileId: notes.id });
-  assert.deepEqual([folder.ok, renamed.ok, read.status, trashed.ok], [true, true, 200, true]);
+  assert.deepEqual([folder.ok, renamed.ok, read.ok, trashed.ok], [true, true, true, true]);
 
   // Content of no bytes adds nothing, also to a space that holds more than it may
   await upload(ada, spaceId, { name: 'empty.md' }, 0);

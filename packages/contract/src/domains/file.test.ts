@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX } from '../paging.ts';
 import {
-  contentQuery,
   createFolder,
   FILE_DESCRIPTION_MAX_LENGTH,
   FILE_NAME_MAX_LENGTH,
@@ -177,7 +176,7 @@ test('the query of an upload says a new file or a new version, and refuses a par
   assert.equal(newVersionQuery.safeParse({ spaceId: SPACE, fileId: FILE }).success, false);
 });
 
-test('the address of a request to the content is read back by the query it was written for', () => {
+test('the address of an upload is read back by the query it was written for', () => {
   /** The query of an address, as the server reads it */
   const queryOf = (path: string) => Object.fromEntries(new URL(path, 'https://api.example.com').searchParams);
 
@@ -197,11 +196,4 @@ test('the address of a request to the content is read back by the query it was w
 
   const newVersion = { spaceId: SPACE, fileId: FILE, baseVersionId: FILE };
   assert.deepEqual(newVersionQuery.parse(queryOf(fileContentPath(newVersion))), newVersion);
-
-  const download = { spaceId: SPACE, fileId: FILE };
-  assert.deepEqual(contentQuery.parse(queryOf(fileContentPath(download))), download);
-  assert.deepEqual(contentQuery.parse(queryOf(fileContentPath({ ...download, versionId: FILE }))), {
-    ...download,
-    versionId: FILE
-  });
 });

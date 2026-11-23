@@ -1,7 +1,7 @@
 import { ArrowExpand01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { failureOf, failureOfThrown } from '@pocketmice/client/api';
-import { fileContentPath } from '@pocketmice/contract/domains/file';
+import { failureOfThrown } from '@pocketmice/client/api';
+import { getFileDownloadUrl } from '@pocketmice/contract/domains/file';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
-import { ApiFailure, apiUrl, heardFailure, thrownText } from '@/lib/api';
+import { ApiFailure, call, thrownText } from '@/lib/api';
 import { formatSize } from '@/lib/format';
 import { FileIcon } from './FileIcon';
 import type { DriveFile } from './files';
@@ -18,7 +18,8 @@ import { dataAddressOf, type Preview, previewOf, TEXT_PREVIEW_BYTES, textOf } fr
 import { fileText } from './text';
 
 // What a file holds, shown where the file is picked: the start of a text, or a picture (preview.ts says which).
-// The page fetches the bytes from the address every download goes through, and draws them itself.
+// The page asks the api where the bytes are (getFileDownloadUrl), fetches them there, from the storage, and draws
+// them itself.
 
 /** How long the bytes of a preview nobody is looking at are kept, in milliseconds */
 const KEPT_FOR_MS = 60_000;
@@ -35,11 +36,15 @@ function contentQuery(spaceId: string, fileId: string, versionId: string, bytes:
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: KEPT_FOR_MS,
     queryFn: async ({ signal }) => {
+      // Whether the person may read the file is settled here, by the api. The address it answers with is asked
+      // for each time the bytes are fetched and is not kept: it works for a few minutes
+      const asked = await call(getFileDownloadUrl, { spaceId, fileId, versionId });
+      if (!asked.ok) throw new ApiFailure<'NOT_FOUND'>(asked.code, asked.message);
+
       let response: Response;
       try {
-        response = await fetch(apiUrl(fileContentPath({ spaceId, fileId, versionId })), {
-          // The api is at another origin: the sign-in cookie goes along only when the request says so
-          credentials: 'include',
+        // The address is the storage's, and holding it is all the storage asks: nothing of the person goes along
+        response = await fetch(asked.data.url, {
           headers: bytes === null ? undefined : { range: `bytes=0-${bytes - 1}` },
           signal
         });
@@ -48,9 +53,11 @@ function contentQuery(spaceId: string, fileId: string, versionId: string, bytes:
         const failure = failureOfThrown(thrown, 'the preview');
         throw new ApiFailure<'NOT_FOUND'>(failure.code, failure.message);
       }
-      const failure = failureOf('the preview', response.status, await response.text(), ['NOT_FOUND'] as const);
-      heardFailure(failure.code);
-      throw new ApiFailure<'NOT_FOUND'>(failure.code, failure.message);
+      // What a storage answers a refusal with is its own, and not an error of the api
+      throw new ApiFailure<'NOT_FOUND'>(
+        'BAD_RESPONSE',
+        `The storage answered the preview with status ${response.status}.`
+      );
     }
   });
 }

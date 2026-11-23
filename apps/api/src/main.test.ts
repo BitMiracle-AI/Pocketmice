@@ -8,9 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { createApiClient } from '@pocketmice/client/api';
 import { apiKeyAuthorization, createApiKey } from '@pocketmice/contract/domains/apiKey';
 import { SIGN_UP_PATH } from '@pocketmice/contract/domains/auth';
-import { FILE_CONTENT_PATH } from '@pocketmice/contract/domains/file';
+import { FILE_CONTENT_PATH, getFileDownloadUrl } from '@pocketmice/contract/domains/file';
 import { getServerInfo } from '@pocketmice/contract/domains/server';
 import { createSpace } from '@pocketmice/contract/domains/space';
+import { operationPath } from '@pocketmice/contract/operation';
 import { createTestDb, type TestDb } from '@pocketmice/db/testing';
 import { requireEnv } from './env.ts';
 import { type MiniS3, startMiniS3 } from './external/storage/miniS3.testing.ts';
@@ -167,9 +168,18 @@ test('a person signs up and makes a key, and an agent uploads a file with it and
   const file = await upload(agent, 'notes.md', 'what the agent wrote');
   assert.deepEqual(file.version.apiKey, { id: agent.apiKey.id, name: 'Research agent' });
 
-  const downloaded = await fetch(contentUrl({ spaceId: agent.spaceId, fileId: file.id }), { headers: agent.headers });
+  // A download is two requests: the api says where the bytes are, and they are fetched there, from the bucket
+  const asked = await fetch(`${base}${operationPath(getFileDownloadUrl)}`, {
+    method: 'POST',
+    headers: { ...agent.headers, 'content-type': 'application/json' },
+    body: JSON.stringify({ spaceId: agent.spaceId, fileId: file.id, versionId: null })
+  });
+  assert.equal(asked.status, 200);
+  const where = (await asked.json()) as { url: string; version: { id: string } };
+  assert.equal(where.version.id, file.version.id);
+  assert.equal(new URL(where.url).origin, bucket?.url);
+  const downloaded = await fetch(where.url);
   assert.equal(downloaded.status, 200);
-  assert.equal(downloaded.headers.get('etag'), `"${file.version.id}"`);
   assert.equal(await downloaded.text(), 'what the agent wrote');
 });
 

@@ -150,27 +150,41 @@ folders one by one; when the content decides, download the candidates and read t
 
 ## Downloading
 
-The content of files does not go through operations. It goes through one address, `/api/fileContent`:
+A download is two steps. First ask where the content is:
 
 ```sh
-curl -sS -D - -o summary.md \
-  "$POCKETMICE_URL/api/fileContent?spaceId=<space>&fileId=<file>" \
-  -H "authorization: Bearer $POCKETMICE_API_KEY"
+pm getFileDownloadUrl '{"spaceId":"<space>","fileId":"<file>","versionId":null}'
+# {"url":"https://…","version":{"id":"…","size":19,"sha256":"…","createdAt":"…","user":{…},"apiKey":{…}}}
 ```
 
-`-D -` prints the status and the headers while `-o` saves the content. Look at both:
+Then fetch `url`:
 
-- The status must be `200`. On a failure, what was saved to your file is the error body, not the file.
-- `etag` is the id of the version you were sent, in quotes. Without the quotes it is the `baseVersionId` you need
-  to write over this file. When a script cuts it out of the headers, drop the quotes and the carriage return every
-  header line ends with (`tr -d '\r"'`): left in, they fail the next request with an error that does not say why.
+```sh
+curl -sS -f -o summary.md '<url>'
+```
 
-Add `&versionId=<version>` for an older version. For the first bytes of a large file add `-r 0-999` (the status is
-then `206`). `curl -sS -I` with the same address answers with the size (`content-length`) and the version (`etag`)
-and sends no content. To be sure of what you got, compare `sha256sum` (or `shasum -a 256`) of your file with
-`version.sha256`.
+- `url` is an address of the storage the files are kept in, not of the server. Fetch it exactly as it came, in
+  single quotes (it has `&` in it), and without the API key: the address itself is what lets you in, and a
+  storage refuses a request that brings the key as well.
+- It works for 5 minutes. Do not keep it or pass it on: ask again when you need the content again.
+- `-f` makes curl fail when the storage refuses, where it would otherwise save the storage's error as your file.
+  If curl cannot connect at all, your network reaches the server and not its storage: tell the person.
+- `version.id` is the version you were sent: it is the `baseVersionId` you need to write over this file.
+  `version.size` is how many bytes it is. To be sure of what you got, compare `sha256sum` (or `shasum -a 256`) of
+  your file with `version.sha256`.
+- For an older version, give its id as `versionId` in place of `null`. For the first bytes of a large file add
+  `-r 0-999` to the curl that fetches.
+- In a script, take the address out of the answer and fetch it in one go:
+
+  ```sh
+  url=$(pm getFileDownloadUrl '{"spaceId":"<space>","fileId":"<file>","versionId":null}' |
+    sed -n 's/.*"url":"\([^"]*\)".*/\1/p')
+  curl -sS -f -o summary.md "$url"
+  ```
 
 ## Uploading a new file
+
+The content of a file does not go through an operation. It is sent to one address, `/api/fileContent`:
 
 ```sh
 curl -sS -T ./summary.md "$POCKETMICE_URL/api/fileContent" \
@@ -206,8 +220,9 @@ curl -sS -T ./summary.md \
   -H "authorization: Bearer $POCKETMICE_API_KEY"
 ```
 
-`baseVersionId` is the version your new content was made from: the `etag` of your download when you changed what
-you downloaded, or `version.id` from `getFile` just before when you are replacing the content outright. The answer
+`baseVersionId` is the version your new content was made from: the `version.id` that `getFileDownloadUrl`
+answered with when you changed what you downloaded, or `version.id` from `getFile` just before when you are
+replacing the content outright. The answer
 is the file, with its new `version`.
 
 `CONFLICT` means that version is no longer the current one: somebody wrote to the file after you read it. Nothing
@@ -263,7 +278,8 @@ pm getFileVersions '{"spaceId":"<space>","fileId":"<file>"}'
 # {"versions":[ {"id":"…","size":19,"sha256":"…","createdAt":"…","user":{…},"apiKey":{…}}, … ],"nextCursor":null}
 ```
 
-The latest comes first: the first one is the content now. To read an older one, download with `&versionId=`. To
+The latest comes first: the first one is the content now. To read an older one, download it by its id (give
+`getFileDownloadUrl` that id as `versionId`). To
 make an older one the content again:
 
 ```sh
@@ -449,13 +465,12 @@ role `owner`; the conversations take no role, and any member of the space talks.
 | `deleteMessage`        | write | `{spaceId, conversationId, number}`                            | `{}`                                                                 | `NOT_FOUND`             |
 | `markConversationRead` | write | `{spaceId, conversationId, number}`                            | `{}`                                                                 |                         |
 
-And the address the content goes through, `/api/fileContent`:
+And the address content is uploaded to, `/api/fileContent`:
 
-| Request       | Kind  | Query                            | Answer                                  | Can also fail with      |
-| ------------- | ----- | -------------------------------- | --------------------------------------- | ----------------------- |
-| `GET`, `HEAD` | read  | `spaceId, fileId, versionId?`    | The content; `etag` is the version sent | `NOT_FOUND`             |
-| `PUT`         | write | `spaceId, parentId?, name`       | `{file}`: a new file                    | `NOT_FOUND`, `CONFLICT` |
-| `PUT`         | write | `spaceId, fileId, baseVersionId` | `{file}`: a new version of the file     | `NOT_FOUND`, `CONFLICT` |
+| Request | Kind  | Query                            | Answer                              | Can also fail with      |
+| ------- | ----- | -------------------------------- | ----------------------------------- | ----------------------- |
+| `PUT`   | write | `spaceId, parentId?, name`       | `{file}`: a new file                | `NOT_FOUND`, `CONFLICT` |
+| `PUT`   | write | `spaceId, fileId, baseVersionId` | `{file}`: a new version of the file | `NOT_FOUND`, `CONFLICT` |
 
 `restoreFileVersion` and both kinds of `PUT` add to what the space holds, so each can also fail with
 `SPACE_STORAGE_LIMIT_EXCEEDED` or `MEMBER_STORAGE_LIMIT_EXCEEDED`: see

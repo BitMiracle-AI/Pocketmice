@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict';
+import { once } from 'node:events';
 import { readdirSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { test } from 'node:test';
 import { createApiKey } from '@pocketmice/contract/domains/apiKey';
-import { createFolder, fileContentPath, getFile, getFileVersions } from '@pocketmice/contract/domains/file';
+import {
+  createFolder,
+  fileContentPath,
+  getFile,
+  getFileDownloadUrl,
+  getFileVersions
+} from '@pocketmice/contract/domains/file';
 import { createSpace, updateMemberStorageLimit, updateSpaceStorageLimit } from '@pocketmice/contract/domains/space';
 import { isOperation } from '@pocketmice/contract/operation';
 import { callTool, connectMcp } from '../../http/mcpClient.testing.ts';
@@ -180,8 +189,9 @@ test('a text written with createFile is the content of a new file, written throu
   assert.deepEqual(about, { versionId: file.version.id, size: Buffer.byteLength(text), nextCursor: null });
 
   // The same bytes a person downloads
-  const downloaded = await api.send(ada, fileContentPath({ spaceId, fileId: file.id }));
-  assert.equal(await downloaded.text(), text);
+  const where = await api.as(ada)(getFileDownloadUrl, { spaceId, fileId: file.id, versionId: null });
+  assert.ok(where.ok);
+  assert.equal(await (await fetch(where.data.url)).text(), text);
 });
 
 test('createFile is refused as an upload is: a name that is taken, a folder that is not there', async () => {
@@ -356,7 +366,7 @@ test('a file with no content reads as no text, and still says which version to w
   assert.equal(filled.version.size, 15);
 });
 
-test('content that is not text is not read: the answer says so, and where to download it', async () => {
+test('content that is not text is not read: the answer says so, and which tool says where to download it', async () => {
   const { ada, spaceId, client } = await setup();
   // The first bytes of a PNG: not UTF-8
   const image = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0xfe, 0x00, 0x01]);
@@ -366,11 +376,19 @@ test('content that is not text is not read: the answer says so, and where to dow
 
   assert.equal(called.isError, true);
   assert.match(called.texts[0] ?? '', /is not text: it is 12 bytes that are not UTF-8/);
-  const address = /GET (\S+)/.exec(called.texts[0] ?? '')?.[1];
-  assert.ok(address, 'the answer should give the address to download from');
-  // The address it gives is the one that downloads those bytes
-  const downloaded = await api.send(ada, address);
-  assert.deepEqual(Buffer.from(await downloaded.arrayBuffer()), image);
+  assert.ok(
+    (called.texts[0] ?? '').includes(`getFileDownloadUrl with versionId ${file.version.id}`),
+    'the answer should name the tool to ask, and the version that was read'
+  );
+  // Asked as it says, that tool gives an address that downloads those bytes
+  const asked = await callTool(client, 'getFileDownloadUrl', {
+    spaceId,
+    fileId: file.id,
+    versionId: file.version.id
+  });
+  assert.equal(asked.isError, false);
+  const { url } = JSON.parse(asked.texts[0] ?? '') as { url: string };
+  assert.deepEqual(Buffer.from(await (await fetch(url)).arrayBuffer()), image);
 });
 
 test('getFileContent is refused as a download is: a folder, a file or a version that is not there, a cursor that is not one', async () => {
@@ -412,56 +430,68 @@ test('a cursor at the end of the content, or past it, reads nothing more', async
   }
 });
 
-test('which version an empty content is, and that it is empty, come from one answer: a write in between does not pass for what was read', async () => {
+test('which version an empty content is, and that it is empty, come from one answer, and nothing is fetched for it', async () => {
   const getFileContent = fileContentTools.find(({ name }) => name === 'getFileContent');
   assert.ok(getFileContent);
   const empty = '11111111-1111-4111-8111-111111111111';
-  const written = '22222222-2222-4222-8222-222222222222';
   const sent: string[] = [];
 
-  // The content address says the file is empty, of the version it has at that moment. Asked a moment later what
+  // One answer of the api says which version the content is and that it has no bytes. Asked a second time what
   // the file is, the api would name the version somebody has written since: a caller told that one is empty would
-  // write over content it never saw
+  // write over content it never saw. And an address that is not fetched cannot fail: this one leads nowhere
   const called = await getFileContent.run({ spaceId: SOME_ID, fileId: SOME_ID, versionId: null }, async (path) => {
-    sent.push(path.split('?')[0] ?? '');
-    return path.startsWith('/api/fileContent')
-      ? new Response('{}', { status: 416, headers: { 'content-range': 'bytes */0', etag: `"${empty}"` } })
-      : Response.json({ file: { version: { id: written } } });
+    sent.push(path);
+    return Response.json({ url: 'http://127.0.0.1:9/nothing-listens-here', version: { id: empty, size: 0 } });
   });
 
   assert.deepEqual(
     called.content.map(({ text }) => JSON.parse(text)),
     [{ versionId: empty, size: 0, nextCursor: null }]
   );
-  assert.deepEqual(sent, ['/api/fileContent']);
+  assert.deepEqual(sent, ['/api/getFileDownloadUrl']);
 });
 
 test('getFileContent takes a piece of the content and nothing else: an answer that is all of it is not read', async () => {
   const getFileContent = fileContentTools.find(({ name }) => name === 'getFileContent');
   assert.ok(getFileContent);
   const input = { spaceId: SOME_ID, fileId: SOME_ID, versionId: null };
-  let read = 0;
-  let cancelled = false;
-  // The content address may answer a range with the whole content (status 200), which is up to 1 GB. Here it is
-  // 64 KB, in 64 chunks
-  const whole = new ReadableStream<Uint8Array>({
-    pull: (controller) => {
-      if (++read > 64) controller.close();
-      else controller.enqueue(new Uint8Array(1024));
-    },
-    cancel: () => {
-      cancelled = true;
-    }
+  // A storage may answer a range with the whole content (status 200), which is up to 1 GB. This one answers that
+  // way and never comes to an end: it goes on sending for as long as anyone takes it
+  const chunk = Buffer.alloc(64 * 1024);
+  let sent = 0;
+  let closed: (() => void) | undefined;
+  const gaveUp = new Promise<void>((resolve) => {
+    closed = resolve;
   });
+  const storage = createServer((_request, response) => {
+    response.writeHead(200);
+    const more = () => {
+      while (response.write(chunk)) sent += chunk.length;
+      sent += chunk.length;
+    };
+    response.on('drain', more);
+    response.on('close', () => closed?.());
+    more();
+  }).listen(0, '127.0.0.1');
+  await once(storage, 'listening');
+  const { port } = storage.address() as AddressInfo;
 
-  await assert.rejects(
-    getFileContent.run(input, async () => new Response(whole, { status: 200, headers: { etag: `"${SOME_ID}"` } })),
-    /answered a range with 200/
-  );
+  try {
+    await assert.rejects(
+      getFileContent.run(input, async () =>
+        Response.json({ url: `http://127.0.0.1:${port}/`, version: { id: SOME_ID, size: 1024 ** 3 } })
+      ),
+      /answered a range with 200/
+    );
 
-  assert.equal(cancelled, true);
-  // What a stream reads ahead by itself, and no more
-  assert.ok(read <= 2, `${read} chunks were read`);
+    // The caller let go of the answer: the storage is told, and stops. What it had sent by then is what a
+    // connection holds by itself, and no more
+    await gaveUp;
+    assert.ok(sent < 64 * 1024 * 1024, `${sent} bytes were sent`);
+  } finally {
+    storage.closeAllConnections();
+    storage.close();
+  }
 });
 
 test('a read-only key reads content with the tools and writes none; a space its person is not in does not exist for it', async () => {

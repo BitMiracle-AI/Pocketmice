@@ -25,6 +25,7 @@ import { errorOf } from './pocketmiceError.ts';
 // - The events of a space, which do not either, have one: a channel, read as it arrives (see events.ts).
 // - A method is one request. What takes several, like writing to a path whose folders may be missing, is not a
 //   method here: it belongs in the api as an operation, where an agent with the skill or with MCP gets it too.
+//   downloadFile is the one that is two: it asks where the bytes are, then fetches them there (see content.ts).
 // - A method that fails throws a PocketmiceError, and nothing else. What to do is decided by its code.
 // - Nothing here uses a module of Node: the SDK runs wherever there is a fetch.
 
@@ -110,9 +111,12 @@ export function createPocketmice(config: PocketmiceConfig): Pocketmice {
     return given ? given(url, keyed) : fetch(url, keyed);
   };
 
+  // An address that is not the server's is fetched with nothing of the holder sent along: the key least of all
+  const fetchFrom = (url: string) => (given ? given(url, { method: 'GET' }) : fetch(url, { method: 'GET' }));
+
   return {
     ...operationMethods(config.url, send),
-    ...contentMethods(config.url, send),
+    ...contentMethods(config.url, send, fetchFrom),
     ...eventMethods(config.url, send)
   };
 }

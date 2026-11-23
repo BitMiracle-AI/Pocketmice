@@ -138,7 +138,7 @@ curl -X POST http://localhost:11210/api/getSpaces \
   -H 'authorization: Bearer pm_...' -H 'content-type: application/json' -d '{}'
 ```
 
-The content of files does not go through operations, whose inputs and outputs are JSON. It goes through one
+The content of files does not go through operations, whose inputs and outputs are JSON. It is uploaded to one
 address, `/api/fileContent`, with the same checks on who is calling:
 
 ```sh
@@ -146,14 +146,27 @@ address, `/api/fileContent`, with the same checks on who is calling:
 curl -T report.md 'http://localhost:11210/api/fileContent?spaceId=<space>&name=report.md' \
   -H 'authorization: Bearer pm_...'
 
-# Download it. The etag of the answer is the id of the version that was sent
-curl -o report.md 'http://localhost:11210/api/fileContent?spaceId=<space>&fileId=<file>' \
-  -H 'authorization: Bearer pm_...'
-
 # Write over it, naming the version being replaced: CONFLICT if it is no longer the current one
 curl -T report.md 'http://localhost:11210/api/fileContent?spaceId=<space>&fileId=<file>&baseVersionId=<version>' \
   -H 'authorization: Bearer pm_...'
 ```
+
+A download does not pass through the API. The operation `getFileDownloadUrl` answers with an address of the bucket
+the files are kept in, signed by the API and good for five minutes, and with the version the bytes are; the caller
+fetches the bytes there, without its key:
+
+```sh
+# Where the content of the file is now (name a version in place of null for an older one)
+curl -X POST http://localhost:11210/api/getFileDownloadUrl \
+  -H 'authorization: Bearer pm_...' -H 'content-type: application/json' \
+  -d '{"spaceId":"<space>","fileId":"<file>","versionId":null}'
+# {"url":"https://...","version":{"id":"...","size":1234,"sha256":"...", ...}}
+
+curl -f -o report.md '<url>'
+```
+
+Who may read the file is decided when the address is made: until its five minutes are up, whoever holds it can
+fetch the bytes. It always answers with a file to save, never with a page a browser would show.
 
 A file is at most 1 GB.
 
@@ -270,7 +283,9 @@ try {
   the person does, like making a key or deleting for good, is not there.
 - The content of files has three methods: `uploadFile`, `uploadFileVersion` and `downloadFile`. Content is text,
   bytes or a `Blob`, and not a stream: the server takes no upload without a length. A file on disk goes up as the
-  `Blob` that Node's `openAsBlob` gives for it, so that it is not read into memory whole.
+  `Blob` that Node's `openAsBlob` gives for it, so that it is not read into memory whole. `downloadFile` asks
+  `getFileDownloadUrl` where the bytes are and fetches them there, so the program has to reach the bucket as well
+  as the server.
 - A method that fails throws a `PocketmiceError`, and nothing else. Decide what to do by its `code`, which is the
   error code the server answered with, or one of three the SDK arrives at itself: `UNREACHABLE` when the server
   was not reached, `BAD_RESPONSE` when what came back is not what was agreed, `UNEXPECTED` when sending the request
@@ -322,7 +337,8 @@ good), and what anyone may call without being anybody (asking which server this 
 
 What it does not do yet:
 
-- Content that is not text, and anything too large to pass through a model, goes through `/api/fileContent`.
+- Content that is not text, and anything too large to pass through a model, does not go through these three
+  tools: it is uploaded to `/api/fileContent`, and downloaded from the address the tool `getFileDownloadUrl` gives.
 - It takes an API key and has no OAuth. Hosts that connect with OAuth only, like the chat apps of Claude and
   ChatGPT, cannot connect yet. Tried with Claude Code.
 

@@ -2,21 +2,26 @@ import {
   FILE_CONTENT_PATH,
   fileContentPath,
   fileName,
+  getFileDownloadUrl,
   type NewFileQuery,
   type NewVersionQuery
 } from '@pocketmice/contract/domains/file';
 import { id } from '@pocketmice/contract/id';
+import { type OutputOf, operationPath } from '@pocketmice/contract/operation';
 import { z } from 'zod';
 import { answer, failure, refusal, type Send, type Tool, type ToolResult, tool } from '../../http/mcp.ts';
 
 // The tools of the MCP entrance for the content of files (the entrance and its rules are in http/mcp.ts). They are
-// not operations: the content of a file does not go through an operation, it goes through the content address, as
-// bytes (see fileContent.ts). A model reads and writes text, so these three stand between the two: each sends a
-// request to the content address as the caller of the tool, and what that address refuses, the tool refuses.
-// They exist at the MCP entrance only. Over HTTP the content has one way in and out, the content address.
-// What they add to it:
+// not operations: the content of a file does not go through an operation. It is bytes, which are uploaded to the
+// content address (see fileContent.ts) and fetched from the storage, at an address getFileDownloadUrl gives. A
+// model reads and writes text, so these three stand in between, each doing as the caller of the tool what a
+// caller with the bytes in hand does: the two that write send their text to the content address, and the one that
+// reads asks getFileDownloadUrl where the bytes are and fetches a piece of them. What the api refuses a caller,
+// the tool refuses. They hold nothing of their own to read or write with.
+// They exist at the MCP entrance only.
+// What they add:
 // - Text only. What is read is given to the model as text and what the model writes is text, so content that is
-//   not UTF-8 is not read here: it is downloaded from the content address.
+//   not UTF-8 is not read here: it is downloaded, from the address getFileDownloadUrl gives.
 // - A long text is read a piece at a time, since what a tool answers with is all put before the model. The cursor
 //   that reads on names the version the pieces are of, so they are always pieces of one content, whoever wrote to
 //   the file in between.
@@ -54,11 +59,6 @@ export function wholeCharacters(bytes: Uint8Array): number {
   return bytes.length;
 }
 
-/** The address of the content of a file: of this version of it, or of its content now when version is null */
-function contentPath(spaceId: string, fileId: string, version: string | null): string {
-  return fileContentPath({ spaceId, fileId, ...(version !== null && { versionId: version }) });
-}
-
 /** What a read answers with: about the content first, as JSON, and then the text itself when there is any */
 function piece(about: { versionId: string; size: number; nextCursor: string | null }, text: string): ToolResult {
   const { content } = answer(about);
@@ -76,7 +76,8 @@ const getFileContent = tool({
     'there is more, and passing it back as cursor, as it is, reads on, in the same version even if the file was ' +
     'written to since. A piece ends between two characters, and may end in the middle of a line: the pieces put ' +
     'end to end are the text. Only text is read this way: content that is not UTF-8 is refused, and is downloaded ' +
-    `from ${FILE_CONTENT_PATH}. NOT_FOUND: there is no such file, it is a folder, or it has no such version.`,
+    'from the address getFileDownloadUrl gives. NOT_FOUND: there is no such file, it is a folder, or it has no ' +
+    'such version.',
   kind: 'read',
   input: z.strictObject({ spaceId: id, fileId: id, versionId: id.nullable(), cursor: z.string().optional() }),
   run: async ({ spaceId, fileId, versionId, cursor }, send) => {
@@ -89,26 +90,33 @@ const getFileContent = tool({
       from = Number(at[2]);
     }
 
-    const path = contentPath(spaceId, fileId, version);
-    const response = await send(path, { headers: { range: `bytes=${from}-${from + MAX_TEXT_READ_BYTES - 1}` } });
+    // Where the bytes are, asked as the caller of the tool: whether they may read the file is settled there. One
+    // answer says which version it is and how large, so the two are of one moment, whoever writes to the file in
+    // the next
+    const asked = await send(operationPath(getFileDownloadUrl), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ spaceId, fileId, versionId: version })
+    });
+    if (!asked.ok) return refusal(asked);
+    const { url, version: read } = (await asked.json()) as OutputOf<typeof getFileDownloadUrl>;
+    const versionRead = read.id;
+    const size = read.size;
 
-    // 416: nothing of the content is at that byte or after it. The content is empty, or the cursor is at its end
-    const nothingThere = response.status === 416;
-    if (!response.ok && !nothingThere) return refusal(response);
-
-    // Either answer says which version it is about (the etag is its id, in quotes) and how large that version is:
-    // the two are of one moment, whoever writes to the file in the next
-    const versionRead = response.headers.get('etag')?.replaceAll('"', '');
-    const size = Number(response.headers.get('content-range')?.split('/')[1]);
-    // Only a piece is taken. The content address may answer a range with all of the content, which is up to a
-    // gigabyte: an answer that is not a piece (206) is not read
-    if ((response.status !== 206 && !nothingThere) || !versionRead || !Number.isInteger(size)) {
-      await response.body?.cancel();
-      throw new Error(`The content address answered a range with ${response.status}, and not with a piece.`);
+    // Nothing of the content is at that byte or after it when the content is empty, or the cursor is at its end:
+    // then nothing is fetched
+    let bytes = new Uint8Array();
+    if (from < size) {
+      const until = Math.min(from + MAX_TEXT_READ_BYTES, size) - 1;
+      const response = await fetch(url, { headers: { range: `bytes=${from}-${until}` } });
+      // Only a piece is taken. A storage may answer a range with all of the content, which is up to a gigabyte:
+      // an answer that is not a piece (206) is not read
+      if (response.status !== 206) {
+        await response.body?.cancel();
+        throw new Error(`The storage answered a range with ${response.status}, and not with a piece.`);
+      }
+      bytes = new Uint8Array(await response.arrayBuffer());
     }
-    // What a 416 carries is its refusal, and none of the content
-    if (nothingThere) await response.body?.cancel();
-    const bytes = nothingThere ? new Uint8Array() : new Uint8Array(await response.arrayBuffer());
 
     const last = from + bytes.length >= size;
     const whole = last ? bytes.length : wholeCharacters(bytes);
@@ -120,7 +128,7 @@ const getFileContent = tool({
     } catch {
       return failure(
         `This content is not text: it is ${size} bytes that are not UTF-8, which cannot be read here. Download it: ` +
-          `GET ${contentPath(spaceId, fileId, versionRead)} with the same API key.`
+          `getFileDownloadUrl with versionId ${versionRead} answers with the address to fetch it from.`
       );
     }
 
