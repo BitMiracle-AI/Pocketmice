@@ -9,6 +9,16 @@ export const LANGUAGES = ['en', 'zh-hans'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 /**
+ * What each language is called in its own words. The menu that changes the language shows these: someone who
+ * cannot read the language the page is in still finds theirs.
+ */
+export const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', 'zh-hans': '简体中文' };
+
+export function isLanguage(value: unknown): value is Language {
+  return (LANGUAGES as readonly unknown[]).includes(value);
+}
+
+/**
  * The language as the standards write it: zh-hans becomes zh-Hans. It is what goes into <html lang>, and what
  * numbers and dates are written by (Intl).
  */

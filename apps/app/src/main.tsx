@@ -7,12 +7,17 @@ import { RouteError } from '@/components/RouteError';
 import { queryClient } from '@/lib/api';
 import { language } from '@/lib/language/language';
 import { languageTag } from '@/lib/language/languages';
+import { followTheme } from '@/lib/theme';
 import { routeTree } from './routeTree.gen';
 import './index.css';
 
 // The browser is told which language the page is in: which typeface Chinese is drawn in and how a screen reader
 // reads the page both go by it. index.html says English
 document.documentElement.lang = languageTag(language);
+
+// Dark or light: index.html has seen to how the page opens. From here on it follows the system and what the
+// person chooses
+followTheme();
 
 // A page that fails to load, whichever it is, shows the same screen with a button to try again; an address with no
 // page at it shows the same screen too
