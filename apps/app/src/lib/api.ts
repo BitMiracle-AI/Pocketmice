@@ -1,5 +1,7 @@
 import { type ApiClientConfig, type ClientErrorCode, createApiClient, type Result } from '@pocketmice/client/api';
 import { createAuthClient } from '@pocketmice/client/auth';
+import { readEvents } from '@pocketmice/client/events';
+import type { EventsQuery, SpaceEvent } from '@pocketmice/contract/domains/event';
 import { getProfile } from '@pocketmice/contract/domains/profile';
 import { getSpaces } from '@pocketmice/contract/domains/space';
 import type { UniversalErrorCode } from '@pocketmice/contract/errors';
@@ -16,6 +18,8 @@ import { commonText } from '@/lib/text';
 // - A page that changes something shows it when the api has answered, not before: nothing on a page is a guess.
 // - Who is signed in is what the api says (currentUserQuery). The browser holds the cookie and the page cannot
 //   read it: nothing in the page remembers that someone signed in.
+// - What happens in a space while a page is open is heard on a channel of events (spaceEvents). An event says that
+//   something changed and not what: whoever hears it marks the reads it changed as stale, as a write does.
 
 /** How long an answer counts as fresh. Within it the cache hands out what it has; after it, it asks the api again
  * the next time the answer is used, or when the person comes back to the tab */
@@ -77,6 +81,20 @@ export function heardFailure(code: string): void {
  */
 export function apiAddress(path: string): string {
   return new URL(path, config.baseUrl).href;
+}
+
+/**
+ * One channel of the events of a space, as the person signed in: what happens there is handed out as it happens,
+ * to be read with for await, until the server ends the channel or signal fires. It throws a ChannelFailure when
+ * the channel cannot be opened or breaks (see @pocketmice/client/events). Whoever wants to go on hearing opens the
+ * next one: features/event does.
+ */
+export function spaceEvents(query: EventsQuery, signal: AbortSignal): AsyncGenerator<SpaceEvent, void, void> {
+  return readEvents(
+    { baseUrl: config.baseUrl, fetch: (url, init) => fetch(url, { ...init, credentials: 'include' }) },
+    query,
+    signal
+  );
 }
 
 /**

@@ -1,7 +1,7 @@
 // To run it, in apps/app: node --test src/lib/format.test.ts
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { formatDate, formatMoment, formatSize, formatWhen } from './format.ts';
+import { formatBrief, formatDate, formatDay, formatMoment, formatSize, formatTime, formatWhen } from './format.ts';
 
 test('a size is written in the largest unit it fills, in steps of 1024', () => {
   assert.equal(formatSize(0), '0 B');
@@ -44,4 +44,32 @@ test('each is written the way its language writes it', () => {
   assert.equal(formatWhen(ago(12 * MINUTE), NOW, 'zh-hans'), '12分钟前');
   assert.equal(formatWhen(ago(DAY), NOW, 'zh-hans'), '昨天');
   assert.match(formatDate('2026-11-01T12:00:00Z', 'zh-hans'), /^2026年11月1日$/);
+});
+
+// Days are counted where the page is read, so these times are written in the time of the place the test runs in
+const at = (year: number, month: number, day: number, hour: number, minute = 0) =>
+  new Date(year, month - 1, day, hour, minute).toISOString();
+const NOON = new Date(2026, 10, 23, 12, 0).getTime();
+
+test('a day is headed Today or Yesterday, and before that by its date, whatever the hour', () => {
+  assert.equal(formatDay(at(2026, 11, 23, 0, 1), NOON), 'Today');
+  assert.equal(formatDay(at(2026, 11, 23, 23, 59), NOON), 'Today');
+  // Less than a day ago, and still yesterday
+  assert.equal(formatDay(at(2026, 11, 22, 23, 59), NOON), 'Yesterday');
+  assert.equal(formatDay(at(2026, 11, 21, 12), NOON), 'Nov 21, 2026');
+  assert.equal(formatDay(at(2026, 11, 22, 9), NOON, 'zh-hans'), '昨天');
+  assert.equal(formatDay(at(2026, 11, 23, 9), NOON, 'zh-hans'), '今天');
+});
+
+test('the time of day is the hour and the minute', () => {
+  assert.match(formatTime(at(2026, 11, 23, 14, 5)), /^2:05\s?PM$/);
+  assert.equal(formatTime(at(2026, 11, 23, 14, 5), 'zh-hans'), '14:05');
+});
+
+test('in a narrow list a time is the time of day for today, Yesterday, then the day, with the year when it is another', () => {
+  assert.match(formatBrief(at(2026, 11, 23, 9, 30), NOON), /^9:30\s?AM$/);
+  assert.equal(formatBrief(at(2026, 11, 22, 9, 30), NOON), 'Yesterday');
+  assert.equal(formatBrief(at(2026, 11, 2, 9, 30), NOON), 'Nov 2');
+  assert.equal(formatBrief(at(2025, 12, 31, 9, 30), NOON), 'Dec 31, 2025');
+  assert.equal(formatBrief(at(2026, 11, 2, 9, 30), NOON, 'zh-hans'), '11月2日');
 });

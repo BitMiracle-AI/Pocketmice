@@ -1,4 +1,4 @@
-import { Fragment, type ReactElement } from 'react';
+import { Fragment, type ReactElement, type ReactNode } from 'react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,9 +19,10 @@ export interface TrailStep {
 /**
  * The bar at the top of the card: the switch of the sidebar, then where the page is. The first step is the part
  * of the app the page is in (Files, Settings), as the sidebar names it; what follows is the way down to the page,
- * and title is the page itself. On a narrow screen only the page is named.
+ * and title is the page itself. On a narrow screen only the page is named. children are what can be done with the
+ * page from its bar, at the right end.
  */
-export function MainBar({ trail, title }: { trail: TrailStep[]; title: string }) {
+export function MainBar({ trail, title, children }: { trail: TrailStep[]; title: string; children?: ReactNode }) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-3">
       <SidebarTrigger className="text-muted-foreground" />
@@ -51,6 +52,7 @@ export function MainBar({ trail, title }: { trail: TrailStep[]; title: string })
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+      {children && <div className="ml-auto flex shrink-0 items-center gap-1">{children}</div>}
     </header>
   );
 }

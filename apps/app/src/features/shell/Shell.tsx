@@ -8,6 +8,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -63,6 +64,7 @@ export function Shell({
 /**
  * A row of the sidebar that leads to a page. link is the link itself, with nothing in it (a Link of the router
  * with its address): the row puts the icon and the label inside. active says the page being shown is this one.
+ * count is how many things on that page wait for the person, shown at the end of the row; nothing is shown for 0.
  * On a phone the sidebar is a sheet over the page, and the pages of one frame share it: the row that was tapped
  * closes it, or it would stay over the page it led to.
  */
@@ -70,12 +72,14 @@ export function NavRow({
   link,
   icon,
   label,
-  active
+  active,
+  count = 0
 }: {
   link: React.ReactElement;
   icon: IconSvgElement;
   label: string;
   active: boolean;
+  count?: number;
 }) {
   const { setOpenMobile } = useSidebar();
   return (
@@ -84,6 +88,7 @@ export function NavRow({
         <HugeiconsIcon icon={icon} strokeWidth={2} />
         <span>{label}</span>
       </SidebarMenuButton>
+      {count > 0 && <SidebarMenuBadge>{count > 99 ? '99+' : count}</SidebarMenuBadge>}
     </SidebarMenuItem>
   );
 }

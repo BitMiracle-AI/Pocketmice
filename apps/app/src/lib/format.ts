@@ -61,3 +61,47 @@ export function formatDate(time: string, of: Language = language): string {
     Date.parse(time)
   );
 }
+
+/** How many days a time is after the day of now, by the days where the person is: 0 today, -1 yesterday */
+function daysFrom(now: number, time: string): number {
+  const startOfDay = (moment: number) => new Date(moment).setHours(0, 0, 0, 0);
+  // Rounded: a day on which the clocks change is an hour longer or shorter
+  return Math.round((startOfDay(Date.parse(time)) - startOfDay(now)) / 86_400_000);
+}
+
+/** The first letter as a capital, where the language has them: what begins a line of its own */
+function capitalised(text: string, tag: string): string {
+  return text.charAt(0).toLocaleUpperCase(tag) + text.slice(1);
+}
+
+/** The time of day: 2:05 PM. For what is shown under its day */
+export function formatTime(time: string, of: Language = language): string {
+  return new Intl.DateTimeFormat(languageTag(of), { hour: 'numeric', minute: '2-digit' }).format(Date.parse(time));
+}
+
+/** The day a time is on, as a heading: Today, Yesterday, and before that the date */
+export function formatDay(time: string, now: number = Date.now(), of: Language = language): string {
+  const tag = languageTag(of);
+  const days = daysFrom(now, time);
+  if (days === 0 || days === -1) {
+    return capitalised(new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(days, 'day'), tag);
+  }
+  return formatDate(time, of);
+}
+
+/**
+ * When something was, in as few letters as say it, for a narrow list: the time of day for today, Yesterday, then
+ * the day and the month, and the year too when it is not this one.
+ */
+export function formatBrief(time: string, now: number = Date.now(), of: Language = language): string {
+  const tag = languageTag(of);
+  const days = daysFrom(now, time);
+  if (days === 0) return formatTime(time, of);
+  if (days === -1) return capitalised(new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(-1, 'day'), tag);
+  const sameYear = new Date(time).getFullYear() === new Date(now).getFullYear();
+  return new Intl.DateTimeFormat(tag, {
+    year: sameYear ? undefined : 'numeric',
+    month: 'short',
+    day: 'numeric'
+  }).format(Date.parse(time));
+}

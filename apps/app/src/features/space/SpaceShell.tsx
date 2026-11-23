@@ -1,5 +1,6 @@
 import {
   ArrowLeft01Icon,
+  BubbleChatIcon,
   Delete02Icon,
   Folder01Icon,
   Key01Icon,
@@ -10,11 +11,13 @@ import {
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
+import { useUnreadTotal } from '@/features/conversation/conversations';
+import { useSpaceEvents } from '@/features/event/useSpaceEvents';
 import { NavRow, Shell } from '@/features/shell/Shell';
 import { shellText } from '@/features/shell/text';
 import { CurrentSpaceProvider } from './CurrentSpaceProvider';
 import { SpaceMark } from './SpaceMark';
-import { useSpaces } from './spaces';
+import { type Space, useSpaces } from './spaces';
 import { UnknownSpacePage } from './UnknownSpacePage';
 
 /**
@@ -22,13 +25,23 @@ import { UnknownSpacePage } from './UnknownSpacePage';
  * down to the page (useCurrentSpace). spaceId is the one in the address.
  * When the person is not in that space, or is no longer (they were removed while the page was open, and the list
  * of spaces was read again), it says so in place of the page.
+ * While it is shown, what happens in the space is heard as it happens, whichever page of the space is open: the
+ * sidebar says how many messages the person has not read.
  */
 export function SpaceShell({ spaceId, children }: { spaceId: string; children: ReactNode }) {
   const space = useSpaces().find((each) => each.id === spaceId);
-  const matches = useMatchRoute();
   if (!space) return <UnknownSpacePage />;
-  // Which row of the sidebar the page is on is read from the address: the search, the members, the trash, the
-  // settings, or else the files
+  return <SpaceFrame space={space}>{children}</SpaceFrame>;
+}
+
+function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) {
+  const spaceId = space.id;
+  const matches = useMatchRoute();
+  const unread = useUnreadTotal(spaceId);
+  useSpaceEvents(spaceId);
+  // Which row of the sidebar the page is on is read from the address: the conversations, the search, the members,
+  // the trash, the settings, or else the files
+  const onConversations = matches({ to: '/spaces/$spaceId/conversations', fuzzy: true }) !== false;
   const onSearch = matches({ to: '/spaces/$spaceId/search' }) !== false;
   const onMembers = matches({ to: '/spaces/$spaceId/members' }) !== false;
   const onTrash = matches({ to: '/spaces/$spaceId/trash' }) !== false;
@@ -66,7 +79,14 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
                 link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
                 icon={Folder01Icon}
                 label={shellText.files}
-                active={!onSearch && !onMembers && !onTrash && !onSettings}
+                active={!onConversations && !onSearch && !onMembers && !onTrash && !onSettings}
+              />
+              <NavRow
+                link={<Link to="/spaces/$spaceId/conversations" params={{ spaceId }} />}
+                icon={BubbleChatIcon}
+                label={shellText.conversations}
+                active={onConversations}
+                count={unread}
               />
               <NavRow
                 link={<Link to="/spaces/$spaceId/search" params={{ spaceId }} />}

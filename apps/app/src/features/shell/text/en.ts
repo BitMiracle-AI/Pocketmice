@@ -3,6 +3,7 @@ import type { Theme } from '../../../lib/theme.ts';
 /** The sentences of the sidebar and of the menu of who is signed in, in English. This file says which sentences there are */
 export const en = {
   files: 'Files',
+  conversations: 'Conversations',
   search: 'Search',
   trash: 'Trash',
   members: 'Members',

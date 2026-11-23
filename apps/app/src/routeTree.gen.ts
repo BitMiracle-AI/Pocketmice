@@ -20,10 +20,13 @@ import { Route as AppSettingsAccountRouteImport } from './routes/_app/settings/a
 import { Route as AppSettingsKeysRouteImport } from './routes/_app/settings/keys'
 import { Route as AppSpacesSpaceIdRouteImport } from './routes/_app/spaces/$spaceId'
 import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app/spaces/$spaceId/index'
+import { Route as AppSpacesSpaceIdConversationsRouteImport } from './routes/_app/spaces/$spaceId/conversations'
 import { Route as AppSpacesSpaceIdMembersRouteImport } from './routes/_app/spaces/$spaceId/members'
 import { Route as AppSpacesSpaceIdSearchRouteImport } from './routes/_app/spaces/$spaceId/search'
 import { Route as AppSpacesSpaceIdSettingsRouteImport } from './routes/_app/spaces/$spaceId/settings'
 import { Route as AppSpacesSpaceIdTrashRouteImport } from './routes/_app/spaces/$spaceId/trash'
+import { Route as AppSpacesSpaceIdConversationsIndexRouteImport } from './routes/_app/spaces/$spaceId/conversations/index'
+import { Route as AppSpacesSpaceIdConversationsConversationIdRouteImport } from './routes/_app/spaces/$spaceId/conversations/$conversationId'
 import { Route as AppSpacesSpaceIdFilesFileIdRouteImport } from './routes/_app/spaces/$spaceId/files/$fileId'
 
 const AppRoute = AppRouteImport.update({
@@ -80,6 +83,12 @@ const AppSpacesSpaceIdIndexRoute = AppSpacesSpaceIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSpacesSpaceIdRoute,
 } as any)
+const AppSpacesSpaceIdConversationsRoute =
+  AppSpacesSpaceIdConversationsRouteImport.update({
+    id: '/conversations',
+    path: '/conversations',
+    getParentRoute: () => AppSpacesSpaceIdRoute,
+  } as any)
 const AppSpacesSpaceIdMembersRoute = AppSpacesSpaceIdMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -101,6 +110,18 @@ const AppSpacesSpaceIdTrashRoute = AppSpacesSpaceIdTrashRouteImport.update({
   path: '/trash',
   getParentRoute: () => AppSpacesSpaceIdRoute,
 } as any)
+const AppSpacesSpaceIdConversationsIndexRoute =
+  AppSpacesSpaceIdConversationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppSpacesSpaceIdConversationsRoute,
+  } as any)
+const AppSpacesSpaceIdConversationsConversationIdRoute =
+  AppSpacesSpaceIdConversationsConversationIdRouteImport.update({
+    id: '/$conversationId',
+    path: '/$conversationId',
+    getParentRoute: () => AppSpacesSpaceIdConversationsRoute,
+  } as any)
 const AppSpacesSpaceIdFilesFileIdRoute =
   AppSpacesSpaceIdFilesFileIdRouteImport.update({
     id: '/files/$fileId',
@@ -118,12 +139,15 @@ export interface FileRoutesByFullPath {
   '/settings/keys': typeof AppSettingsKeysRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/settings/': typeof AppSettingsIndexRoute
+  '/spaces/$spaceId/conversations': typeof AppSpacesSpaceIdConversationsRouteWithChildren
   '/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
   '/spaces/$spaceId/search': typeof AppSpacesSpaceIdSearchRoute
   '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
   '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
+  '/spaces/$spaceId/conversations/$conversationId': typeof AppSpacesSpaceIdConversationsConversationIdRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
+  '/spaces/$spaceId/conversations/': typeof AppSpacesSpaceIdConversationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -138,7 +162,9 @@ export interface FileRoutesByTo {
   '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
   '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
+  '/spaces/$spaceId/conversations/$conversationId': typeof AppSpacesSpaceIdConversationsConversationIdRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
+  '/spaces/$spaceId/conversations': typeof AppSpacesSpaceIdConversationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,12 +178,15 @@ export interface FileRoutesById {
   '/_app/settings/keys': typeof AppSettingsKeysRoute
   '/_app/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/spaces/$spaceId/conversations': typeof AppSpacesSpaceIdConversationsRouteWithChildren
   '/_app/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
   '/_app/spaces/$spaceId/search': typeof AppSpacesSpaceIdSearchRoute
   '/_app/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
   '/_app/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
+  '/_app/spaces/$spaceId/conversations/$conversationId': typeof AppSpacesSpaceIdConversationsConversationIdRoute
   '/_app/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
+  '/_app/spaces/$spaceId/conversations/': typeof AppSpacesSpaceIdConversationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,12 +200,15 @@ export interface FileRouteTypes {
     | '/settings/keys'
     | '/spaces/$spaceId'
     | '/settings/'
+    | '/spaces/$spaceId/conversations'
     | '/spaces/$spaceId/members'
     | '/spaces/$spaceId/search'
     | '/spaces/$spaceId/settings'
     | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId/'
+    | '/spaces/$spaceId/conversations/$conversationId'
     | '/spaces/$spaceId/files/$fileId'
+    | '/spaces/$spaceId/conversations/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -191,7 +223,9 @@ export interface FileRouteTypes {
     | '/spaces/$spaceId/settings'
     | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId'
+    | '/spaces/$spaceId/conversations/$conversationId'
     | '/spaces/$spaceId/files/$fileId'
+    | '/spaces/$spaceId/conversations'
   id:
     | '__root__'
     | '/_app'
@@ -204,12 +238,15 @@ export interface FileRouteTypes {
     | '/_app/settings/keys'
     | '/_app/spaces/$spaceId'
     | '/_app/settings/'
+    | '/_app/spaces/$spaceId/conversations'
     | '/_app/spaces/$spaceId/members'
     | '/_app/spaces/$spaceId/search'
     | '/_app/spaces/$spaceId/settings'
     | '/_app/spaces/$spaceId/trash'
     | '/_app/spaces/$spaceId/'
+    | '/_app/spaces/$spaceId/conversations/$conversationId'
     | '/_app/spaces/$spaceId/files/$fileId'
+    | '/_app/spaces/$spaceId/conversations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -297,6 +334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSpacesSpaceIdIndexRouteImport
       parentRoute: typeof AppSpacesSpaceIdRoute
     }
+    '/_app/spaces/$spaceId/conversations': {
+      id: '/_app/spaces/$spaceId/conversations'
+      path: '/conversations'
+      fullPath: '/spaces/$spaceId/conversations'
+      preLoaderRoute: typeof AppSpacesSpaceIdConversationsRouteImport
+      parentRoute: typeof AppSpacesSpaceIdRoute
+    }
     '/_app/spaces/$spaceId/members': {
       id: '/_app/spaces/$spaceId/members'
       path: '/members'
@@ -325,6 +369,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSpacesSpaceIdTrashRouteImport
       parentRoute: typeof AppSpacesSpaceIdRoute
     }
+    '/_app/spaces/$spaceId/conversations/': {
+      id: '/_app/spaces/$spaceId/conversations/'
+      path: '/'
+      fullPath: '/spaces/$spaceId/conversations/'
+      preLoaderRoute: typeof AppSpacesSpaceIdConversationsIndexRouteImport
+      parentRoute: typeof AppSpacesSpaceIdConversationsRoute
+    }
+    '/_app/spaces/$spaceId/conversations/$conversationId': {
+      id: '/_app/spaces/$spaceId/conversations/$conversationId'
+      path: '/$conversationId'
+      fullPath: '/spaces/$spaceId/conversations/$conversationId'
+      preLoaderRoute: typeof AppSpacesSpaceIdConversationsConversationIdRouteImport
+      parentRoute: typeof AppSpacesSpaceIdConversationsRoute
+    }
     '/_app/spaces/$spaceId/files/$fileId': {
       id: '/_app/spaces/$spaceId/files/$fileId'
       path: '/files/$fileId'
@@ -351,7 +409,26 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
   AppSettingsRouteChildren,
 )
 
+interface AppSpacesSpaceIdConversationsRouteChildren {
+  AppSpacesSpaceIdConversationsConversationIdRoute: typeof AppSpacesSpaceIdConversationsConversationIdRoute
+  AppSpacesSpaceIdConversationsIndexRoute: typeof AppSpacesSpaceIdConversationsIndexRoute
+}
+
+const AppSpacesSpaceIdConversationsRouteChildren: AppSpacesSpaceIdConversationsRouteChildren =
+  {
+    AppSpacesSpaceIdConversationsConversationIdRoute:
+      AppSpacesSpaceIdConversationsConversationIdRoute,
+    AppSpacesSpaceIdConversationsIndexRoute:
+      AppSpacesSpaceIdConversationsIndexRoute,
+  }
+
+const AppSpacesSpaceIdConversationsRouteWithChildren =
+  AppSpacesSpaceIdConversationsRoute._addFileChildren(
+    AppSpacesSpaceIdConversationsRouteChildren,
+  )
+
 interface AppSpacesSpaceIdRouteChildren {
+  AppSpacesSpaceIdConversationsRoute: typeof AppSpacesSpaceIdConversationsRouteWithChildren
   AppSpacesSpaceIdMembersRoute: typeof AppSpacesSpaceIdMembersRoute
   AppSpacesSpaceIdSearchRoute: typeof AppSpacesSpaceIdSearchRoute
   AppSpacesSpaceIdSettingsRoute: typeof AppSpacesSpaceIdSettingsRoute
@@ -361,6 +438,8 @@ interface AppSpacesSpaceIdRouteChildren {
 }
 
 const AppSpacesSpaceIdRouteChildren: AppSpacesSpaceIdRouteChildren = {
+  AppSpacesSpaceIdConversationsRoute:
+    AppSpacesSpaceIdConversationsRouteWithChildren,
   AppSpacesSpaceIdMembersRoute: AppSpacesSpaceIdMembersRoute,
   AppSpacesSpaceIdSearchRoute: AppSpacesSpaceIdSearchRoute,
   AppSpacesSpaceIdSettingsRoute: AppSpacesSpaceIdSettingsRoute,

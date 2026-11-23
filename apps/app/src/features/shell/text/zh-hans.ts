@@ -2,6 +2,7 @@ import type { en } from './en.ts';
 
 export const zhHans: typeof en = {
   files: '文件',
+  conversations: '对话',
   search: '搜索',
   trash: '回收站',
   members: '成员',
