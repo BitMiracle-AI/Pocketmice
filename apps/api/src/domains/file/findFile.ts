@@ -56,21 +56,27 @@ export async function findFiles(db: DbReader, spaceId: string, ids: string[]): P
       .select()
       .from(files)
       .where(and(eq(files.spaceId, spaceId), inArray(files.id, ids))),
-    // One walk per file, from the file up to the top, all of them in one statement. A walk gathers the names and
-    // the ids it passes and whether a folder on the way was trashed; the row it ends on is the one with no parent
+    // One walk per file, from the file up to the top, all of them in one statement. A step of a walk is a row for
+    // the one file or folder it is at; the names and the ids are put together at the end, for each walk that came
+    // to a row with no parent.
+    // A step does not carry what the walk has passed so far. It did once, and every step then copied all the names
+    // before it: a walk cost the square of its depth, and at the depth and the length of name the contract allows,
+    // a page of a thousand files in the trash took longer than a statement may (30 s). This way it takes under one.
     db.execute<{ start_id: string; names: string[]; lineage: string[]; in_trashed_folder: boolean }>(sql`
       with recursive up as (
-        select f.id as start_id, f.parent_id, array[f.name] as names, array[f.id::text] as lineage,
-               false as in_trashed_folder, 1 as depth
+        select f.id as start_id, f.id, f.parent_id, f.name, false as trashed_folder, 1 as depth
         from files f
         where f.space_id = ${spaceId} and f.id in ${ids}
         union all
-        select up.start_id, p.parent_id, p.name || up.names, up.lineage || p.id::text,
-               up.in_trashed_folder or p.deleted_at is not null, up.depth + 1
+        select up.start_id, p.id, p.parent_id, p.name, p.deleted_at is not null, up.depth + 1
         from up join files p on p.id = up.parent_id
         where up.depth < ${sql.raw(String(MAX_DEPTH))}
       )
-      select start_id, names, lineage, in_trashed_folder from up where parent_id is null
+      select start_id, array_agg(name order by depth desc) as names, array_agg(id::text order by depth) as lineage,
+             bool_or(trashed_folder) as in_trashed_folder
+      from up
+      group by start_id
+      having bool_or(parent_id is null)
     `)
   ]);
 
