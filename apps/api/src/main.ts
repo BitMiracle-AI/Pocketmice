@@ -47,6 +47,21 @@ const server = createAdaptorServer({ fetch: app.fetch }) as Server;
 // it was writing held open. The headers of a request keep their own limit of a minute.
 server.requestTimeout = 3 * 60 * 60 * 1000;
 
+// How long a connection is kept open after an answer, when no request follows: two hours, so that it is whatever
+// is in front of the api that closes it, and not the api.
+// Node by itself closes one after five seconds. A reverse proxy keeps its connections to the api, to send the next
+// request down one of them, and keeps them longer than that: nginx for a minute, Traefik for 90 seconds, Caddy for
+// two minutes, Envoy for an hour, each unless told otherwise. A request the proxy sends down a connection at the
+// moment the api closes it is lost, and the caller is answered 502: every operation is a POST, which a proxy does
+// not send a second time. Behind nginx, of 2,700 requests timed to that moment, more than 200 were lost.
+// Two hours is longer than each of those. No limit at all is wrong the other way: a caller that is reached without
+// a proxy, and is gone without closing, would be kept for ever.
+// Stopping (below) is not held up by a connection that carries nothing when the process is told to stop:
+// server.close closes those at once. One that has a request in hand at that moment stays open after its answer for
+// as long as its caller keeps it, where it was closed six seconds later: behind a proxy the process then stops
+// when its ten seconds are up, and not before.
+server.keepAliveTimeout = 2 * 60 * 60 * 1000;
+
 // Listens on this machine only, unless HOST says otherwise: requests from outside come in through a reverse proxy.
 // A proxy on another machine cannot reach 127.0.0.1, and to a container every other container is another machine:
 // the image sets HOST to 0.0.0.0, every address the container has (see Dockerfile), and who can reach the container

@@ -195,6 +195,22 @@ test('an agent whose host speaks MCP connects with the same key, and reads the f
   });
 });
 
+test('a connection that carries nothing is kept for two hours, longer than a reverse proxy keeps one: every answer says so', {
+  timeout: TEST_MS
+}, async () => {
+  const answered = await fetch(`${base}/api/getServerInfo`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}'
+  });
+  assert.equal(answered.status, 200);
+  await answered.text();
+
+  // Node writes this header from the limit main.ts sets. Left at Node's own five seconds, a proxy in front now and
+  // then sends a request down a connection the process is just closing, and answers 502 for it (see main.ts)
+  assert.equal(answered.headers.get('keep-alive'), 'timeout=7200');
+});
+
 // The last test of the file: it stops the process the others call
 test('told to stop, the process answers the upload it has in hand, takes no new connection, and exits', {
   timeout: TEST_MS

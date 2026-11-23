@@ -118,7 +118,7 @@ curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<fi
 A file is at most 1 GB.
 
 A reverse proxy goes in front of the API, which by itself listens on its own machine only. The API counts on the
-proxy for three things:
+proxy for four things:
 
 - The limit on the size of a request body is raised to 1 GB (nginx allows 1 MB unless told otherwise).
 - `X-Forwarded-For` is set to the address each request came from, in place of whatever the client sent: the limits
@@ -130,10 +130,15 @@ proxy for three things:
   only when it has taken three hours, which is 1 GB over a slow line. Traefik by its own default gives a whole
   request, body included, one minute: lift that limit (`respondingTimeouts.readTimeout` of the entry point), or an
   upload that takes longer is cut off.
+- A connection to the API that carries no request is closed by the proxy, and not by the API, which keeps one for
+  two hours. nginx (after a minute), Traefik (90 seconds), Caddy (two minutes) and Envoy (an hour) do so by
+  themselves. A proxy told to keep them longer than two hours now and then sends a request down a connection the
+  API is just closing, and answers 502 for it.
 
 Tried behind nginx, both holding a request body until all of it has arrived (its default) and passing it on as it
-comes. Tried behind Traefik 3.6 with that limit lifted: an upload that took 78 seconds and one of 300 MB arrived
-whole, and a client that named an `X-Forwarded-For` of its own was still counted by its real address.
+comes; and with nginx keeping its connections to the API, where requests timed to the moment an idle one is closed
+were all answered. Tried behind Traefik 3.6 with that limit lifted: an upload that took 78 seconds and one of 300
+MB arrived whole, and a client that named an `X-Forwarded-For` of its own was still counted by its real address.
 
 ## Running the API in a container
 
