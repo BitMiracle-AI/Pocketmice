@@ -7,7 +7,7 @@ export const en = {
   spacesLabel: 'Your spaces',
   newSpace: 'New space',
   dialogTitle: 'New space',
-  /** What a space is, in one line: under the title of the dialog */
+  /** What a space is, in one line: under the title of the start, and of the dialog a space is made in */
   whatASpaceIs: 'A space is a set of files and the people who can get in.',
   nameLabel: 'Name',
   namePlaceholder: 'Product research',

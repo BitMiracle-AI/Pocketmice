@@ -24,8 +24,11 @@ function failureSentence(failure: UploadFailure): string {
 }
 
 /**
- * The uploads in hand, in the bottom right corner of the frame. They do not belong to the folder they go to: the
- * panel stays while the person goes to another folder or another page. With no upload there is no panel.
+ * The uploads in hand, in the bottom right corner of the window. They do not belong to the folder they go to: the
+ * panel stays while the person goes to another folder or another page, so it is not part of any page
+ * (routes/_app.tsx). With no upload there is no panel.
+ * Where there is a sidebar the page is a card with a margin around it, and the panel keeps the same distance from
+ * the edge of that card as it has from the edge of a window with no card.
  */
 export function UploadPanel() {
   const uploads = useUploads();
@@ -48,7 +51,7 @@ export function UploadPanel() {
   return (
     <section
       aria-label={title}
-      className="absolute right-3 bottom-3 z-20 w-92 max-w-[calc(100%-1.5rem)] overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-lg"
+      className="fixed right-3 bottom-3 z-20 w-92 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-lg md:right-5 md:bottom-5"
     >
       <header className="flex h-11 items-center gap-2 pr-2 pl-4">
         <h2 className="flex-1 truncate text-sm font-medium">{title}</h2>

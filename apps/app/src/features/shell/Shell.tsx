@@ -13,10 +13,9 @@ import {
   SidebarProvider,
   useSidebar
 } from '@/components/ui/sidebar';
-import { UploadPanel } from '@/features/upload/UploadPanel';
 import { UserMenu } from './UserMenu';
 
-// The frame every signed-in page sits in: the sidebar on the left, and the page as a card on the sidebar's colour.
+// The frame of the pages that have a sidebar: the sidebar on the left, and the page as a card on its colour.
 // What the sidebar holds differs with where the page is (inside a space, or in the settings, which belong to the
 // person and to no space), so the frame is given its three parts; the bottom always ends with who is signed in.
 // Every piece is the sidebar of shadcn as it comes, at its own sizes.
@@ -56,7 +55,6 @@ export function Shell({
       {/* As high as the window and no higher: a page scrolls inside the card, and the sidebar stays where it is */}
       <SidebarInset className="h-svh min-w-0 overflow-hidden md:h-[calc(100svh-(--spacing(4)))] md:border">
         {children}
-        <UploadPanel />
       </SidebarInset>
     </SidebarProvider>
   );

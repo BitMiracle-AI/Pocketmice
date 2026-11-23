@@ -1,19 +1,33 @@
 import type { ReactNode } from 'react';
 
-// A page that stands alone, with no sidebar: signing in, the page of someone who is in no space yet, an address
-// with nothing at it, a page that failed to load.
+// A page that stands alone, with no sidebar: signing in, the start, an address with nothing at it, a page that
+// failed to load.
 
-/** The page: the name of the product in the corner, and one narrow column a little above the middle */
-export function Alone({ children }: { children: ReactNode }) {
+/**
+ * The page: the bar across its top, and one narrow column a little above the middle. corner is what the bar holds
+ * in its other corner.
+ */
+export function Alone({ corner, children }: { corner?: ReactNode; children: ReactNode }) {
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="flex h-14 shrink-0 items-center px-6">
-        <span className="text-sm font-semibold tracking-tight">Pocketmice</span>
-      </header>
+      <AloneBar corner={corner} />
       <main className="flex flex-1 items-center justify-center px-6 pt-4 pb-32">
         <div className="w-full max-w-80">{children}</div>
       </main>
     </div>
+  );
+}
+
+/**
+ * The bar across the top of such a page: the name of the product in one corner, and in the other what the page
+ * puts there (who is signed in). By itself it is for a page that is wider than the one column.
+ */
+export function AloneBar({ corner }: { corner?: ReactNode }) {
+  return (
+    <header className="flex h-14 shrink-0 items-center justify-between pr-4 pl-6">
+      <span className="text-sm font-semibold tracking-tight">Pocketmice</span>
+      {corner}
+    </header>
   );
 }
 

@@ -1,4 +1,5 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { UploadPanel } from '@/features/upload/UploadPanel';
 import { ApiFailure, currentUserQuery, queryClient } from '@/lib/api';
 
 // The pages only signed-in people get to: every page in routes/_app/ is behind this one. The _app of the file
@@ -19,5 +20,17 @@ export const Route = createFileRoute('/_app')({
       }
       throw error;
     }
-  }
+  },
+  component: SignedInPages
 });
+
+// The uploads in hand are over whichever of these pages is shown, and stay while the person goes from one to
+// another: they belong to the person, not to a page.
+function SignedInPages() {
+  return (
+    <>
+      <Outlet />
+      <UploadPanel />
+    </>
+  );
+}
