@@ -63,14 +63,22 @@ import { conversationText } from './text';
 export function ConversationPage({ conversationId }: { conversationId: string }) {
   const space = useCurrentSpace();
   const found = useSuspenseQuery(conversationQuery(space.id, conversationId));
-  // The person is leaving or deleting it themselves: the page goes elsewhere, and does not say on the way that the
-  // conversation is gone
+  // The person is leaving or deleting it themselves, and the api has not answered yet: the page goes elsewhere when
+  // it has, and does not say on the way that the conversation is gone
   const [going, setGoing] = useState(false);
 
   if (found.error?.code === 'UNKNOWN_CONVERSATION' && !going) return <ConversationGonePage />;
   const { conversation, members } = found.data;
   // What the page keeps of a conversation (how far back it shows, where the unread began) starts over with another
-  return <OpenConversation key={conversation.id} conversation={conversation} members={members} onGoing={setGoing} />;
+  return (
+    <OpenConversation
+      key={conversation.id}
+      conversation={conversation}
+      members={members}
+      going={going}
+      onGoing={setGoing}
+    />
+  );
 }
 
 /** What the person is being asked about: leaving the conversation, or deleting it */
@@ -79,10 +87,12 @@ type Asking = 'leave' | 'delete' | null;
 function OpenConversation({
   conversation,
   members,
+  going,
   onGoing
 }: {
   conversation: Conversation;
   members: readonly ConversationMember[];
+  going: boolean;
   onGoing: (going: boolean) => void;
 }) {
   const space = useCurrentSpace();
@@ -96,7 +106,6 @@ function OpenConversation({
   const [renaming, setRenaming] = useState(false);
   const [showingMembers, setShowingMembers] = useState(false);
   const [asking, setAsking] = useState<Asking>(null);
-  const [confirming, setConfirming] = useState(false);
   const [joining, setJoining] = useState(false);
   const asked = useLastGiven(asking);
   // While earlier messages are on their way, the ones there are stay
@@ -109,8 +118,7 @@ function OpenConversation({
   const toList = () => navigate({ to: '/spaces/$spaceId/conversations', params: { spaceId: space.id }, replace: true });
 
   const confirm = async () => {
-    if (!asking || confirming) return;
-    setConfirming(true);
+    if (!asking || going) return;
     onGoing(true);
     const problem =
       asking === 'leave'
@@ -118,7 +126,6 @@ function OpenConversation({
         : await removeConversation(space.id, conversation.id);
     if (problem !== null) {
       onGoing(false);
-      setConfirming(false);
       setAsking(null);
       return toast.add({ type: 'error', title: problem });
     }
@@ -131,7 +138,6 @@ function OpenConversation({
         asking === 'leave' ? conversationText.left(conversation.title) : conversationText.deleted(conversation.title)
     });
     onGoing(false);
-    setConfirming(false);
     setAsking(null);
   };
 
@@ -269,7 +275,7 @@ function OpenConversation({
         conversation={conversation}
         members={members}
       />
-      <AlertDialog open={asking !== null} onOpenChange={(open) => !open && !confirming && setAsking(null)}>
+      <AlertDialog open={asking !== null} onOpenChange={(open) => !open && !going && setAsking(null)}>
         <AlertDialogContent size="sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="break-words">
@@ -286,9 +292,9 @@ function OpenConversation({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={confirming}>{conversationText.cancel}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={confirming} onClick={confirm}>
-              {confirming && <Spinner data-icon="inline-start" />}
+            <AlertDialogCancel disabled={going}>{conversationText.cancel}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" disabled={going} onClick={confirm}>
+              {going && <Spinner data-icon="inline-start" />}
               {asked === 'leave' ? conversationText.leave : conversationText.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
