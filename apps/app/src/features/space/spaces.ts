@@ -43,10 +43,26 @@ export async function makeSpace(name: string): Promise<{ space: Space } | { prob
   const result = await call(createSpace, { name: checked.data });
   if (!result.ok) return { problem: failureText(result.code, {}) };
 
-  // The new space is put into the list at once, so the page it leads to finds it there; and the list is asked for
-  // again, since what the api says is what counts
   const { space } = result.data;
-  queryClient.setQueryData(spacesQuery.queryKey, (old) => (old ? { spaces: [...old.spaces, space] } : old));
-  void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
+  nowIn(space);
   return { space };
+}
+
+/**
+ * The person is in a space they were not in: they made it, or joined it. It is put into the list at once, so the
+ * page it leads to finds it there; and the list is asked for again, since what the api says is what counts.
+ */
+export function nowIn(space: Space): void {
+  queryClient.setQueryData(spacesQuery.queryKey, (old) =>
+    old && !old.spaces.some((each) => each.id === space.id) ? { spaces: [...old.spaces, space] } : old
+  );
+  void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
+}
+
+/** The person is no longer in a space: they left it. It is taken out of the list at once, and the list asked for again */
+export function noLongerIn(spaceId: string): void {
+  queryClient.setQueryData(spacesQuery.queryKey, (old) =>
+    old ? { spaces: old.spaces.filter((each) => each.id !== spaceId) } : old
+  );
+  void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
 }

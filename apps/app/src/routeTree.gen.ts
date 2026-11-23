@@ -14,9 +14,11 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppJoinInviteIdRouteImport } from './routes/_app/join/$inviteId'
 import { Route as AppSettingsKeysRouteImport } from './routes/_app/settings/keys'
 import { Route as AppSpacesSpaceIdRouteImport } from './routes/_app/spaces/$spaceId'
 import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app/spaces/$spaceId/index'
+import { Route as AppSpacesSpaceIdMembersRouteImport } from './routes/_app/spaces/$spaceId/members'
 import { Route as AppSpacesSpaceIdTrashRouteImport } from './routes/_app/spaces/$spaceId/trash'
 import { Route as AppSpacesSpaceIdFilesFileIdRouteImport } from './routes/_app/spaces/$spaceId/files/$fileId'
 
@@ -44,6 +46,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppJoinInviteIdRoute = AppJoinInviteIdRouteImport.update({
+  id: '/join/$inviteId',
+  path: '/join/$inviteId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsKeysRoute = AppSettingsKeysRouteImport.update({
   id: '/keys',
   path: '/keys',
@@ -57,6 +64,11 @@ const AppSpacesSpaceIdRoute = AppSpacesSpaceIdRouteImport.update({
 const AppSpacesSpaceIdIndexRoute = AppSpacesSpaceIdIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppSpacesSpaceIdRoute,
+} as any)
+const AppSpacesSpaceIdMembersRoute = AppSpacesSpaceIdMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
   getParentRoute: () => AppSpacesSpaceIdRoute,
 } as any)
 const AppSpacesSpaceIdTrashRoute = AppSpacesSpaceIdTrashRouteImport.update({
@@ -76,8 +88,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/settings': typeof AppSettingsRouteWithChildren
+  '/join/$inviteId': typeof AppJoinInviteIdRoute
   '/settings/keys': typeof AppSettingsKeysRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
+  '/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
   '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
@@ -87,7 +101,9 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/settings': typeof AppSettingsRouteWithChildren
   '/': typeof AppIndexRoute
+  '/join/$inviteId': typeof AppJoinInviteIdRoute
   '/settings/keys': typeof AppSettingsKeysRoute
+  '/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
   '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
@@ -99,8 +115,10 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_app/settings': typeof AppSettingsRouteWithChildren
   '/_app/': typeof AppIndexRoute
+  '/_app/join/$inviteId': typeof AppJoinInviteIdRoute
   '/_app/settings/keys': typeof AppSettingsKeysRoute
   '/_app/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
+  '/_app/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
   '/_app/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
   '/_app/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
@@ -112,8 +130,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/settings'
+    | '/join/$inviteId'
     | '/settings/keys'
     | '/spaces/$spaceId'
+    | '/spaces/$spaceId/members'
     | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId/'
     | '/spaces/$spaceId/files/$fileId'
@@ -123,7 +143,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/settings'
     | '/'
+    | '/join/$inviteId'
     | '/settings/keys'
+    | '/spaces/$spaceId/members'
     | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId'
     | '/spaces/$spaceId/files/$fileId'
@@ -134,8 +156,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_app/settings'
     | '/_app/'
+    | '/_app/join/$inviteId'
     | '/_app/settings/keys'
     | '/_app/spaces/$spaceId'
+    | '/_app/spaces/$spaceId/members'
     | '/_app/spaces/$spaceId/trash'
     | '/_app/spaces/$spaceId/'
     | '/_app/spaces/$spaceId/files/$fileId'
@@ -184,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/join/$inviteId': {
+      id: '/_app/join/$inviteId'
+      path: '/join/$inviteId'
+      fullPath: '/join/$inviteId'
+      preLoaderRoute: typeof AppJoinInviteIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/keys': {
       id: '/_app/settings/keys'
       path: '/keys'
@@ -203,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/spaces/$spaceId/'
       preLoaderRoute: typeof AppSpacesSpaceIdIndexRouteImport
+      parentRoute: typeof AppSpacesSpaceIdRoute
+    }
+    '/_app/spaces/$spaceId/members': {
+      id: '/_app/spaces/$spaceId/members'
+      path: '/members'
+      fullPath: '/spaces/$spaceId/members'
+      preLoaderRoute: typeof AppSpacesSpaceIdMembersRouteImport
       parentRoute: typeof AppSpacesSpaceIdRoute
     }
     '/_app/spaces/$spaceId/trash': {
@@ -235,12 +273,14 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 )
 
 interface AppSpacesSpaceIdRouteChildren {
+  AppSpacesSpaceIdMembersRoute: typeof AppSpacesSpaceIdMembersRoute
   AppSpacesSpaceIdTrashRoute: typeof AppSpacesSpaceIdTrashRoute
   AppSpacesSpaceIdIndexRoute: typeof AppSpacesSpaceIdIndexRoute
   AppSpacesSpaceIdFilesFileIdRoute: typeof AppSpacesSpaceIdFilesFileIdRoute
 }
 
 const AppSpacesSpaceIdRouteChildren: AppSpacesSpaceIdRouteChildren = {
+  AppSpacesSpaceIdMembersRoute: AppSpacesSpaceIdMembersRoute,
   AppSpacesSpaceIdTrashRoute: AppSpacesSpaceIdTrashRoute,
   AppSpacesSpaceIdIndexRoute: AppSpacesSpaceIdIndexRoute,
   AppSpacesSpaceIdFilesFileIdRoute: AppSpacesSpaceIdFilesFileIdRoute,
@@ -252,12 +292,14 @@ const AppSpacesSpaceIdRouteWithChildren =
 interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppJoinInviteIdRoute: typeof AppJoinInviteIdRoute
   AppSpacesSpaceIdRoute: typeof AppSpacesSpaceIdRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppJoinInviteIdRoute: AppJoinInviteIdRoute,
   AppSpacesSpaceIdRoute: AppSpacesSpaceIdRouteWithChildren,
 }
 

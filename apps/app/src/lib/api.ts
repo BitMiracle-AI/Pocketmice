@@ -1,6 +1,7 @@
 import { type ApiClientConfig, type ClientErrorCode, createApiClient, type Result } from '@pocketmice/client/api';
 import { createAuthClient } from '@pocketmice/client/auth';
 import { getProfile } from '@pocketmice/contract/domains/profile';
+import { getSpaces } from '@pocketmice/contract/domains/space';
 import type { UniversalErrorCode } from '@pocketmice/contract/errors';
 import type { CodeOf, InputOf, Operation, OutputOf } from '@pocketmice/contract/operation';
 import { infiniteQueryOptions, QueryClient, queryOptions } from '@tanstack/react-query';
@@ -57,11 +58,16 @@ export async function call<Op extends Operation>(operation: Op, input: InputOf<O
  * Any request that is answered "not signed in" makes what the cache holds about who is signed in untrue. It is
  * marked stale and not asked again at once: the page stays as it is, with what the person was typing, and says
  * that they are signed out. The next page they go to asks the api, and takes them to the sign-in page.
+ * Any request that is answered "no such space" makes the list of the person's spaces untrue in the same way.
  */
 export function heardFailure(code: string): void {
   if (code === 'UNAUTHENTICATED') {
     void queryClient.invalidateQueries({ queryKey: currentUserQuery.queryKey, refetchType: 'none' });
   }
+  // The person is not in a space the page took them to be in: they were taken out of it, or it was deleted,
+  // while the page was open. Which spaces they are in is asked again, and the frame of that space, which reads
+  // the list, says in place of the page that it is not theirs
+  if (code === 'UNKNOWN_SPACE') void queryClient.invalidateQueries({ queryKey: [getSpaces.name] });
 }
 
 /**

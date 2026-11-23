@@ -3,6 +3,7 @@ import type { en } from './en.ts';
 export const zhHans: typeof en = {
   files: '文件',
   trash: '回收站',
+  members: '成员',
   settings: '设置',
   apiKeys: 'API key',
   backToFiles: '回到文件',

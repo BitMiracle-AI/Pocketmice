@@ -13,8 +13,6 @@ export const en = {
   } satisfies Record<ApiKeyPermission, string>,
   created: (date: string) => `Created ${date}`,
   listLabel: 'Your API keys',
-  copy: 'Copy',
-  copied: 'Copied',
   copyKey: (name: string) => `Copy the key ${name}`,
   copyFailed: 'The browser did not let the key be copied. It is shown now: select it and copy it by hand.',
   more: (name: string) => `More about the key ${name}`,

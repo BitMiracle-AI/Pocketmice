@@ -9,8 +9,6 @@ export const zhHans: typeof en = {
   permissionHints: { write: '能读文件，也能改。', read: '只能读文件，什么都不改。' },
   created: (date) => `创建于 ${date}`,
   listLabel: '你的 API key',
-  copy: '复制',
-  copied: '已复制',
   copyKey: (name) => `复制 key ${name}`,
   copyFailed: '浏览器不允许复制，key 已经显示出来，请选中后手动复制。',
   more: (name) => `key ${name} 的更多操作`,

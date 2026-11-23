@@ -1,10 +1,8 @@
 import {
   Add01Icon,
-  Copy01Icon,
   Delete02Icon,
   Key01Icon,
   MoreHorizontalIcon,
-  Tick02Icon,
   ViewIcon,
   ViewOffSlashIcon
 } from '@hugeicons/core-free-icons';
@@ -12,6 +10,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { useState } from 'react';
+import { CopyButton } from '@/components/CopyButton';
 import { KeyMark } from '@/components/KeyMark';
 import { Page, PageHead } from '@/components/Page';
 import {
@@ -37,7 +36,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { MainBar } from '@/features/shell/MainBar';
 import { shellText } from '@/features/shell/text';
 import { formatDate } from '@/lib/format';
@@ -49,9 +47,6 @@ import { apiKeyText } from './text';
 // is in the settings.
 // A key is known here by the mark it has next to every file it writes (KeyMark). Copying is what a row is for and
 // stays in sight; showing and deleting are in the menu of the row.
-
-/** How long the copy button says "copied", in milliseconds */
-const COPIED_FOR_MS = 1500;
 
 export function KeysPage() {
   const { data } = useSuspenseQuery(apiKeysQuery);
@@ -148,22 +143,7 @@ function KeyRow({
   onShow: (on: boolean) => void;
   onRemove: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
   const masked = `${apiKey.key.slice(0, 3)}${'•'.repeat(12)}${apiKey.key.slice(-4)}`;
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(apiKey.key);
-    } catch {
-      // The browser keeps the clipboard from the page (a page that is not served securely, a permission that was
-      // refused): the key is written out, for the person to copy themselves
-      onShow(true);
-      toast.add({ type: 'error', title: apiKeyText.copyFailed });
-      return;
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), COPIED_FOR_MS);
-  };
 
   return (
     <Item variant="outline" size="sm">
@@ -181,25 +161,15 @@ function KeyRow({
         </ItemDescription>
       </ItemContent>
       <ItemActions className="gap-0.5">
-        <Tooltip>
-          {/* The tooltip stays when the button is clicked, and then says the key was copied: closed, as a click
-              closes one otherwise, nothing would say so but the icon */}
-          <TooltipTrigger
-            closeOnClick={false}
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={apiKeyText.copyKey(apiKey.name)}
-                onClick={copy}
-                className="text-muted-foreground"
-              />
-            }
-          >
-            <HugeiconsIcon icon={copied ? Tick02Icon : Copy01Icon} strokeWidth={2} />
-          </TooltipTrigger>
-          <TooltipContent>{copied ? apiKeyText.copied : apiKeyText.copy}</TooltipContent>
-        </Tooltip>
+        <CopyButton
+          text={apiKey.key}
+          label={apiKeyText.copyKey(apiKey.name)}
+          // The key is written out, for the person to copy themselves
+          onFailed={() => {
+            onShow(true);
+            toast.add({ type: 'error', title: apiKeyText.copyFailed });
+          }}
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger

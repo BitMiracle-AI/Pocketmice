@@ -4,6 +4,7 @@ import type { Theme } from '../../../lib/theme.ts';
 export const en = {
   files: 'Files',
   trash: 'Trash',
+  members: 'Members',
   settings: 'Settings',
   apiKeys: 'API keys',
   backToFiles: 'Back to files',
