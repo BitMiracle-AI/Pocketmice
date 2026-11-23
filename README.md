@@ -145,6 +145,10 @@ the container has. It takes its configuration from the environment, with the var
 [`apps/api/.env.example`](apps/api/.env.example). When the files are kept in a folder, mount a volume at `/data`
 and set `STORAGE_DIR=/data/storage`: without a volume the files are gone with the container.
 
+Keep the database, and every backup of it, the way you keep a credential. It holds each API key as it is, not a
+hash of it: that is how the person who made a key copies it again whenever they are signed in. So whoever can read
+the database can call the API as every person who has a key.
+
 ## TypeScript SDK
 
 A program that holds an API key uses the drive through `packages/sdk`. It is not on npm yet: for now it is used
