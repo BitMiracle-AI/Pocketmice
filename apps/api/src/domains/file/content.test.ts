@@ -542,15 +542,28 @@ test('who may use the content address is decided as for an operation: the role, 
   assert.deepEqual(await failure(elsewhere), [403, 'FORBIDDEN']);
 });
 
-test('what an agent writes belongs to its person, and the version records the key it came through, also once the key is deleted', async () => {
+test('what an agent writes belongs to its person, and every version records the key it came through, also once the key is deleted', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
   const key = await makeKey(ada, 'write', 'Drafting agent');
   const agent = { key: key.key };
 
+  // The three ways a version comes to be, each through the key: a new file, a write over it, an old version
+  // brought back. In between, Ada writes one herself
   const made = await upload(agent, { spaceId, name: 'draft.md' }, 'written by the agent');
-  const written = await put(ada, { spaceId, fileId: made.id, baseVersionId: made.version.id }, 'revised by Ada');
-  assert.equal(written.status, 200);
+  const byAda = await put(ada, { spaceId, fileId: made.id, baseVersionId: made.version.id }, 'revised by Ada');
+  assert.equal(byAda.status, 200);
+  const second = ((await byAda.json()) as { file: Uploaded }).file;
+  const byAgent = await put(agent, { spaceId, fileId: made.id, baseVersionId: second.version.id }, 'revised again');
+  assert.equal(byAgent.status, 200);
+  const third = ((await byAgent.json()) as { file: Uploaded }).file;
+  const restored = await api.withKey(key.key)(restoreFileVersion, {
+    spaceId,
+    fileId: made.id,
+    versionId: made.version.id,
+    baseVersionId: third.version.id
+  });
+  assert.ok(restored.ok, `restoreFileVersion should have worked: ${JSON.stringify(restored)}`);
 
   assert.deepEqual(made.version.user, { id: ada.id, name: 'Ada' });
   assert.deepEqual(made.version.apiKey, { id: key.id, name: 'Drafting agent' });
@@ -560,6 +573,8 @@ test('what an agent writes belongs to its person, and the version records the ke
 
   const versions = await api.as(ada)(getFileVersions, { spaceId, fileId: made.id });
   assert.deepEqual(versions.ok && versions.data.versions.map((version) => version.apiKey), [
+    { id: key.id, name: 'Drafting agent' },
+    { id: key.id, name: 'Drafting agent' },
     null,
     { id: key.id, name: 'Drafting agent' }
   ]);
@@ -644,6 +659,31 @@ test('restoreFileVersion brings an old version back as a new one with bytes of i
     first.version.id
   ]);
   assert.equal(await storedObjects(), before + 1);
+});
+
+test('restoreFileVersion is a write: a viewer and a read-only key are refused, and nothing is stored', async () => {
+  const ada = await api.addPerson('Ada');
+  const grace = await api.addPerson('Grace');
+  const spaceId = await makeSpace(ada);
+  await api.db.insert(spaceMembers).values({ spaceId, userId: grace.id, role: 'viewer' });
+  const first = await upload(ada, { spaceId, name: 'notes.md' }, 'the good version');
+  const response = await put(ada, { spaceId, fileId: first.id, baseVersionId: first.version.id }, 'ruined');
+  const second = ((await response.json()) as { file: Uploaded }).file;
+  const reader = await makeKey(ada, 'read');
+  const before = await storedObjects();
+
+  for (const call of [api.as(grace), api.withKey(reader.key)]) {
+    const restored = await call(restoreFileVersion, {
+      spaceId,
+      fileId: first.id,
+      versionId: first.version.id,
+      baseVersionId: second.version.id
+    });
+    assert.equal(!restored.ok && restored.code, 'FORBIDDEN');
+  }
+
+  assert.equal(await storedObjects(), before);
+  assert.equal(await (await get(ada, { spaceId, fileId: first.id })).text(), 'ruined');
 });
 
 test('restoreFileVersion is refused over a version the caller has not seen, and changes nothing when asked for the current one', async () => {
