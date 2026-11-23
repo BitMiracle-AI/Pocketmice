@@ -129,6 +129,20 @@ export const messages = pgTable(
     /** What it says */
     text: text('text').notNull(),
     /**
+     * The members of the conversation it mentions: whom it is meant for, where a conversation has several.
+     * They are ids in a column of the message and not rows of a table, and so are the files below: both are read
+     * with the message and never looked for on their own, and nothing has to happen to a message when someone it
+     * mentions or a file it points at goes. What an id that leads nowhere means is decided where it is read.
+     */
+    mentionedUserIds: uuid('mentioned_user_ids').array().notNull().default(sql`'{}'::uuid[]`),
+    /**
+     * The files and folders of the space it points at. The database does not check them: sending a message
+     * checks that each is in the space, and reading one looks each up in the space of its conversation, so an id
+     * from elsewhere finds nothing. A file that was put in the trash or deleted for good since stays in the list:
+     * the message is told to have pointed at a file that is not there any more.
+     */
+    fileIds: uuid('file_ids').array().notNull().default(sql`'{}'::uuid[]`),
+    /**
      * When it was deleted. Null for one that was not.
      * Deleting marks the row and leaves it there, with its text: no operation answers with the text of a deleted
      * message, and the numbers of a conversation keep no gap.

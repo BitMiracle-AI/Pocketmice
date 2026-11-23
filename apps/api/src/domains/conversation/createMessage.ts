@@ -1,12 +1,51 @@
 import { createMessage as definition } from '@pocketmice/contract/domains/conversation';
 import type { Db } from '@pocketmice/db';
-import { conversations, messages } from '@pocketmice/db/schema/conversation';
-import { and, eq, sql } from 'drizzle-orm';
-import { implement } from '../../http/operation.ts';
-import { selectMessages, toMessage } from './message.ts';
+import { conversationMembers, conversations, messages } from '@pocketmice/db/schema/conversation';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { ApiError, implement } from '../../http/operation.ts';
+import { findFiles, isInTrash } from '../file/findFile.ts';
+import { selectMessages, toMessages } from './message.ts';
 
 export function createMessage({ db }: { db: Db }) {
   return implement(definition, async ({ input, user, apiKeyId }) => {
+    // Each named once, however often the caller named it
+    const mentionedUserIds = [...new Set(input.mentionedUserIds)];
+    const fileIds = [...new Set(input.fileIds)];
+
+    // Whoever is mentioned is in the conversation: a mention of someone who cannot read it would reach nobody
+    if (mentionedUserIds.length > 0) {
+      const members = await db
+        .select({ userId: conversationMembers.userId })
+        .from(conversationMembers)
+        .where(
+          and(
+            eq(conversationMembers.conversationId, input.conversationId),
+            inArray(conversationMembers.userId, mentionedUserIds)
+          )
+        );
+      const inIt = new Set(members.map(({ userId }) => userId));
+      const stranger = mentionedUserIds.find((userId) => !inIt.has(userId));
+      if (stranger !== undefined) {
+        throw new ApiError(
+          'NOT_FOUND',
+          `Conversation ${input.conversationId} has no member ${stranger}: a message mentions members of its conversation.`
+        );
+      }
+    }
+
+    // What is pointed at is in the space, and not in the trash, when the message is sent. What becomes of it
+    // later is told when the message is read (see toMessages)
+    if (fileIds.length > 0) {
+      const found = await findFiles(db, input.spaceId, fileIds);
+      const missing = fileIds.find((fileId) => {
+        const file = found.get(fileId);
+        return !file || isInTrash(file);
+      });
+      if (missing !== undefined) {
+        throw new ApiError('NOT_FOUND', `There is no file ${missing} in space ${input.spaceId}.`);
+      }
+    }
+
     const number = await db.transaction(async (tx) => {
       // The number is taken first, by moving the conversation on by one. That holds the row of the conversation
       // until this transaction ends: two messages sent together take their numbers one after the other, and the
@@ -34,6 +73,8 @@ export function createMessage({ db }: { db: Db }) {
         userId: user.id,
         apiKeyId,
         text: input.text,
+        mentionedUserIds,
+        fileIds,
         // The time the conversation was given: the two say the same
         createdAt: reached.at
       });
@@ -45,6 +86,8 @@ export function createMessage({ db }: { db: Db }) {
     );
     if (!sent)
       throw new Error(`Message ${number} of conversation ${input.conversationId} was written and is not there.`);
-    return { message: toMessage(sent) };
+    const [message] = await toMessages(db, input.spaceId, [sent]);
+    if (!message) throw new Error(`Message ${number} of conversation ${input.conversationId} could not be told.`);
+    return { message };
   });
 }

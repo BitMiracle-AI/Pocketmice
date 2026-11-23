@@ -13,13 +13,14 @@ import {
   MESSAGE_TEXT_MAX_LENGTH,
   markConversationRead
 } from '@pocketmice/contract/domains/conversation';
+import { createFolder, deleteFile, FILE_CONTENT_PATH, restoreFile, trashFile } from '@pocketmice/contract/domains/file';
 import { getProfile } from '@pocketmice/contract/domains/profile';
 import { createSpace } from '@pocketmice/contract/domains/space';
 import { messages } from '@pocketmice/db/schema/conversation';
 import { spaceMembers } from '@pocketmice/db/schema/space';
 import { eq } from 'drizzle-orm';
 import type { CurrentUser } from '../../http/operation.ts';
-import { useTestApi } from '../testing.ts';
+import { NOBODY, useTestApi } from '../testing.ts';
 
 const api = useTestApi();
 
@@ -84,6 +85,8 @@ test('the messages of a conversation are numbered from 1 in the order they were 
       user: { id: grace.id, name: 'Grace' },
       apiKey: null,
       text: 'Shall we ship on Friday?',
+      mentionedUserIds: [],
+      files: [],
       deletedAt: null,
       createdAt: null
     }
@@ -308,4 +311,143 @@ test('deleting a conversation takes what was said in it', async () => {
   assert.equal((await api.as(ada)(deleteConversation, place)).ok, true);
 
   assert.deepEqual(await api.db.select().from(messages).where(eq(messages.conversationId, place.conversationId)), []);
+});
+
+test('a message mentions members of its conversation, each once; whoever is not in it cannot be mentioned', async () => {
+  const { ada, grace, linus, place } = await setting();
+
+  const sent = await api.as(grace)(createMessage, {
+    ...place,
+    text: '@Linus, can you check the numbers?',
+    mentionedUserIds: [linus.id, grace.id, linus.id]
+  });
+  assert.ok(sent.ok);
+  assert.deepEqual(sent.data.message.mentionedUserIds, [linus.id, grace.id]);
+  const all = await api.as(linus)(getMessages, place);
+  assert.equal(all.ok && all.data.messages.at(0)?.mentionedUserIds.includes(linus.id), true);
+
+  // The owner of the space reads the conversation and is not in it; nobody at all is not either
+  for (const userId of [ada.id, NOBODY]) {
+    const refused = await api.as(grace)(createMessage, { ...place, text: 'Hello?', mentionedUserIds: [userId] });
+    assert.equal(refused.ok ? 'ok' : refused.code, 'NOT_FOUND', userId);
+  }
+  const tooMany = await api.as(grace)(createMessage, {
+    ...place,
+    text: 'Everyone!',
+    mentionedUserIds: Array.from({ length: 21 }, () => linus.id)
+  });
+  assert.equal(tooMany.ok ? 'ok' : tooMany.code, 'INVALID_INPUT');
+  // Nothing was sent by a message that was refused
+  assert.equal((await conversationFor(grace, place)).lastMessageNumber, 1);
+});
+
+/** Uploads a small file as this person, and returns its id */
+async function upload(person: CurrentUser, spaceId: string, parentId: string, name: string) {
+  const body = Buffer.from('Ship on Friday.');
+  const response = await api.send(person, `${FILE_CONTENT_PATH}?${new URLSearchParams({ spaceId, parentId, name })}`, {
+    method: 'PUT',
+    headers: { 'content-length': String(body.length) },
+    body
+  });
+  const answer = (await response.json()) as { file: { id: string } };
+  assert.equal(response.status, 200, `the upload should have worked: ${JSON.stringify(answer)}`);
+  return answer.file.id;
+}
+
+test('a message points at files and folders of the space, and tells each as it is now: gone while it is in the trash, back when it is restored, gone when it is deleted for good', async () => {
+  const { ada, grace, linus, spaceId, place } = await setting();
+  const folder = await api.as(grace)(createFolder, { spaceId, parentId: null, name: 'Reports' });
+  assert.ok(folder.ok);
+  const folderId = folder.data.file.id;
+  const fileId = await upload(grace, spaceId, folderId, 'plan.md');
+
+  const sent = await api.as(grace)(createMessage, {
+    ...place,
+    text: 'The plan is here.',
+    fileIds: [fileId, folderId, fileId]
+  });
+  assert.ok(sent.ok);
+  const there = [
+    { id: fileId, file: { name: 'plan.md', kind: 'file', path: '/Reports/plan.md' } },
+    { id: folderId, file: { name: 'Reports', kind: 'folder', path: '/Reports' } }
+  ];
+  // Each once, in the order they were named
+  assert.deepEqual(sent.data.message.files, there);
+
+  /** What the message points at, as Linus reads it: in the conversation, and as the latest message of it */
+  const pointedAt = async () => {
+    const all = await api.as(linus)(getMessages, place);
+    assert.ok(all.ok);
+    const { files } = all.data.messages[0] ?? {};
+    assert.deepEqual((await conversationFor(linus, place)).lastMessage?.files, files);
+    return files;
+  };
+  assert.deepEqual(await pointedAt(), there);
+
+  // The folder goes into the trash, and what is in it with it
+  assert.equal((await api.as(grace)(trashFile, { spaceId, fileId: folderId })).ok, true);
+  const gone = [
+    { id: fileId, file: null },
+    { id: folderId, file: null }
+  ];
+  assert.deepEqual(await pointedAt(), gone);
+
+  assert.equal((await api.as(grace)(restoreFile, { spaceId, fileId: folderId })).ok, true);
+  assert.deepEqual(await pointedAt(), there);
+
+  // The file is deleted for good: the message still points at one, which is not there
+  assert.equal((await api.as(grace)(trashFile, { spaceId, fileId })).ok, true);
+  assert.equal((await api.as(ada)(deleteFile, { spaceId, fileId })).ok, true);
+  assert.deepEqual(await pointedAt(), [{ id: fileId, file: null }, there[1]]);
+});
+
+test('a message points only at what is in the space when it is sent: not at a file of another space, one in the trash, or none', async () => {
+  const { grace, spaceId, place } = await setting();
+  const elsewhere = await api.as(grace)(createSpace, { name: 'Private' });
+  assert.ok(elsewhere.ok);
+  const foreign = await api.as(grace)(createFolder, {
+    spaceId: elsewhere.data.space.id,
+    parentId: null,
+    name: 'Diary'
+  });
+  assert.ok(foreign.ok);
+  const trashed = await api.as(grace)(createFolder, { spaceId, parentId: null, name: 'Old' });
+  assert.ok(trashed.ok);
+  assert.equal((await api.as(grace)(trashFile, { spaceId, fileId: trashed.data.file.id })).ok, true);
+  const kept = await api.as(grace)(createFolder, { spaceId, parentId: null, name: 'Reports' });
+  assert.ok(kept.ok);
+  const keptId = kept.data.file.id;
+  const notThere: string[] = [foreign.data.file.id, trashed.data.file.id, NOBODY];
+
+  for (const fileId of notThere) {
+    // One that is there does not carry one that is not
+    const refused = await api.as(grace)(createMessage, { ...place, text: 'Look.', fileIds: [keptId, fileId] });
+    assert.equal(refused.ok ? 'ok' : refused.code, 'NOT_FOUND', fileId);
+  }
+  const tooMany = await api.as(grace)(createMessage, {
+    ...place,
+    text: 'Look.',
+    fileIds: Array.from({ length: 11 }, () => keptId)
+  });
+  assert.equal(tooMany.ok ? 'ok' : tooMany.code, 'INVALID_INPUT');
+  assert.equal((await conversationFor(grace, place)).lastMessageNumber, 0);
+});
+
+test('a deleted message no longer says whom it mentioned or what it pointed at', async () => {
+  const { grace, linus, spaceId, place } = await setting();
+  const folder = await api.as(grace)(createFolder, { spaceId, parentId: null, name: 'Reports' });
+  assert.ok(folder.ok);
+  await api.as(grace)(createMessage, {
+    ...place,
+    text: '@Linus, see Reports.',
+    mentionedUserIds: [linus.id],
+    fileIds: [folder.data.file.id]
+  });
+
+  assert.equal((await api.as(grace)(deleteMessage, { ...place, number: 1 })).ok, true);
+
+  const all = await api.as(linus)(getMessages, place);
+  assert.ok(all.ok);
+  const { text, mentionedUserIds, files } = all.data.messages[0] ?? {};
+  assert.deepEqual({ text, mentionedUserIds, files }, { text: '', mentionedUserIds: [], files: [] });
 });

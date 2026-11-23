@@ -4,7 +4,7 @@ import { conversationMembers, conversations, messages } from '@pocketmice/db/sch
 import { profiles } from '@pocketmice/db/schema/profile';
 import { and, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { readTimeCursor, writeTimeCursor } from '../file/cursor.ts';
-import { type Message, messageColumns, toMessage } from './message.ts';
+import { type Message, type MessageRow, messageColumns, toMessages } from './message.ts';
 
 /** A conversation as an operation answers with it: how it is, and how far this caller has read */
 export interface Conversation {
@@ -60,16 +60,26 @@ function selectConversations(db: DbReader, userId: string) {
 
 type ConversationRow = Awaited<ReturnType<typeof selectConversations>>[number];
 
-function toConversation(row: ConversationRow): Conversation {
-  return {
+/** Rows of one space as an operation answers with them, each with its latest message as a message is told */
+async function toConversations(db: DbReader, spaceId: string, rows: ConversationRow[]): Promise<Conversation[]> {
+  const latest = rows.map((row) => latestMessage(row.message));
+  const told = await toMessages(
+    db,
+    spaceId,
+    latest.filter((message) => message !== null)
+  );
+  // The messages come back in the order they went in: one for each conversation that has one
+  let next = 0;
+
+  return rows.map((row, index) => ({
     id: row.id,
     title: row.title,
     lastMessageNumber: row.lastMessageNumber,
     lastMessageAt: row.lastMessageAt?.toISOString() ?? null,
-    lastMessage: latestMessage(row.message),
+    lastMessage: latest[index] === null ? null : (told[next++] ?? null),
     lastReadNumber: row.lastReadNumber,
     createdAt: row.createdAt.toISOString()
-  };
+  }));
 }
 
 /**
@@ -77,10 +87,20 @@ function toConversation(row: ConversationRow): Conversation {
  * to a conversation that may have no message, so every column of it may be missing; with a message, the ones a
  * message always has are there.
  */
-function latestMessage(read: ConversationRow['message']): Message | null {
-  const { number, userId, userName, text, createdAt } = read;
-  if (number === null || userId === null || userName === null || text === null || createdAt === null) return null;
-  return toMessage({ ...read, number, userId, userName, text, createdAt });
+function latestMessage(read: ConversationRow['message']): MessageRow | null {
+  const { number, userId, userName, text, mentionedUserIds, fileIds, createdAt } = read;
+  if (
+    number === null ||
+    userId === null ||
+    userName === null ||
+    text === null ||
+    mentionedUserIds === null ||
+    fileIds === null ||
+    createdAt === null
+  ) {
+    return null;
+  }
+  return { ...read, number, userId, userName, text, mentionedUserIds, fileIds, createdAt };
 }
 
 /**
@@ -96,8 +116,9 @@ export async function readConversation(
   const [row] = await selectConversations(db, userId).where(
     and(eq(conversations.id, conversationId), eq(conversations.spaceId, spaceId))
   );
-  if (!row) throw new Error(`Conversation ${conversationId} was let in and is not there to be read.`);
-  return toConversation(row);
+  const [conversation] = row ? await toConversations(db, spaceId, [row]) : [];
+  if (!conversation) throw new Error(`Conversation ${conversationId} was let in and is not there to be read.`);
+  return conversation;
 }
 
 /**
@@ -128,7 +149,7 @@ export async function readConversations(
   const last = page.at(-1);
 
   return {
-    conversations: page.map(toConversation),
+    conversations: await toConversations(db, asked.spaceId, page),
     nextCursor: rows.length > asked.limit && last ? writeTimeCursor(last.latestAt, last.id) : null
   };
 }

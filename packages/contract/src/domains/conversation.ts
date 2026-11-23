@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { id } from '../id.ts';
 import { operation } from '../operation.ts';
 import { cursor, limit, nextCursor, PAGED } from '../paging.ts';
+import { fileKind } from './file.ts';
 
 // Conversations: where the members of a space talk, people and the agents that act for them alike.
 // - A conversation is about one matter: it has a title, and members of its own. The same people can have any
@@ -31,6 +32,9 @@ import { cursor, limit, nextCursor, PAGED } from '../paging.ts';
 // - Messages are read by number and not by cursor: getMessages answers with the ones after a number. A number is
 //   a place in the conversation that every caller shares and that does not move, which a cursor is not. Whoever
 //   is told that a conversation has reached message 12, and has the first 11, asks for what comes after 11.
+// - A message can mention members of the conversation: whom it is meant for, where several are in it. And it can
+//   point at files and folders of the space, by id. A file it points at may be put in the trash or deleted for good
+//   later: the message then still says that it pointed at one, and that the file is not there any more.
 // - How far a member has read is one number of their own (lastReadNumber), and only they move it
 //   (markConversationRead). Sending a message does not move it: an agent that speaks with the key of a person
 //   leaves what that person has read as it was.
@@ -47,6 +51,22 @@ export const MESSAGE_TEXT_MAX_LENGTH = 10_000;
 /** What a message says. Spaces and line breaks around it are dropped; it is not empty */
 export const messageText = z.string().trim().min(1).max(MESSAGE_TEXT_MAX_LENGTH);
 
+/** A message mentions at most this many members */
+export const MESSAGE_MENTIONS_MAX = 20;
+
+/** A message points at most at this many files */
+export const MESSAGE_FILES_MAX = 10;
+
+/** A file or a folder a message points at */
+const messageFile = z.object({
+  id: z.string(),
+  /**
+   * What it is called, what it is and where it is, now. Null when it is not there any more: it was put in the
+   * trash, or deleted for good. One that comes back from the trash is there again
+   */
+  file: z.object({ name: z.string(), kind: fileKind, path: z.string() }).nullable()
+});
+
 /** A message, as whoever can read its conversation sees it */
 export const message = z.object({
   /** Its number in the conversation: 1 for the first, and one more for each sent after */
@@ -57,6 +77,10 @@ export const message = z.object({
   apiKey: z.object({ id: z.string(), name: z.string() }).nullable(),
   /** What it says. Empty for a message that was deleted */
   text: z.string(),
+  /** The members of the conversation it mentions, by their user id. None for a message that was deleted */
+  mentionedUserIds: z.array(z.string()),
+  /** The files and folders of the space it points at. None for a message that was deleted */
+  files: z.array(messageFile),
   /** When it was deleted: an ISO 8601 time in UTC. Null for one that was not */
   deletedAt: z.iso.datetime().nullable(),
   /** When it was sent: an ISO 8601 time in UTC */
@@ -249,15 +273,24 @@ export const createMessage = operation({
   name: 'createMessage',
   description:
     'Sends a message to a conversation, as the caller. Answers with the message, which has the next number of ' +
-    'the conversation. What the caller has read stays as it was: see markConversationRead.',
+    'the conversation. mentionedUserIds names the members of the conversation the message is meant for, by ' +
+    'user id; fileIds points at files or folders of the space. Both may be left out. What the caller has read ' +
+    'stays as it was: see markConversationRead. NOT_FOUND: someone mentioned is not a member of the ' +
+    'conversation, or the space has no such file; the message says which.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'conversation',
   minRole: 'viewer',
   openTo: 'member',
-  input: z.object({ spaceId: id, conversationId: id, text: messageText }),
+  input: z.object({
+    spaceId: id,
+    conversationId: id,
+    text: messageText,
+    mentionedUserIds: z.array(id).max(MESSAGE_MENTIONS_MAX).default([]),
+    fileIds: z.array(id).max(MESSAGE_FILES_MAX).default([])
+  }),
   output: z.object({ message }),
-  errors: []
+  errors: ['NOT_FOUND']
 });
 
 // Whose message it is cannot be told from the definition: it is the one thing an implementation of a conversation

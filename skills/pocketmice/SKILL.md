@@ -323,7 +323,13 @@ conversations the person is in. What you say there is said as that person, and m
 - The messages of a conversation are numbered from 1. `getMessages` answers with the ones after `afterNumber`,
   the oldest first: to read on, pass the number of the last one you have. `lastMessageNumber` on the conversation
   says how far it has come, so `afterNumber: lastMessageNumber - 20` reads the latest twenty.
-- `createMessage` sends one: plain text, at most 10000 characters.
+- `createMessage` sends one: plain text, at most 10000 characters. It can say whom it is for and what it is about:
+  `mentionedUserIds` are members of the conversation (their `userId` in `getConversation`), `fileIds` are files or
+  folders of the space. Point at a file by its id, and do not paste its path or its content: whoever reads the
+  message is told the file's name and path as they are then, and `file: null` once it is in the trash or deleted.
+- In a conversation of several, a message that is meant for you mentions your person: `mentionedUserIds` has the
+  `id` that `getProfile` answers with. One that mentions nobody is for everyone in it: answer only if it is plainly
+  yours to answer.
 - Which messages are yours: `getProfile` answers with `apiKey.id`, the id of the key you call with, and a message
   with the same `apiKey.id` is one you sent. A message whose `apiKey` is `null` was typed by a person; one with
   another id was sent by another agent.
@@ -360,7 +366,7 @@ Each is the `code` of a failure, with its HTTP status:
   the id against `getConversations`.
 - `UNKNOWN_OPERATION` (404): no operation of that name. Check the name against the list below.
 - `NOT_FOUND` (404): no such file, folder or version; or the file is in the trash. Look again by path, or in
-  `getTrashedFiles`.
+  `getTrashedFiles`. From `createMessage` it may also be someone you mentioned who is not in the conversation.
 - `CONFLICT` (409): the name is taken; or the version you named is not the current one; or a folder would be moved
   into itself, or end up deeper than folders nest. What to do is in the section of the call you made.
 - `INTERNAL` (500): the server failed. Try once more after a moment, then tell the user.
@@ -371,37 +377,37 @@ Ids are lowercase UUIDs. `?` marks a field that may be left out. Reads work with
 key. A write to the files of a space takes the role `editor`; `updateSpace` and `getAllConversations` take the
 role `owner`; the conversations take no role, and any member of the space talks.
 
-| Operation              | Kind  | Input                                                  | Answer                                                               | Can also fail with      |
-| ---------------------- | ----- | ------------------------------------------------------ | -------------------------------------------------------------------- | ----------------------- |
-| `getServerInfo`        | read  | `{}` (needs no key)                                    | `{version, signInMethod}`                                            |                         |
-| `getProfile`           | read  | `{}`                                                   | `{id, email, name, apiKey}`: the person the key acts as, and the key |                         |
-| `getSpaces`            | read  | `{}`                                                   | `{spaces}`                                                           |                         |
-| `getSpaceSize`         | read  | `{spaceId}`                                            | `{storageSize, storageLimit}`: bytes; `null` is no limit             |                         |
-| `getMembers`           | read  | `{spaceId}`                                            | `{members}`: `userId`, `name`, `role`, `storageSize`, `storageLimit` |                         |
-| `getFiles`             | read  | `{spaceId, parentId, limit?, cursor?}`                 | `{files, nextCursor}`                                                | `NOT_FOUND`             |
-| `getFile`              | read  | `{spaceId, fileId}`                                    | `{file}`                                                             | `NOT_FOUND`             |
-| `getFileByPath`        | read  | `{spaceId, path}`                                      | `{file}`                                                             | `NOT_FOUND`             |
-| `getMatchingFiles`     | read  | `{spaceId, folderId, query, kind?, limit?, cursor?}`   | `{files, nextCursor}`                                                | `NOT_FOUND`             |
-| `getFileVersions`      | read  | `{spaceId, fileId, limit?, cursor?}`                   | `{versions, nextCursor}`                                             | `NOT_FOUND`             |
-| `getTrashedFiles`      | read  | `{spaceId, limit?, cursor?}`                           | `{files, nextCursor}`                                                |                         |
-| `getConversations`     | read  | `{spaceId, limit?, cursor?}`                           | `{conversations, nextCursor}`: the ones the person is in             |                         |
-| `getAllConversations`  | read  | `{spaceId, limit?, cursor?}`                           | `{conversations, nextCursor}`: every one, for the owner              |                         |
-| `getConversation`      | read  | `{spaceId, conversationId}`                            | `{conversation, members}`                                            |                         |
-| `getMessages`          | read  | `{spaceId, conversationId, afterNumber?, limit?}`      | `{messages}`: the ones after `afterNumber`, oldest first             |                         |
-| `createSpace`          | write | `{name}`                                               | `{space}`: the person owns it                                        |                         |
-| `updateSpace`          | write | `{spaceId, name}`: the new name of the space           | `{space}`                                                            |                         |
-| `updateProfile`        | write | `{name}`: the name the person goes by                  | `{id, email, name}`                                                  |                         |
-| `createFolder`         | write | `{spaceId, parentId, name, description?}`              | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
-| `updateFile`           | write | `{spaceId, fileId, name?, description?}`: one at least | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
-| `moveFile`             | write | `{spaceId, fileId, parentId}`                          | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
-| `trashFile`            | write | `{spaceId, fileId}`                                    | `{}`                                                                 | `NOT_FOUND`             |
-| `restoreFile`          | write | `{spaceId, fileId}`                                    | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
-| `restoreFileVersion`   | write | `{spaceId, fileId, versionId, baseVersionId}`          | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
-| `createConversation`   | write | `{spaceId, title}`                                     | `{conversation}`: the person is its only member                      |                         |
-| `updateConversation`   | write | `{spaceId, conversationId, title}`                     | `{conversation}`                                                     |                         |
-| `createMessage`        | write | `{spaceId, conversationId, text}`                      | `{message}`                                                          |                         |
-| `deleteMessage`        | write | `{spaceId, conversationId, number}`                    | `{}`                                                                 | `NOT_FOUND`             |
-| `markConversationRead` | write | `{spaceId, conversationId, number}`                    | `{}`                                                                 |                         |
+| Operation              | Kind  | Input                                                          | Answer                                                               | Can also fail with      |
+| ---------------------- | ----- | -------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------- |
+| `getServerInfo`        | read  | `{}` (needs no key)                                            | `{version, signInMethod}`                                            |                         |
+| `getProfile`           | read  | `{}`                                                           | `{id, email, name, apiKey}`: the person the key acts as, and the key |                         |
+| `getSpaces`            | read  | `{}`                                                           | `{spaces}`                                                           |                         |
+| `getSpaceSize`         | read  | `{spaceId}`                                                    | `{storageSize, storageLimit}`: bytes; `null` is no limit             |                         |
+| `getMembers`           | read  | `{spaceId}`                                                    | `{members}`: `userId`, `name`, `role`, `storageSize`, `storageLimit` |                         |
+| `getFiles`             | read  | `{spaceId, parentId, limit?, cursor?}`                         | `{files, nextCursor}`                                                | `NOT_FOUND`             |
+| `getFile`              | read  | `{spaceId, fileId}`                                            | `{file}`                                                             | `NOT_FOUND`             |
+| `getFileByPath`        | read  | `{spaceId, path}`                                              | `{file}`                                                             | `NOT_FOUND`             |
+| `getMatchingFiles`     | read  | `{spaceId, folderId, query, kind?, limit?, cursor?}`           | `{files, nextCursor}`                                                | `NOT_FOUND`             |
+| `getFileVersions`      | read  | `{spaceId, fileId, limit?, cursor?}`                           | `{versions, nextCursor}`                                             | `NOT_FOUND`             |
+| `getTrashedFiles`      | read  | `{spaceId, limit?, cursor?}`                                   | `{files, nextCursor}`                                                |                         |
+| `getConversations`     | read  | `{spaceId, limit?, cursor?}`                                   | `{conversations, nextCursor}`: the ones the person is in             |                         |
+| `getAllConversations`  | read  | `{spaceId, limit?, cursor?}`                                   | `{conversations, nextCursor}`: every one, for the owner              |                         |
+| `getConversation`      | read  | `{spaceId, conversationId}`                                    | `{conversation, members}`                                            |                         |
+| `getMessages`          | read  | `{spaceId, conversationId, afterNumber?, limit?}`              | `{messages}`: the ones after `afterNumber`, oldest first             |                         |
+| `createSpace`          | write | `{name}`                                                       | `{space}`: the person owns it                                        |                         |
+| `updateSpace`          | write | `{spaceId, name}`: the new name of the space                   | `{space}`                                                            |                         |
+| `updateProfile`        | write | `{name}`: the name the person goes by                          | `{id, email, name}`                                                  |                         |
+| `createFolder`         | write | `{spaceId, parentId, name, description?}`                      | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `updateFile`           | write | `{spaceId, fileId, name?, description?}`: one at least         | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `moveFile`             | write | `{spaceId, fileId, parentId}`                                  | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `trashFile`            | write | `{spaceId, fileId}`                                            | `{}`                                                                 | `NOT_FOUND`             |
+| `restoreFile`          | write | `{spaceId, fileId}`                                            | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `restoreFileVersion`   | write | `{spaceId, fileId, versionId, baseVersionId}`                  | `{file}`                                                             | `NOT_FOUND`, `CONFLICT` |
+| `createConversation`   | write | `{spaceId, title}`                                             | `{conversation}`: the person is its only member                      |                         |
+| `updateConversation`   | write | `{spaceId, conversationId, title}`                             | `{conversation}`                                                     |                         |
+| `createMessage`        | write | `{spaceId, conversationId, text, mentionedUserIds?, fileIds?}` | `{message}`                                                          | `NOT_FOUND`             |
+| `deleteMessage`        | write | `{spaceId, conversationId, number}`                            | `{}`                                                                 | `NOT_FOUND`             |
+| `markConversationRead` | write | `{spaceId, conversationId, number}`                            | `{}`                                                                 |                         |
 
 And the address the content goes through, `/api/content`:
 
