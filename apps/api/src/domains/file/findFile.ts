@@ -145,17 +145,20 @@ export async function findPlace(db: DbReader, spaceId: string, parentId: string 
  * The folders in a place, and the folders in those, down to the last: each with its id and its path. It is a part
  * of a statement, to be joined to under a name.
  * Folders in the trash are left out, and so is everything below them, which the walk then never reaches. So of the
- * rows of the space that are not trashed themselves, the ones not in the trash are those directly in the place and
- * those whose folder is among these; and the path of one of those is the path of its folder, a / and its name.
- * place is what findPlace answered for parentId. That is also why this walk needs no limit on its depth: the place
- * reaches the top of the space, so nothing that is reached from it is in a loop.
+ * rows of the space that are not trashed themselves, the ones that are in the place and not in the trash are those
+ * directly in it and those whose folder is among these; and the path of one of those is the path of its folder, a
+ * / and its name.
+ * place is what findPlace answered. That is also why this walk needs no limit on its depth: the place reaches the
+ * top of the space, so nothing that is reached from it is in a loop.
  */
-export function foldersWithin(spaceId: string, parentId: string | null, place: Place): SQL {
+export function foldersWithin(spaceId: string, place: Place): SQL {
+  // The folder the place is: the first of its lineage. The space itself has none
+  const [folderId] = place.lineage;
   return sql`(
     with recursive down as (
       select f.id, ${place.path}::text || '/' || f.name as path
       from files f
-      where f.space_id = ${spaceId} and ${parentId === null ? sql`f.parent_id is null` : sql`f.parent_id = ${parentId}`}
+      where f.space_id = ${spaceId} and ${folderId === undefined ? sql`f.parent_id is null` : sql`f.parent_id = ${folderId}`}
         and f.kind = 'folder' and f.deleted_at is null
       union all
       select c.id, down.path || '/' || c.name

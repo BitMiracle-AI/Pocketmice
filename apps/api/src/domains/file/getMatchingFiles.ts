@@ -30,13 +30,15 @@ export function getMatchingFiles({ db }: { db: Db }) {
     // No index is made for this. The rows of the space are read through, also when folderId narrows what counts;
     // in a table of many spaces the database gets to them by the index on the space and the id. It was measured
     // at 200,000 files in one space (see the commit that added this file) and left at that.
+    // Every word more is one more look at each row that has the words before it. There, a sentence of twelve
+    // words, eleven of them in half of the files, took 0.2 seconds, and 128 words of one letter, as many as a
+    // query holds, 5 to 7.
+    // "In capitals or not" is the database's doing, by the locale it was created with: for every letter with
+    // en_US.UTF-8 or C.UTF-8, and for a to z alone with C.
     const rows = await db
       .select({ row: files, path: sql<string>`coalesce(folder.path, ${place.path}::text) || '/' || ${files.name}` })
       .from(files)
-      .leftJoin(
-        sql`${foldersWithin(input.spaceId, input.folderId, place)} as folder`,
-        sql`folder.id = ${files.parentId}`
-      )
+      .leftJoin(sql`${foldersWithin(input.spaceId, place)} as folder`, sql`folder.id = ${files.parentId}`)
       .where(
         and(
           eq(files.spaceId, input.spaceId),

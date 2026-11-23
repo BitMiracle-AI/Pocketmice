@@ -145,10 +145,8 @@ export const SEARCH_QUERY_MAX_LENGTH = FILE_NAME_MAX_LENGTH;
 const QUERY_LENGTH = `What to look for has 1 to ${SEARCH_QUERY_MAX_LENGTH} characters.`;
 
 /**
- * What to look for: one word, or several with spaces between. Spaces around it are dropped.
- * A file matches when every word is in its name or in its description, in capitals or not: one word may be in the
- * name and another in the description. A word is looked for as it is written. No character in it stands for
- * others, and there is no way to say "or" or "not": a few words find more than a sentence does.
+ * What to look for: one word, or several with spaces between. Spaces around it are dropped. What it finds is said
+ * once, in the description of getMatchingFiles.
  */
 export const searchQuery = sameWriting.trim().min(1, QUERY_LENGTH).max(SEARCH_QUERY_MAX_LENGTH, QUERY_LENGTH);
 
