@@ -79,7 +79,7 @@ export function heardFailure(code: string): void {
  * address the content of a file goes through. A request sent there by hand says, as every other does, that the
  * sign-in cookie goes along.
  */
-export function apiAddress(path: string): string {
+export function apiUrl(path: string): string {
   return new URL(path, config.baseUrl).href;
 }
 

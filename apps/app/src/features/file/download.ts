@@ -1,6 +1,6 @@
 import { fileContentPath, getFile } from '@pocketmice/contract/domains/file';
 import { toast } from '@/components/ui/toast';
-import { apiAddress, call, failureText, spaceChanged } from '@/lib/api';
+import { apiUrl, call, failureText, spaceChanged } from '@/lib/api';
 import type { DriveFile } from './files';
 import { fileText } from './text';
 
@@ -27,7 +27,7 @@ export async function downloadFile(spaceId: string, file: Pick<DriveFile, 'id'>,
   // asked whether it may be left while files are being uploaded
   const frame = document.createElement('iframe');
   frame.hidden = true;
-  frame.src = apiAddress(fileContentPath({ spaceId, fileId: file.id, versionId }));
+  frame.src = apiUrl(fileContentPath({ spaceId, fileId: file.id, versionId }));
   document.body.append(frame);
   setTimeout(() => frame.remove(), FRAME_KEPT_MS);
 }

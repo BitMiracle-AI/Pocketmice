@@ -55,7 +55,7 @@ export function wholeCharacters(bytes: Uint8Array): number {
 }
 
 /** The address of the content of a file: of this version of it, or of its content now when version is null */
-function contentAddress(spaceId: string, fileId: string, version: string | null): string {
+function contentPath(spaceId: string, fileId: string, version: string | null): string {
   return fileContentPath({ spaceId, fileId, ...(version !== null && { versionId: version }) });
 }
 
@@ -89,8 +89,8 @@ const getFileContent = tool({
       from = Number(at[2]);
     }
 
-    const address = contentAddress(spaceId, fileId, version);
-    const response = await send(address, { headers: { range: `bytes=${from}-${from + MAX_TEXT_READ_BYTES - 1}` } });
+    const path = contentPath(spaceId, fileId, version);
+    const response = await send(path, { headers: { range: `bytes=${from}-${from + MAX_TEXT_READ_BYTES - 1}` } });
 
     // 416: nothing of the content is at that byte or after it. The content is empty, or the cursor is at its end
     const nothingThere = response.status === 416;
@@ -120,7 +120,7 @@ const getFileContent = tool({
     } catch {
       return failure(
         `This content is not text: it is ${size} bytes that are not UTF-8, which cannot be read here. Download it: ` +
-          `GET ${contentAddress(spaceId, fileId, versionRead)} with the same API key.`
+          `GET ${contentPath(spaceId, fileId, versionRead)} with the same API key.`
       );
     }
 

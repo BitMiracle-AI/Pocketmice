@@ -1,6 +1,6 @@
 import { failureOf } from '@pocketmice/client/api';
 import { fileContentPath } from '@pocketmice/contract/domains/file';
-import { apiAddress, heardFailure } from '@/lib/api';
+import { apiUrl, heardFailure } from '@/lib/api';
 import type { Target, UploadFailure } from './uploadQueue';
 
 /** The codes the content address refuses an upload with, besides the ones any request may get */
@@ -29,7 +29,7 @@ export function sendContent(target: Target, content: Blob, progress: (sent: numb
     request.onabort = () => resolve({ ok: false, code: 'UNREACHABLE' });
   });
 
-  request.open('PUT', apiAddress(fileContentPath(target)));
+  request.open('PUT', apiUrl(fileContentPath(target)));
   // The api is at another origin: the sign-in cookie goes along only when the request says so
   request.withCredentials = true;
   request.send(content);
