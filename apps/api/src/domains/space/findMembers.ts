@@ -1,4 +1,5 @@
-import type { SpaceRole } from '@pocketmice/contract/spaceRole';
+import type { getMembers } from '@pocketmice/contract/domains/space';
+import type { OutputOf } from '@pocketmice/contract/operation';
 import type { Db } from '@pocketmice/db';
 import { profiles } from '@pocketmice/db/schema/profile';
 import { spaceMembers } from '@pocketmice/db/schema/space';
@@ -6,13 +7,7 @@ import { and, eq } from 'drizzle-orm';
 import { memberSizesOf } from './storageLimit.ts';
 
 /** A member of a space, as the contract tells one */
-export interface Member {
-  userId: string;
-  name: string;
-  role: SpaceRole;
-  storageSize: number;
-  storageLimit: number | null;
-}
+type Member = OutputOf<typeof getMembers>['members'][number];
 
 /**
  * The members of a space in the order they became members, or the one member userId names: each with their name,
