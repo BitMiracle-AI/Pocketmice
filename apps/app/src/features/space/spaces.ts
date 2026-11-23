@@ -1,8 +1,17 @@
-import { createSpace, deleteSpace, getSpaces, spaceName, updateSpace } from '@pocketmice/contract/domains/space';
+import {
+  createSpace,
+  deleteSpace,
+  getSpaceSize,
+  getSpaces,
+  spaceName,
+  updateSpace,
+  updateSpaceStorageLimit
+} from '@pocketmice/contract/domains/space';
 import type { OutputOf } from '@pocketmice/contract/operation';
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { call, failureText, queryClient, readQuery } from '@/lib/api';
+import { call, failureText, queryClient, readQuery, spaceChanged } from '@/lib/api';
+import { formatSize } from '@/lib/format';
 import { spaceText } from './text';
 
 // The spaces the person is in. A space is where everything is: a page that shows files is the page of one space,
@@ -76,6 +85,42 @@ export async function renameSpace(spaceId: string, name: string): Promise<string
     old ? { spaces: old.spaces.map((each) => (each.id === space.id ? space : each)) } : old
   );
   void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
+  return null;
+}
+
+/** How much a space holds, and the most it may */
+export type SpaceSize = OutputOf<typeof getSpaceSize>;
+
+/**
+ * How much a space holds, and the most it may. Every member may read it. Whatever adds bytes to the space or
+ * removes them marks it stale with everything else read from the space (spaceChanged).
+ */
+export function spaceSizeQuery(spaceId: string) {
+  return readQuery(getSpaceSize, { spaceId });
+}
+
+/** What a page that says how much a space holds needs before it is shown */
+export async function loadSpaceSize(spaceId: string): Promise<void> {
+  await queryClient.ensureQueryData(spaceSizeQuery(spaceId));
+}
+
+/** How much a space holds, in a sentence: against its limit when it has one */
+export function spaceHolds({ storageSize, storageLimit }: SpaceSize): string {
+  return storageLimit === null
+    ? spaceText.spaceHolds(formatSize(storageSize))
+    : spaceText.spaceHoldsOf(formatSize(storageSize), formatSize(storageLimit));
+}
+
+/**
+ * Sets the most a space may hold, in bytes; null takes the limit away. Null when it is set, or the sentence that
+ * says why it is not. What the api answers is what the space holds and may hold now, and is what the pages show
+ * at once.
+ */
+export async function setSpaceLimit(spaceId: string, storageLimit: number | null): Promise<string | null> {
+  const result = await call(updateSpaceStorageLimit, { spaceId, storageLimit });
+  if (!result.ok) return failureText(result.code, {});
+  queryClient.setQueryData(spaceSizeQuery(spaceId).queryKey, result.data);
+  spaceChanged(spaceId);
   return null;
 }
 

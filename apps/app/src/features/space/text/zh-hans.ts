@@ -42,8 +42,8 @@ export const zhHans: typeof en = {
   left: (name) => `你已退出「${name}」`,
 
   settingsTitle: '空间设置',
-  settingsHint: '这个空间叫什么，以及删除它。这两件事只有你作为所有者能做。',
-  settingsOwnerOnly: '只有这个空间的所有者能给它改名或删除它。',
+  settingsHint: '这个空间叫什么、最多能放多少，以及删除它。这些只有你作为所有者能做。',
+  settingsOwnerOnly: '只有这个空间的所有者能给它改名、设存储上限或删除它。',
   renameHint: '每个成员都按这个名字找到这个空间。',
   renamed: '空间已改名',
   deleteSpaceTitle: '删除这个空间',
@@ -52,6 +52,16 @@ export const zhHans: typeof en = {
   deleteSpaceAsk: (name) => `删除「${name}」？`,
   deleteSpaceTypeLabel: '输入空间的名称以确认',
   deletedSpace: (name) => `已删除「${name}」`,
+
+  storageTitle: '存储',
+  spaceHolds: (size) => `这个空间已占用 ${size}，没有设存储上限。`,
+  spaceHoldsOf: (size, limit) => `这个空间已占用 ${size}，上限 ${limit}。`,
+  limitLabel: '存储上限',
+  noLimit: '不限',
+  limitUnit: '单位',
+  spaceLimitHint: '这个空间最多能放多少。每个文件的每个版本都算，旧版本和回收站里的也算。留空就是不限。',
+  limitInvalid: '请填一个数，比如 10 或 1.5；留空就是不限。',
+  limitSaved: '存储上限已保存',
 
   unknownTitle: '没有这个空间',
   unknownDescription: '这个地址上没有空间，或者你不是它的成员。'

@@ -47,8 +47,9 @@ export const en = {
   left: (name: string) => `You left “${name}”`,
 
   settingsTitle: 'Space settings',
-  settingsHint: 'What this space is called, and deleting it. Both are yours alone, as its owner.',
-  settingsOwnerOnly: 'Only the owner of this space can rename or delete it.',
+  settingsHint:
+    'What this space is called, how much it may hold, and deleting it. All of it is yours alone, as its owner.',
+  settingsOwnerOnly: 'Only the owner of this space can rename it, set its storage limit or delete it.',
   renameHint: 'Every member finds the space under this name.',
   renamed: 'Space renamed',
   deleteSpaceTitle: 'Delete this space',
@@ -58,6 +59,19 @@ export const en = {
   deleteSpaceAsk: (name: string) => `Delete “${name}”?`,
   deleteSpaceTypeLabel: 'Type the name of the space to confirm',
   deletedSpace: (name: string) => `Deleted “${name}”`,
+
+  storageTitle: 'Storage',
+  /** How much the space holds, in a sentence: with no limit, and against its limit */
+  spaceHolds: (size: string) => `This space holds ${size}, and has no storage limit.`,
+  spaceHoldsOf: (size: string, limit: string) => `This space holds ${size} of ${limit}.`,
+  limitLabel: 'Storage limit',
+  /** What the empty field of a limit says */
+  noLimit: 'No limit',
+  limitUnit: 'Unit',
+  spaceLimitHint:
+    'The most this space may hold. Every version of every file counts, the versions before the current one and what is in the trash too. Leave it empty for no limit.',
+  limitInvalid: 'Type an amount like 10 or 1.5, or leave it empty for no limit.',
+  limitSaved: 'Storage limit saved',
 
   unknownTitle: 'No such space',
   unknownDescription: 'There is no space at this address, or you are not a member of it.'
