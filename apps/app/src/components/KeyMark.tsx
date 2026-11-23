@@ -1,21 +1,17 @@
 import { Key01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { cn } from 'cn';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 /**
- * An API key, and so an agent: where a person has their avatar, an agent has this. It is the one place the colour
- * of the app is used outside a button: what an agent wrote is what this drive shows and others do not.
+ * An API key, and so an agent: where a person has their avatar with their letters, an agent has this one, with a
+ * key. What an agent wrote is what this drive shows and others do not.
  */
-export function KeyMark({ className }: { className?: string }) {
+export function KeyMark({ size }: { size?: 'sm' | 'default' | 'lg' }) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/30 dark:text-chart-1',
-        className
-      )}
-    >
-      <HugeiconsIcon icon={Key01Icon} strokeWidth={2} className="size-[58%]" />
-    </span>
+    <Avatar size={size} aria-hidden="true">
+      <AvatarFallback>
+        <HugeiconsIcon icon={Key01Icon} strokeWidth={2} className="size-3.5" />
+      </AvatarFallback>
+    </Avatar>
   );
 }

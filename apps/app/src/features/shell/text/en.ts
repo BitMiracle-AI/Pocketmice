@@ -15,5 +15,8 @@ export const en = {
   userMenu: 'Your account',
   theme: 'Theme',
   themes: { system: 'System', light: 'Light', dark: 'Dark' } satisfies Record<Theme, string>,
-  language: 'Language'
+  language: 'Language',
+
+  /** Under the word Settings at the top of the sidebar of the settings: whose they are */
+  yours: 'Yours, in every space'
 };

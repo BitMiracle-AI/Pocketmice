@@ -4,7 +4,6 @@ export const en = {
   needDecision: (count: number) => (count === 1 ? '1 file needs a decision' : `${count} files need a decision`),
   notUploaded: (count: number) => (count === 1 ? '1 file was not uploaded' : `${count} files were not uploaded`),
   uploaded: (count: number) => (count === 1 ? '1 file uploaded' : `${count} files uploaded`),
-  close: 'Close',
   waiting: 'Waiting',
   cancel: (name: string) => `Cancel the upload of ${name}`,
   dismiss: (name: string) => `Remove ${name} from this list`,
@@ -22,5 +21,12 @@ export const en = {
   spaceNoRoom: 'The space has no room for this file. Its owner can make room or raise its limit.',
   memberNoRoom: 'This file would take you past your storage limit in this space. Its owner can raise it.',
   /** What the browser asks before the page is closed while files are still going up */
-  leaving: 'Files are still being uploaded.'
+  leaving: 'Files are still being uploaded.',
+
+  /** What the list of the uploads is called, and the button that empties it once nothing is going up */
+  title: 'Uploads',
+  clear: 'Clear list',
+
+  /** How far an upload has got: what went up, of what there is */
+  progress: (sent: string, size: string) => `${sent} of ${size}`
 };

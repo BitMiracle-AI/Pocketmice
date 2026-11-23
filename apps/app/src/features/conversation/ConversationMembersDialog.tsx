@@ -72,7 +72,7 @@ function MembersOf({ conversation, members }: { conversation: Conversation; memb
           <ul aria-label={conversationText.membersLabel} className="max-h-56 overflow-y-auto rounded-2xl border p-1">
             {members.map((member) => (
               <li key={member.userId} className="flex h-9 min-w-0 items-center gap-3 px-2.5">
-                <PersonAvatar name={member.name} small />
+                <PersonAvatar name={member.name} size="sm" />
                 <span className="min-w-0 truncate">{member.name}</span>
                 {member.userId === user.id && <Badge variant="secondary">{conversationText.you}</Badge>}
                 {/* The person takes themselves out by leaving */}
@@ -114,7 +114,7 @@ function MembersOf({ conversation, members }: { conversation: Conversation; memb
             <ul aria-labelledby="conversation-add-people" className="max-h-56 overflow-y-auto rounded-2xl border p-1">
               {others.map((each) => (
                 <li key={each.userId} className="flex h-9 min-w-0 items-center gap-3 px-2.5">
-                  <PersonAvatar name={each.name} small />
+                  <PersonAvatar name={each.name} size="sm" />
                   <span className="min-w-0 truncate">{each.name}</span>
                   {each.userId === user.id && <Badge variant="secondary">{conversationText.you}</Badge>}
                   <Button

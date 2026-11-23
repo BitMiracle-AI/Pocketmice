@@ -200,7 +200,7 @@ export function Composer({
                           })
                         }
                       >
-                        <PersonAvatar name={member.name} small />
+                        <PersonAvatar name={member.name} size="sm" />
                         <span className="truncate">
                           {member.userId === user.id ? conversationText.nameAndYou(member.name) : member.name}
                         </span>

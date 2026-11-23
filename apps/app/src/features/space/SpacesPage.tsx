@@ -61,7 +61,7 @@ function SpaceCard({ space }: { space: Space }) {
     >
       <Card className="gap-7 transition-colors group-hover/space:bg-muted/60">
         <CardHeader>
-          <SpaceMark name={space.name} large />
+          <SpaceMark name={space.name} />
           <CardAction className="text-muted-foreground opacity-0 transition-opacity group-hover/space:opacity-100 group-focus-visible/space:opacity-100">
             <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4" />
           </CardAction>

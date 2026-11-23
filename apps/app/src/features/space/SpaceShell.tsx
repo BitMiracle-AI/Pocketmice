@@ -10,7 +10,6 @@ import {
 } from '@hugeicons/core-free-icons';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useUnreadTotal } from '@/features/conversation/conversations';
 import { useSpaceEvents } from '@/features/event/useSpaceEvents';
 import { NavRow, Shell } from '@/features/shell/Shell';
@@ -18,6 +17,7 @@ import { shellText } from '@/features/shell/text';
 import { CurrentSpaceProvider } from './CurrentSpaceProvider';
 import { SpaceMark } from './SpaceMark';
 import { type Space, useSpaces } from './spaces';
+import { spaceText } from './text';
 import { UnknownSpacePage } from './UnknownSpacePage';
 
 /**
@@ -51,72 +51,67 @@ function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) 
     <CurrentSpaceProvider space={space}>
       <Shell
         space={spaceId}
-        // Which space this is, under the way out of it: another space is gone to from the start, where all of
-        // them are
-        top={
+        // Which space this is: another one is gone to from the start, where all of them are
+        mark={<SpaceMark name={space.name} />}
+        title={space.name}
+        subtitle={spaceText.roles[space.role]}
+        home={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
+        nav={
           <>
-            <NavRow link={<Link to="/" />} icon={ArrowLeft01Icon} label={shellText.allSpaces} active={false} />
-            <SidebarMenuItem className="flex h-8 items-center gap-2 px-2 text-sm font-medium">
-              <SpaceMark name={space.name} />
-              <span className="truncate">{space.name}</span>
-            </SidebarMenuItem>
+            <NavRow
+              link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
+              icon={Folder01Icon}
+              label={shellText.files}
+              active={!onConversations && !onSearch && !onMembers && !onTrash && !onSettings}
+            />
+            <NavRow
+              link={<Link to="/spaces/$spaceId/conversations" params={{ spaceId }} />}
+              icon={BubbleChatIcon}
+              label={shellText.conversations}
+              active={onConversations}
+              count={unread}
+            />
+            <NavRow
+              link={<Link to="/spaces/$spaceId/search" params={{ spaceId }} />}
+              icon={Search01Icon}
+              label={shellText.search}
+              active={onSearch}
+            />
+            <NavRow
+              link={<Link to="/spaces/$spaceId/members" params={{ spaceId }} />}
+              icon={UserMultiple02Icon}
+              label={shellText.members}
+              active={onMembers}
+            />
+            <NavRow
+              link={<Link to="/spaces/$spaceId/trash" params={{ spaceId }} />}
+              icon={Delete02Icon}
+              label={shellText.trash}
+              active={onTrash}
+            />
+            {/* What the settings of a space hold is the owner's alone */}
+            {space.role === 'owner' && (
+              <NavRow
+                link={<Link to="/spaces/$spaceId/settings" params={{ spaceId }} />}
+                icon={Settings01Icon}
+                label={shellText.settings}
+                active={onSettings}
+              />
+            )}
           </>
         }
-        // The keys are the person's and not this space's, so the way to them is at the bottom, next to who is
-        // signed in. The address says which space the person came from, for the way back
-        bottom={
-          <NavRow
-            link={<Link to="/settings/keys" search={{ space: spaceId }} />}
-            icon={Key01Icon}
-            label={shellText.apiKeys}
-            active={false}
-          />
-        }
-        nav={
-          <SidebarGroup>
-            <SidebarMenu>
-              <NavRow
-                link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
-                icon={Folder01Icon}
-                label={shellText.files}
-                active={!onConversations && !onSearch && !onMembers && !onTrash && !onSettings}
-              />
-              <NavRow
-                link={<Link to="/spaces/$spaceId/conversations" params={{ spaceId }} />}
-                icon={BubbleChatIcon}
-                label={shellText.conversations}
-                active={onConversations}
-                count={unread}
-              />
-              <NavRow
-                link={<Link to="/spaces/$spaceId/search" params={{ spaceId }} />}
-                icon={Search01Icon}
-                label={shellText.search}
-                active={onSearch}
-              />
-              <NavRow
-                link={<Link to="/spaces/$spaceId/members" params={{ spaceId }} />}
-                icon={UserMultiple02Icon}
-                label={shellText.members}
-                active={onMembers}
-              />
-              <NavRow
-                link={<Link to="/spaces/$spaceId/trash" params={{ spaceId }} />}
-                icon={Delete02Icon}
-                label={shellText.trash}
-                active={onTrash}
-              />
-              {/* What the settings of a space hold is the owner's alone */}
-              {space.role === 'owner' && (
-                <NavRow
-                  link={<Link to="/spaces/$spaceId/settings" params={{ spaceId }} />}
-                  icon={Settings01Icon}
-                  label={shellText.settings}
-                  active={onSettings}
-                />
-              )}
-            </SidebarMenu>
-          </SidebarGroup>
+        // The other spaces, and the keys: the keys are the person's and not this space's, and the address says
+        // which space the person came from, for the way back
+        ways={
+          <>
+            <NavRow link={<Link to="/" />} icon={ArrowLeft01Icon} label={shellText.allSpaces} small />
+            <NavRow
+              link={<Link to="/settings/keys" search={{ space: spaceId }} />}
+              icon={Key01Icon}
+              label={shellText.apiKeys}
+              small
+            />
+          </>
         }
       >
         {children}

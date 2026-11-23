@@ -53,7 +53,7 @@ export function MessageRow({
     <MessageLine align={mine ? 'end' : 'start'} className={cn('group/row', head ? 'pt-4' : 'pt-1')}>
       {!mine && (
         <div className="flex w-8 shrink-0 justify-center pt-5">
-          {head && (apiKey ? <KeyMark className="size-6" /> : <PersonAvatar name={user.name} />)}
+          {head && (apiKey ? <KeyMark /> : <PersonAvatar name={user.name} />)}
         </div>
       )}
 

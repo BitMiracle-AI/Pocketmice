@@ -148,7 +148,7 @@ function KeyRow({
   return (
     <Item variant="outline" size="sm">
       <ItemMedia>
-        <KeyMark className="size-8" />
+        <KeyMark />
       </ItemMedia>
       <ItemContent className="min-w-0">
         <ItemTitle>

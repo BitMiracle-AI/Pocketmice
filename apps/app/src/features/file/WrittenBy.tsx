@@ -14,7 +14,7 @@ export function WrittenBy({ version }: { version: NonNullable<DriveFile['version
   if (!apiKey) {
     return (
       <span className="flex min-w-0 items-center gap-2">
-        <PersonAvatar name={user.name} small />
+        <PersonAvatar name={user.name} size="sm" />
         <span className="truncate">{user.name}</span>
       </span>
     );
@@ -29,7 +29,7 @@ export function WrittenBy({ version }: { version: NonNullable<DriveFile['version
           />
         }
       >
-        <KeyMark className="size-5" />
+        <KeyMark size="sm" />
         <span className="truncate">
           <span className="text-foreground">{apiKey.name}</span>
           <span aria-hidden="true" className="px-1.5 text-muted-foreground/50">

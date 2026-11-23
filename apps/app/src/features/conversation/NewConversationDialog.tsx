@@ -132,7 +132,7 @@ function NewConversationForm({ spaceId, onDone }: { spaceId: string; onDone: () 
                       setPicked(checked ? [...picked, member.userId] : picked.filter((each) => each !== member.userId))
                     }
                   />
-                  <PersonAvatar name={member.name} small />
+                  <PersonAvatar name={member.name} size="sm" />
                   <span className="min-w-0 flex-1 truncate">{member.name}</span>
                 </label>
               </li>
