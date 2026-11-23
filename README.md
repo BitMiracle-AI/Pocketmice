@@ -4,12 +4,13 @@
 the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
-> invites, API keys for agents, and files — folders, upload and download, versions, a trash. The web app has its
-> first pages: signing in, spaces, the files of a space (folders, upload, download) and API keys. What it does not
-> do yet (members and invites, the trash, versions, renaming and moving) is done through the HTTP API. For a
-> program there is the [TypeScript SDK](#typescript-sdk), which is in this repository and not on npm yet, and for
-> an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it the API. Nothing here is
-> ready for production.
+> invites, API keys for agents, and files — folders, upload and download, versions, a trash. The web app has a
+> page for most of it: signing in, spaces with their members and invite links, the files of a space (folders,
+> upload, download, renaming, moving, the trash, the versions of a file) and API keys. What it does not do yet
+> (looking for a file by words, renaming or deleting a space, changing the name you go by) is done through the
+> HTTP API. For a program there is the [TypeScript SDK](#typescript-sdk), which is in this repository and not on
+> npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it the API.
+> Nothing here is ready for production.
 
 ## What is planned
 
@@ -37,7 +38,7 @@ the same files: they read what people give them and hand back what they make.
 
 ```
 apps/api            the API server (Hono on Node)
-apps/app            the web app (Vite and React): signing in, spaces, files and API keys
+apps/app            the web app (Vite and React): signing in, spaces and their members, files and API keys
 packages/contract   the definition of every operation: its input, its output, its error codes
 packages/client     the code every caller shares to call the API
 packages/sdk        the TypeScript SDK: the drive, for a program that holds an API key
