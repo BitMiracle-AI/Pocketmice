@@ -179,6 +179,11 @@ comes; and with nginx keeping its connections to the API, where requests timed t
 were all answered. Tried behind Traefik 3.6 with that limit lifted: an upload that took 78 seconds and one of 300
 MB arrived whole, and a client that named an `X-Forwarded-For` of its own was still counted by its real address.
 
+An upload that cannot be taken (the name is in use, a storage limit would be passed) is refused before its bytes
+are read. Behind a proxy that holds the body until all of it has arrived, the caller still sends all of it first:
+24 MB at 2 MB a second waited 12 seconds for its refusal behind nginx as it comes, and none with
+`proxy_request_buffering off`.
+
 ## Running the API in a container
 
 `apps/api/Dockerfile` builds an image of the API. The build context is the root of the repository:
