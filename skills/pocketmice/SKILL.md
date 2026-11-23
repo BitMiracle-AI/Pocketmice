@@ -20,10 +20,10 @@ Five facts decide how everything below works:
   replacing (`baseVersionId`); if somebody wrote in between, the answer is `CONFLICT` and nothing is written.
 - **Deleting is putting in the trash.** `trashFile` removes nothing, and `restoreFile` undoes it. While a file is in
   the trash it does not exist for any other call.
-- **Some things only the person does.** No API key makes or deletes API keys, invites or removes members, changes a
-  role, joins, leaves or deletes a space, deletes a file for good, or empties the trash. Those take the person,
-  signed in themselves. When a task needs one of them, do the part a key can do, tell the user which part is left
-  for them, and do not look for a way around it.
+- **Some things only the person does.** No API key reads, makes or deletes API keys or invites, removes a member or
+  changes a role, joins, leaves or deletes a space, deletes a file for good, or empties the trash. Those take the
+  person, signed in themselves. When a task needs one of them, do the part a key can do, tell the user which part
+  is left for them, and do not look for a way around it.
 
 ## Connecting
 
@@ -67,7 +67,8 @@ pm getSpaces '{}'
 ```
 
 `role` is what the person is there: a `viewer` reads, an `editor` also changes what is in the space, the `owner`
-also decides who gets in. A read-only key reads, whatever the role.
+also decides who gets in. People get in with an invite link the owner makes, signed in themselves: nobody is added
+by an email address. A read-only key reads, whatever the role.
 
 Nothing says beforehand which kind your key is: a read-only key finds out at its first write, with `FORBIDDEN`. What
 a key may do is settled when the person makes it, so the remedy is a new, read-write key from them.
@@ -225,6 +226,9 @@ folder changes the `path` of everything in it, and no `id`.
 A description is up to 1024 characters of plain words about a file or a folder: what it holds, where it came from,
 what to do with it. When you make a file that others will come across, give it one.
 
+Unlike content, a name and a description have no versions: the one you replace is gone. Before you write a new
+description, read the one the file has, and when you replace one, tell the user what it said.
+
 ## Versions
 
 ```sh
@@ -250,9 +254,10 @@ pm getTrashedFiles '{"spaceId":"<space>"}'                     # the latest firs
 pm restoreFile     '{"spaceId":"<space>","fileId":"<file>"}'   # back where it was, under its name
 ```
 
-Trashing a folder takes everything in it along; what is inside is not listed in the trash, and comes back with the
-folder. A trashed file is `NOT_FOUND` for every other call, and its name is free in the meantime, so `restoreFile`
-answers `CONFLICT` when the name has been taken, or when the folder it was in is itself in the trash now.
+A file in the trash keeps the `path` it had: that is where `restoreFile` puts it back. Trashing a folder takes
+everything in it along; what is inside is not listed in the trash, and comes back with the folder. A trashed file
+is `NOT_FOUND` for every other call, and its name is free in the meantime, so `restoreFile` answers `CONFLICT` when
+the name has been taken, or when the folder it was in is itself in the trash now.
 
 Trash a file only when the user asked for it to go. When they ask for it to be deleted for good, trash it and tell
 them the rest is theirs: deleting for good is done by the owner of the space, signed in themselves, on what is
@@ -318,4 +323,5 @@ And the address the content goes through, `/api/content`:
   end, and is at most 4096 characters.
 - Other people and other agents write here too. Between two of your calls anything may have changed: a `CONFLICT`
   or a `NOT_FOUND` after a call that worked a moment ago is the drive telling you so, not a fault.
-- Whatever you write or trash, the owner of the space can undo. Nothing you can call destroys anything.
+- Nothing you can call destroys the content of a file: a version you write over stays, and what you trash can be
+  restored. Only a name or a description you replace is gone.
