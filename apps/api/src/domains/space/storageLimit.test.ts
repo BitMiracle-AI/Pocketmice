@@ -18,6 +18,7 @@ import {
   getMembers,
   getSpaceSize,
   removeMember,
+  updateMember,
   updateMemberStorageLimit,
   updateSpaceStorageLimit
 } from '@pocketmice/contract/domains/space';
@@ -299,9 +300,24 @@ test('what a member holds is what they wrote, also through their keys: a write t
   assert.deepEqual(await held(spaceId, grace), expected);
   assert.deepEqual(await sizeOf(spaceId, ada), { storageSize: 655, storageLimit: null });
 
-  // Without the limit she writes again
-  await limitMember(ada, spaceId, grace, null);
+  // Without the limit she writes again. The answer says what she holds, and not what the others do
+  assert.deepEqual(await limitMember(ada, spaceId, grace, null), {
+    userId: grace.id,
+    name: 'Grace',
+    role: 'editor',
+    storageSize: 50,
+    storageLimit: null
+  });
   await upload(grace, spaceId, { name: 'again.md' }, 21);
+  // And so does the answer to a change of her role
+  const demoted = await api.as(ada)(updateMember, { spaceId, userId: grace.id, role: 'viewer' });
+  assert.deepEqual(demoted.ok && demoted.data.member, {
+    userId: grace.id,
+    name: 'Grace',
+    role: 'viewer',
+    storageSize: 71,
+    storageLimit: null
+  });
 });
 
 test('the owner sets the limit of a member, their own too, signed in themselves: no other member does, and no key; a member the space does not have is NOT_FOUND', async () => {
@@ -396,6 +412,20 @@ test('restoreFileVersion adds a version as large as the old one: refused when th
   assert.equal(restored.ok && restored.data.file.version?.size, 60);
   assert.deepEqual(await held(spaceId, ada), { Ada: [70, null], Grace: [60, 60] });
   assert.deepEqual(await sizeOf(spaceId, ada), { storageSize: 130, storageLimit: null });
+
+  // Bringing back the version that is the content already adds nothing: the space and she are both full now,
+  // and it is answered as before
+  await limitSpace(ada, spaceId, 130);
+  const currentId = restored.ok ? restored.data.file.version?.id : undefined;
+  assert.ok(currentId);
+  const same = await api.as(grace)(restoreFileVersion, {
+    spaceId,
+    fileId: first.id,
+    versionId: currentId,
+    baseVersionId: currentId
+  });
+  assert.equal(same.ok && same.data.file.version?.id, currentId);
+  assert.deepEqual(await sizeOf(spaceId, ada), { storageSize: 130, storageLimit: 130 });
 });
 
 test('a limit under what is held is taken as it is, and only adding bytes is refused: the space is still read and tidied, and deleting for good makes room', async () => {
