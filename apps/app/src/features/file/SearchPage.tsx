@@ -26,7 +26,8 @@ import { fileText } from './text';
 // Looking for a file or a folder of the space by words. What is looked for is in the address (?q=…), and nowhere
 // else: the page shows what the address says, so coming back from a file that was found shows what was found.
 // The field writes what is typed into the address once the typing has paused, or at once on Enter, without a new
-// step in the history for every letter.
+// step in the history for every letter. While an input method is putting a word together (pinyin on its way to
+// 预算), what the field holds is not yet what the person is looking for, and nothing is written.
 
 /** How long the typing has to pause before what was typed is looked for, in milliseconds */
 const PAUSE_MS = 250;
@@ -36,6 +37,7 @@ export function SearchPage({ words }: { words: string }) {
   const space = useCurrentSpace();
   const navigate = useNavigate();
   const [typed, setTyped] = useState(words);
+  const [composing, setComposing] = useState(false);
   // What this field last wrote into the address: an address that says something else was changed by a step back
   // or forward, and the field follows it
   const written = useRef(words);
@@ -44,6 +46,7 @@ export function SearchPage({ words }: { words: string }) {
 
   const write = useCallback(
     (next: string) => {
+      if (next === written.current) return;
       written.current = next;
       void navigate({
         to: '/spaces/$spaceId/search',
@@ -62,11 +65,10 @@ export function SearchPage({ words }: { words: string }) {
   }, [words]);
 
   useEffect(() => {
-    const next = typed.trim();
-    if (next === written.current) return;
-    const timer = setTimeout(() => write(next), PAUSE_MS);
+    if (composing) return;
+    const timer = setTimeout(() => write(typed.trim()), PAUSE_MS);
     return () => clearTimeout(timer);
-  }, [typed, write]);
+  }, [typed, composing, write]);
 
   const found = useInfiniteQuery({
     ...matchesQuery(space.id, words),
@@ -75,13 +77,13 @@ export function SearchPage({ words }: { words: string }) {
     placeholderData: keepPreviousData
   });
   const files = words === '' ? null : (found.data?.pages.flatMap((page) => page.files) ?? null);
-  const looking = typed.trim() !== words || (words !== '' && found.isFetching && !found.isFetchingNextPage);
+  const looking =
+    (!composing && typed.trim() !== words) || (words !== '' && found.isFetching && !found.isFetchingNextPage);
   const canEdit = roleCovers(space.role, 'editor');
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const next = typed.trim();
-    if (next !== written.current) write(next);
+    if (!composing) write(typed.trim());
   };
 
   return (
@@ -107,6 +109,8 @@ export function SearchPage({ words }: { words: string }) {
                 maxLength={SEARCH_QUERY_MAX_LENGTH}
                 value={typed}
                 onChange={(event) => setTyped(event.target.value)}
+                onCompositionStart={() => setComposing(true)}
+                onCompositionEnd={() => setComposing(false)}
               />
               <InputGroupAddon align="inline-end">
                 {looking ? (
