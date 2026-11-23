@@ -347,6 +347,10 @@ And the address the content goes through, `/api/content`:
 - A name is 1 to 255 characters, with no `/`, and is not `.` or `..`. A path starts with `/`, has no `/` at the
   end, and is at most 4096 characters. Folders nest 100 deep: making a folder deeper than that, or moving one to
   where it or a folder inside it would be, is `CONFLICT`.
+- A character that can be written in two ways that look the same (`é` as one character, or as `e` followed by an
+  accent, which is how macOS names its files) is kept one way, the first (Unicode NFC): in names, paths,
+  descriptions and what you look for. Either way finds the file, and the two are one name. The name in an answer
+  may so differ, byte for byte, from the one you sent: to compare the two, bring yours to NFC first.
 - Other people and other agents write here too. Between two of your calls anything may have changed: a `CONFLICT`
   or a `NOT_FOUND` after a call that worked a moment ago is the drive telling you so, not a fault.
 - Nothing you can call destroys the content of a file: a version you write over stays, and what you trash can be

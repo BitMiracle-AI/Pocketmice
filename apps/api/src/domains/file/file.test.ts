@@ -9,6 +9,7 @@ import {
   getFile,
   getFileByPath,
   getFiles,
+  getMatchingFiles,
   getTrashedFiles,
   moveFile,
   restoreFile,
@@ -151,6 +152,50 @@ test('in one place a name is used once; in another place, or written in another 
   await makeFolder(ada, otherSpaceId, null, 'Reports');
   assert.deepEqual((await namesIn(ada, spaceId, null)).sort(), ['Reports', 'reports']);
   assert.deepEqual(await namesIn(ada, spaceId, reports.id), ['Reports']);
+});
+
+test('a name written in two ways that look the same is one name: used once, and found by either way of writing it', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  // é as one character, and as e followed by an accent: what macOS hands out as the name of a file
+  const [one, two] = ['caf\u00e9', 'cafe\u0301'];
+
+  const made = await api.as(ada)(createFolder, { spaceId, parentId: null, name: two, description: `Menu, ${two}` });
+  assert.ok(made.ok);
+  const folder = made.data.file;
+  assert.deepEqual([folder.name, folder.path, folder.description], [one, `/${one}`, `Menu, ${one}`]);
+  const fileId = await uploadInto(ada, spaceId, folder.id, `${two}.txt`);
+
+  // Written the other way it is the same name, and taken: as a folder, as an upload, as the new name of another
+  const again = await api.as(ada)(createFolder, { spaceId, parentId: null, name: one });
+  assert.equal(!again.ok && again.code, 'CONFLICT');
+  const query = new URLSearchParams({ spaceId, parentId: folder.id, name: `${one}.txt` });
+  const uploaded = await api.send(ada, `${FILE_CONTENT_PATH}?${query}`, {
+    method: 'PUT',
+    headers: { 'content-length': '5' },
+    body: 'notes'
+  });
+  assert.equal(uploaded.status, 409);
+  const other = await api.as(ada)(createFolder, {
+    spaceId,
+    parentId: null,
+    name: 'Other',
+    description: `By the ${two}`
+  });
+  assert.ok(other.ok);
+  const renamed = await api.as(ada)(updateFile, { spaceId, fileId: other.data.file.id, name: two });
+  assert.equal(!renamed.ok && renamed.code, 'CONFLICT');
+
+  for (const written of [one, two]) {
+    const found = await api.as(ada)(getFileByPath, { spaceId, path: `/${written}/${written}.txt` });
+    assert.ok(found.ok, `the path written with "${written}" should have led to the file: ${JSON.stringify(found)}`);
+    assert.deepEqual([found.data.file.id, found.data.file.path], [fileId, `/${one}/${one}.txt`]);
+
+    // By its name, and Other by its description
+    const matching = await api.as(ada)(getMatchingFiles, { spaceId, folderId: null, query: written });
+    assert.ok(matching.ok);
+    assert.deepEqual(matching.data.files.map((file) => file.name).sort(), ['Other', one, `${one}.txt`]);
+  }
 });
 
 test('createFolder into a folder that is not there is NOT_FOUND: no such id, or a folder of another space', async () => {

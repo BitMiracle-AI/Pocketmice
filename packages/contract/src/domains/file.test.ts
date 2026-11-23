@@ -42,6 +42,22 @@ test('a name that is empty, too long, . or .., or has a / or a control character
   assert.equal(fileName.safeParse('a'.repeat(FILE_NAME_MAX_LENGTH + 1)).success, false);
 });
 
+test('a character that can be written in two ways is written one way: in a name, a path, a description and what is looked for', () => {
+  // é as one character, and as e followed by an accent: what macOS hands out as the name of a file
+  const [one, two] = ['caf\u00e9', 'cafe\u0301'];
+  assert.notEqual(one, two);
+
+  assert.equal(fileName.parse(`${two}.txt`), `${one}.txt`);
+  assert.equal(filePath.parse(`/${two}/${two}.txt`), `/${one}/${one}.txt`);
+  assert.equal(fileDescription.parse(`Menu of the ${two}`), `Menu of the ${one}`);
+  assert.equal(searchQuery.parse(two), one);
+  // Korean typed on macOS comes the same way: the parts of a syllable one by one
+  assert.equal(fileName.parse('\u1112\u1161\u11ab'), '\ud55c');
+
+  // What is counted is what is kept: as many é as a name has characters, each written as two
+  assert.equal(fileName.parse('e\u0301'.repeat(FILE_NAME_MAX_LENGTH)).length, FILE_NAME_MAX_LENGTH);
+});
+
 test('a description is trimmed, may be empty, and has a limit', () => {
   assert.equal(fileDescription.parse('  Raw data. Do not edit. '), 'Raw data. Do not edit.');
   assert.equal(fileDescription.parse('   '), '');

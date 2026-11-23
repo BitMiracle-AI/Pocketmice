@@ -18,6 +18,8 @@ import { operation } from '../operation.ts';
 // file. It is not stored: it is worked out when asked for, so every file in an answer has its path, and
 // getFileByPath turns a path into the file. Renaming or moving a folder changes the path of everything in it.
 // In one folder a name is used once. Folders nest FOLDER_DEPTH_MAX deep and no deeper.
+// What looks the same is the same: names, paths, descriptions and what is looked for are kept in one way of writing
+// each character (see sameWriting).
 //
 // 2. Content. A file has content, a folder has none. Every write to a file is a new version, and the versions
 // before it stay: nothing a person or an agent writes destroys what was there. The version a file points at is its
@@ -55,6 +57,17 @@ export type FileKind = (typeof FILE_KINDS)[number];
 
 export const fileKind = z.enum(FILE_KINDS);
 
+/**
+ * Text in which every character is written one way. Some characters can be written in two ways that look the same:
+ * é as one character, or as e followed by an accent, which is how macOS hands out the names of its files. Kept as
+ * they come, the two would be two names in one folder that nobody can tell apart, and a path or a word typed one
+ * way would not find a file written the other way.
+ * So whatever text of a file is compared comes in through this: its name, a path, its description and what is
+ * looked for. Each is turned into the first of the two ways (the form Unicode calls NFC) before anything else is
+ * asked of it, and that is how it is kept and answered.
+ */
+const sameWriting = z.string().normalize('NFC');
+
 /** The name of a file has at most this many characters */
 export const FILE_NAME_MAX_LENGTH = 255;
 
@@ -73,10 +86,10 @@ function isFileName(name: string): boolean {
 
 /**
  * The name of a file or a folder. Spaces around it are dropped. Names are compared as they are written: Notes and
- * notes are two names.
+ * notes are two names. A character that can be written in two ways is written one way (see sameWriting), so the
+ * two are one name.
  */
-export const fileName = z
-  .string()
+export const fileName = sameWriting
   .trim()
   .refine(isFileName, `A name has 1 to ${FILE_NAME_MAX_LENGTH} characters, none of them /, and is not . or ..`);
 
@@ -97,7 +110,7 @@ export const FILE_DESCRIPTION_MAX_LENGTH = 1024;
  * What a file is, in the words of whoever wrote it down, a person or an agent: what it holds, where it came from,
  * what to do with it. Spaces around it are dropped. Empty means there is none.
  */
-export const fileDescription = z.string().trim().max(FILE_DESCRIPTION_MAX_LENGTH);
+export const fileDescription = sameWriting.trim().max(FILE_DESCRIPTION_MAX_LENGTH);
 
 /** A path has at most this many characters */
 export const FILE_PATH_MAX_LENGTH = 4096;
@@ -119,9 +132,10 @@ export function pathOfNames(names: readonly string[]): string {
 }
 
 /** The path of a file: /Reports/2026/summary.md */
-export const filePath = z
-  .string()
-  .refine((path) => namesOfPath(path) !== null, 'A path is written like /folder/name: it starts with /.');
+export const filePath = sameWriting.refine(
+  (path) => namesOfPath(path) !== null,
+  'A path is written like /folder/name: it starts with /.'
+);
 
 /** What to look for has at most this many characters: as many as a name, so that a whole name can be looked for */
 export const SEARCH_QUERY_MAX_LENGTH = FILE_NAME_MAX_LENGTH;
@@ -134,7 +148,7 @@ const QUERY_LENGTH = `What to look for has 1 to ${SEARCH_QUERY_MAX_LENGTH} chara
  * name and another in the description. A word is looked for as it is written. No character in it stands for
  * others, and there is no way to say "or" or "not": a few words find more than a sentence does.
  */
-export const searchQuery = z.string().trim().min(1, QUERY_LENGTH).max(SEARCH_QUERY_MAX_LENGTH, QUERY_LENGTH);
+export const searchQuery = sameWriting.trim().min(1, QUERY_LENGTH).max(SEARCH_QUERY_MAX_LENGTH, QUERY_LENGTH);
 
 /**
  * The words of what to look for: what is between its spaces. A space is a space of any kind, a tab or the wide
