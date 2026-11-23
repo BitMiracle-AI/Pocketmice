@@ -64,6 +64,9 @@ export const en = {
   /** How much the space holds, in a sentence: with no limit, and against its limit */
   spaceHolds: (size: string) => `This space holds ${size}, and has no storage limit.`,
   spaceHoldsOf: (size: string, limit: string) => `This space holds ${size} of ${limit}.`,
+  /** How much a member holds, under their name: with no limit, and against their limit */
+  holds: (size: string) => `Holds ${size}`,
+  holdsOf: (size: string, limit: string) => `Holds ${size} of ${limit}`,
   limitLabel: 'Storage limit',
   /** What the empty field of a limit says */
   noLimit: 'No limit',
@@ -72,6 +75,12 @@ export const en = {
     'The most this space may hold. Every version of every file counts, the versions before the current one and what is in the trash too. Leave it empty for no limit.',
   limitInvalid: 'Type an amount like 10 or 1.5, or leave it empty for no limit.',
   limitSaved: 'Storage limit saved',
+  storageLimitItem: 'Storage limit…',
+  changeLimit: (name: string) => `Change the storage limit of ${name}`,
+  memberLimitTitle: (name: string) => `Storage limit of ${name}`,
+  memberHoldsNow: (name: string, size: string) => `${name} holds ${size} in this space now.`,
+  memberLimitHint:
+    'The most this member may hold in the space: every version they wrote, themselves or through one of their API keys, the versions before the current one and what is in the trash too. Leave it empty for no limit.',
 
   unknownTitle: 'No such space',
   unknownDescription: 'There is no space at this address, or you are not a member of it.'

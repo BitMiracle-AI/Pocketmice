@@ -56,12 +56,20 @@ export const zhHans: typeof en = {
   storageTitle: '存储',
   spaceHolds: (size) => `这个空间已占用 ${size}，没有设存储上限。`,
   spaceHoldsOf: (size, limit) => `这个空间已占用 ${size}，上限 ${limit}。`,
+  holds: (size) => `占用 ${size}`,
+  holdsOf: (size, limit) => `占用 ${size}，上限 ${limit}`,
   limitLabel: '存储上限',
   noLimit: '不限',
   limitUnit: '单位',
   spaceLimitHint: '这个空间最多能放多少。每个文件的每个版本都算，旧版本和回收站里的也算。留空就是不限。',
   limitInvalid: '请填一个数，比如 10 或 1.5；留空就是不限。',
   limitSaved: '存储上限已保存',
+  storageLimitItem: '存储上限…',
+  changeLimit: (name) => `修改 ${name} 的存储上限`,
+  memberLimitTitle: (name) => `${name} 的存储上限`,
+  memberHoldsNow: (name, size) => `${name} 现在在这个空间里占用 ${size}。`,
+  memberLimitHint:
+    '这位成员在这个空间里最多能占用多少：本人写的每个版本都算，经本人的 API key 写的也算，旧版本和回收站里的也算。留空就是不限。',
 
   unknownTitle: '没有这个空间',
   unknownDescription: '这个地址上没有空间，或者你不是它的成员。'
