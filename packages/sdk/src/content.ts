@@ -40,8 +40,10 @@ const PIECE_BYTES = 64 * 1024;
  *   CONFLICT was answered. What still waited is never taken off the count, and the connection, which fetch goes
  *   on using, fails every call from then on.
  * In pieces neither happens.
- * What is left: a refused upload still leaves what waited of one piece on the count. About 250 uploads of some MB
- * each, refused in one program, end its connection the same way.
+ * What is left: a refused upload still leaves what waited of one piece on the count. Some hundreds of uploads of a
+ * MB or more each, refused in one program, end its connection the same way: 250 the first time it was tried, 490
+ * to 620 since. While calls go on, they go on failing. Once none had been made for six seconds, the next was
+ * answered.
  * Two other runtimes do not take every content that way, both seen with real uploads (Bun 1.4, Deno 2.9):
  * - Bun puts the pieces of a file on disk together as a Blob of no bytes: the file would be stored empty, and
  *   nothing would say so. Where the pieces do not add up to the content, the content goes as it came.
