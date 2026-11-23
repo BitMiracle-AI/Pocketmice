@@ -147,7 +147,7 @@ export const fileVersions = pgTable(
      * The API key it was written through, when an agent wrote it for the person. Null when the person wrote it
      * themselves. A deleted key keeps its row (see apiKeys), so this still names it.
      */
-    keyId: uuid('key_id').references(() => apiKeys.id),
+    apiKeyId: uuid('api_key_id').references(() => apiKeys.id),
     /** Kept to the millisecond, for the same reason as files.deletedAt */
     createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).defaultNow().notNull()
   },

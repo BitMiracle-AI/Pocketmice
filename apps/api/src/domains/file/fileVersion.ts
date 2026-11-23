@@ -28,13 +28,13 @@ export function selectVersions(db: DbReader) {
         createdAt: fileVersions.createdAt,
         userId: fileVersions.userId,
         userName: profiles.name,
-        keyId: fileVersions.keyId,
-        keyName: apiKeys.name
+        apiKeyId: fileVersions.apiKeyId,
+        apiKeyName: apiKeys.name
       })
       .from(fileVersions)
       // Whoever wrote a version was signed in, or had a key: either way they have a profile (see ensureProfile)
       .innerJoin(profiles, eq(profiles.id, fileVersions.userId))
-      .leftJoin(apiKeys, eq(apiKeys.id, fileVersions.keyId))
+      .leftJoin(apiKeys, eq(apiKeys.id, fileVersions.apiKeyId))
   );
 }
 
@@ -48,7 +48,7 @@ export function toVersion(row: VersionRow): FileVersion {
     sha256: row.sha256,
     createdAt: row.createdAt.toISOString(),
     user: { id: row.userId, name: row.userName },
-    apiKey: row.keyId !== null && row.keyName !== null ? { id: row.keyId, name: row.keyName } : null
+    apiKey: row.apiKeyId !== null && row.apiKeyName !== null ? { id: row.apiKeyId, name: row.apiKeyName } : null
   };
 }
 

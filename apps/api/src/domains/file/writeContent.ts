@@ -190,7 +190,7 @@ export async function createFileRow(db: Db, target: NewFile, stored: Stored, wri
         values (${fileId}, ${target.spaceId}, ${target.parentId}, ${target.name}, 'file', ${stored.versionId},
                 ${writer.userId})
       )
-      insert into ${fileVersions} (id, file_id, space_id, size, sha256, user_id, key_id)
+      insert into ${fileVersions} (id, file_id, space_id, size, sha256, user_id, api_key_id)
       values (${stored.versionId}, ${fileId}, ${target.spaceId}, ${stored.size}, ${stored.sha256}, ${writer.userId},
               ${writer.apiKeyId})
     `)
@@ -226,7 +226,7 @@ export async function addVersionRow(db: Db, target: NewVersion, stored: Stored, 
       size: stored.size,
       sha256: stored.sha256,
       userId: writer.userId,
-      keyId: writer.apiKeyId
+      apiKeyId: writer.apiKeyId
     });
     await tx.update(files).set({ versionId: stored.versionId }).where(eq(files.id, target.fileId));
   });

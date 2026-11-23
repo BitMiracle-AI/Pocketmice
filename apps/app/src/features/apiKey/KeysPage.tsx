@@ -56,11 +56,11 @@ export function KeysPage() {
   const [removing, setRemoving] = useState<ApiKey | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const show = (keyId: string, on: boolean) =>
+  const show = (apiKeyId: string, on: boolean) =>
     setShown((current) => {
       const next = new Set(current);
-      if (on) next.add(keyId);
-      else next.delete(keyId);
+      if (on) next.add(apiKeyId);
+      else next.delete(apiKeyId);
       return next;
     });
 
