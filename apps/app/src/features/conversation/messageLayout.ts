@@ -32,9 +32,9 @@ export function unreadCount(conversation: Pick<Conversation, 'lastMessageNumber'
 
 /**
  * The number of the first message of a conversation that the person has not read, or null when there is none:
- * they have read all of it, or are no member of it. A page asks this once, when it opens the conversation: that
- * message is where a line says what is new, and where the page opens when the unread do not fit above its end.
- * What arrives while the person looks on is no part of it.
+ * they have read all of it, or are no member of it. A page asks this once, when it opens the conversation: from
+ * that message on is what is new (see layOut for where the line that says so stands). What arrives while the
+ * person looks on is no part of it.
  */
 export function firstUnreadNumber(
   conversation: Pick<Conversation, 'lastMessageNumber' | 'lastReadNumber'>
@@ -54,7 +54,10 @@ export interface StreamItem {
   message: Message;
   /** It was sent on another day than the one before it, or is the first there is: the day is said above it */
   newDay: boolean;
-  /** It is the first one the person had not read when they opened the conversation: a line says so above it */
+  /**
+   * It is the first one on the page that the person had not read when they opened the conversation: a line says
+   * so above it, and the page opens there when what is new does not fit above its end
+   */
   firstUnread: boolean;
   /** It begins a run: it is shown with who sent it and when */
   head: boolean;
@@ -74,6 +77,10 @@ function localDay(time: string): string {
  * Lays out messages, given in the order they were sent. firstUnread is the number of the first message the person
  * had not read when they opened the conversation (firstUnreadNumber), or null. dayOf says which day a time is on,
  * for a test to say.
+ * The line of what is new stands above the first of these messages that was not read. That is the first unread
+ * message when the page holds it. When what is new began before the messages the page holds, it is the first one
+ * the page holds: the person then begins where the page begins, with the way to the earlier ones right above,
+ * and not at the end with everything counted as read.
  */
 export function layOut(
   messages: readonly Message[],
@@ -83,7 +90,7 @@ export function layOut(
   return messages.map((message, index) => {
     const before = messages[index - 1];
     const newDay = !before || dayOf(before.createdAt) !== dayOf(message.createdAt);
-    const unread = message.number === firstUnread;
+    const unread = firstUnread !== null && message.number >= firstUnread && (!before || before.number < firstUnread);
     const head =
       newDay ||
       unread ||

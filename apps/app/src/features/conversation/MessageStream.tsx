@@ -40,7 +40,7 @@ const READ_IN_VIEW_PX = 64;
  * more unread messages than fit, which begins at the first of those.
  * messages are the ones the page holds; earlier is there when the conversation has more before them, and shows
  * them. firstUnread is the number of the first message the person had not read when they opened the conversation,
- * or null: a line marks what is new from there.
+ * or null: a line marks what is new from there, or from the first message the page holds when that is later.
  * It sits inside the provider of the scroller, which the page shares with the field a message is written in.
  */
 export function MessageStream({
@@ -66,18 +66,19 @@ export function MessageStream({
   const viewport = useRef<HTMLDivElement>(null);
   const { scrollToMessage } = useMessageScroller();
   // Where the page opens. Left alone, the scroller puts it at its end. When what the person has not read is more
-  // than fits above the end, it opens at the first message of that instead, with a little of what was read above
-  // it. Once: firstUnread is what it was when the conversation was opened, and the scroller hands out the same
-  // function every time
+  // than fits above the end, it opens at the message under the line of what is new instead, with a little of what
+  // was read above it. Once, when the messages are first drawn: the scroller hands out the same function every
+  // time, and the line that moves when earlier messages are shown takes nobody with it
   useLayoutEffect(() => {
     const scrolled = viewport.current;
-    const first = firstUnread !== null && scrolled?.querySelector(`[data-message-id="${firstUnread}"]`);
-    if (!scrolled || !first) return;
+    const first = scrolled?.querySelector('[data-unread-line]')?.closest('[data-message-id]');
+    const id = first?.getAttribute('data-message-id');
+    if (!scrolled || !first || !id) return;
     const before = first.getBoundingClientRect().top - scrolled.getBoundingClientRect().top + scrolled.scrollTop;
     if (scrolled.scrollHeight - before > scrolled.clientHeight) {
-      scrollToMessage(String(firstUnread), { align: 'start', scrollMargin: READ_IN_VIEW_PX });
+      scrollToMessage(id, { align: 'start', scrollMargin: READ_IN_VIEW_PX });
     }
-  }, [firstUnread, scrollToMessage]);
+  }, [scrollToMessage]);
   useReadMark(space.id, conversation, messages.at(-1)?.number ?? 0, viewport);
 
   const nameOf = (userId: string) =>
@@ -120,6 +121,7 @@ export function MessageStream({
               {firstUnread && (
                 <Marker
                   variant="separator"
+                  data-unread-line=""
                   className="pt-4 text-xs font-medium text-primary before:bg-primary/30 after:bg-primary/30 dark:text-chart-1"
                 >
                   <MarkerContent>{conversationText.newMessages}</MarkerContent>

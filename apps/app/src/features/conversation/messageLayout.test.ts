@@ -139,9 +139,19 @@ test('a line is put above the first message the person had not read, which begin
   assert.equal(short(messages, 1), 'day unread 1* 2 3 4');
   // Nothing unread
   assert.equal(short(messages, null), 'day 1* 2 3 4');
-  // The first unread message is not among the ones the page holds: earlier than them, or not sent yet
-  assert.equal(short(messages.slice(2), 2), 'day 3* 4');
+  // The first unread message is not sent yet
   assert.equal(short(messages, 5), 'day 1* 2 3 4');
   // On a new day the day comes first
   assert.equal(short([message(1, 0), message(2, 24 * 60)], 2), 'day 1* day unread 2*');
+});
+
+test('when what is new began before the messages the page holds, the line is above the first one it holds, and moves when earlier ones are shown', () => {
+  const messages = [message(1, 0), message(2, 1), message(3, 2), message(4, 3), message(5, 4), message(6, 5)];
+
+  // Read up to 1, and the page holds 4 to 6: everything it holds is new
+  assert.equal(short(messages.slice(3), 2), 'day unread 4* 5 6');
+  // Earlier ones are shown, still not back to the first unread: the line is above the first of them
+  assert.equal(short(messages.slice(2), 2), 'day unread 3* 4 5 6');
+  // With the first unread on the page the line is there, once
+  assert.equal(short(messages, 2), 'day 1* unread 2* 3 4 5 6');
 });
