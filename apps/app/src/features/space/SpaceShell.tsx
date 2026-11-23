@@ -3,6 +3,7 @@ import {
   Delete02Icon,
   Folder01Icon,
   Key01Icon,
+  Search01Icon,
   Settings01Icon,
   UserMultiple02Icon
 } from '@hugeicons/core-free-icons';
@@ -26,8 +27,9 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
   const space = useSpaces().find((each) => each.id === spaceId);
   const matches = useMatchRoute();
   if (!space) return <UnknownSpacePage />;
-  // Which row of the sidebar the page is on is read from the address: the members, the trash, the settings, or
-  // else the files
+  // Which row of the sidebar the page is on is read from the address: the search, the members, the trash, the
+  // settings, or else the files
+  const onSearch = matches({ to: '/spaces/$spaceId/search' }) !== false;
   const onMembers = matches({ to: '/spaces/$spaceId/members' }) !== false;
   const onTrash = matches({ to: '/spaces/$spaceId/trash' }) !== false;
   const onSettings = matches({ to: '/spaces/$spaceId/settings' }) !== false;
@@ -64,7 +66,13 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
                 link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
                 icon={Folder01Icon}
                 label={shellText.files}
-                active={!onMembers && !onTrash && !onSettings}
+                active={!onSearch && !onMembers && !onTrash && !onSettings}
+              />
+              <NavRow
+                link={<Link to="/spaces/$spaceId/search" params={{ spaceId }} />}
+                icon={Search01Icon}
+                label={shellText.search}
+                active={onSearch}
               />
               <NavRow
                 link={<Link to="/spaces/$spaceId/members" params={{ spaceId }} />}

@@ -1,7 +1,7 @@
 import { type getFile, namesOfPath, pathOfNames } from '@pocketmice/contract/domains/file';
 import type { OutputOf } from '@pocketmice/contract/operation';
 
-// What a folder page works out from what the api answered, with nothing of the browser in it.
+// What a list of files works out from what the api answered, with nothing of the browser in it.
 
 type DriveFile = OutputOf<typeof getFile>['file'];
 
@@ -23,4 +23,13 @@ export function inOrder(files: readonly DriveFile[], compare: (a: string, b: str
 export function foldersAbove(path: string): { name: string; path: string }[] {
   const names = namesOfPath(path) ?? [];
   return names.slice(0, -1).map((name, index) => ({ name, path: pathOfNames(names.slice(0, index + 1)) }));
+}
+
+/**
+ * The folder something is in, by the names from the top of the space down to it: Reports / 2026. Null when it is
+ * directly in the space.
+ */
+export function placeOf(path: string): string | null {
+  const above = (namesOfPath(path) ?? []).slice(0, -1);
+  return above.length > 0 ? above.join(' / ') : null;
 }

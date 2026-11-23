@@ -21,6 +21,7 @@ import { Route as AppSettingsKeysRouteImport } from './routes/_app/settings/keys
 import { Route as AppSpacesSpaceIdRouteImport } from './routes/_app/spaces/$spaceId'
 import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app/spaces/$spaceId/index'
 import { Route as AppSpacesSpaceIdMembersRouteImport } from './routes/_app/spaces/$spaceId/members'
+import { Route as AppSpacesSpaceIdSearchRouteImport } from './routes/_app/spaces/$spaceId/search'
 import { Route as AppSpacesSpaceIdSettingsRouteImport } from './routes/_app/spaces/$spaceId/settings'
 import { Route as AppSpacesSpaceIdTrashRouteImport } from './routes/_app/spaces/$spaceId/trash'
 import { Route as AppSpacesSpaceIdFilesFileIdRouteImport } from './routes/_app/spaces/$spaceId/files/$fileId'
@@ -84,6 +85,11 @@ const AppSpacesSpaceIdMembersRoute = AppSpacesSpaceIdMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => AppSpacesSpaceIdRoute,
 } as any)
+const AppSpacesSpaceIdSearchRoute = AppSpacesSpaceIdSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => AppSpacesSpaceIdRoute,
+} as any)
 const AppSpacesSpaceIdSettingsRoute =
   AppSpacesSpaceIdSettingsRouteImport.update({
     id: '/settings',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/settings/': typeof AppSettingsIndexRoute
   '/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
+  '/spaces/$spaceId/search': typeof AppSpacesSpaceIdSearchRoute
   '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
   '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/settings/keys': typeof AppSettingsKeysRoute
   '/settings': typeof AppSettingsIndexRoute
   '/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
+  '/spaces/$spaceId/search': typeof AppSpacesSpaceIdSearchRoute
   '/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
   '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/_app/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
+  '/_app/spaces/$spaceId/search': typeof AppSpacesSpaceIdSearchRoute
   '/_app/spaces/$spaceId/settings': typeof AppSpacesSpaceIdSettingsRoute
   '/_app/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
@@ -163,6 +172,7 @@ export interface FileRouteTypes {
     | '/spaces/$spaceId'
     | '/settings/'
     | '/spaces/$spaceId/members'
+    | '/spaces/$spaceId/search'
     | '/spaces/$spaceId/settings'
     | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId/'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/settings/keys'
     | '/settings'
     | '/spaces/$spaceId/members'
+    | '/spaces/$spaceId/search'
     | '/spaces/$spaceId/settings'
     | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/_app/spaces/$spaceId'
     | '/_app/settings/'
     | '/_app/spaces/$spaceId/members'
+    | '/_app/spaces/$spaceId/search'
     | '/_app/spaces/$spaceId/settings'
     | '/_app/spaces/$spaceId/trash'
     | '/_app/spaces/$spaceId/'
@@ -292,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSpacesSpaceIdMembersRouteImport
       parentRoute: typeof AppSpacesSpaceIdRoute
     }
+    '/_app/spaces/$spaceId/search': {
+      id: '/_app/spaces/$spaceId/search'
+      path: '/search'
+      fullPath: '/spaces/$spaceId/search'
+      preLoaderRoute: typeof AppSpacesSpaceIdSearchRouteImport
+      parentRoute: typeof AppSpacesSpaceIdRoute
+    }
     '/_app/spaces/$spaceId/settings': {
       id: '/_app/spaces/$spaceId/settings'
       path: '/settings'
@@ -334,6 +353,7 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 
 interface AppSpacesSpaceIdRouteChildren {
   AppSpacesSpaceIdMembersRoute: typeof AppSpacesSpaceIdMembersRoute
+  AppSpacesSpaceIdSearchRoute: typeof AppSpacesSpaceIdSearchRoute
   AppSpacesSpaceIdSettingsRoute: typeof AppSpacesSpaceIdSettingsRoute
   AppSpacesSpaceIdTrashRoute: typeof AppSpacesSpaceIdTrashRoute
   AppSpacesSpaceIdIndexRoute: typeof AppSpacesSpaceIdIndexRoute
@@ -342,6 +362,7 @@ interface AppSpacesSpaceIdRouteChildren {
 
 const AppSpacesSpaceIdRouteChildren: AppSpacesSpaceIdRouteChildren = {
   AppSpacesSpaceIdMembersRoute: AppSpacesSpaceIdMembersRoute,
+  AppSpacesSpaceIdSearchRoute: AppSpacesSpaceIdSearchRoute,
   AppSpacesSpaceIdSettingsRoute: AppSpacesSpaceIdSettingsRoute,
   AppSpacesSpaceIdTrashRoute: AppSpacesSpaceIdTrashRoute,
   AppSpacesSpaceIdIndexRoute: AppSpacesSpaceIdIndexRoute,

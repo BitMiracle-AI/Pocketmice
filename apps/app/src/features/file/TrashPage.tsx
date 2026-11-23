@@ -1,6 +1,5 @@
 import { ArrowTurnBackwardIcon, Delete02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { namesOfPath } from '@pocketmice/contract/domains/file';
 import { roleCovers } from '@pocketmice/contract/spaceRole';
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -27,6 +26,7 @@ import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { useLastGiven } from '@/hooks/useLastGiven';
 import { formatSize, formatWhen } from '@/lib/format';
 import { FileIcon } from './FileIcon';
+import { placeOf } from './fileOrder';
 import { COLUMNS, HEAD, MEDIUM, ROW, ROW_BUTTON, SIZE, WIDE } from './listLayout';
 import { fileText } from './text';
 import { deleteForGood, emptyTheTrash, putBack, type TrashedFile, trashQuery } from './trash';
@@ -204,13 +204,4 @@ export function TrashPage() {
       </AlertDialog>
     </>
   );
-}
-
-/**
- * The folder something was in, by the names from the top of the space down to it: Reports / 2026. Null when it was
- * directly in the space.
- */
-function placeOf(path: string): string | null {
-  const above = (namesOfPath(path) ?? []).slice(0, -1);
-  return above.length > 0 ? above.join(' / ') : null;
 }

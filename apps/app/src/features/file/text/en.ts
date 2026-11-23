@@ -83,6 +83,18 @@ export const en = {
     'Everything in the trash of this space is deleted for good, with every version of every file. Nothing brings it back.',
   showMore: 'Show more',
 
+  searchLabel: 'Search this space',
+  searchPlaceholder: 'Words from a name or a description',
+  searchClear: 'Clear',
+  searchStartTitle: 'Look for a file or a folder by words',
+  searchStartHint:
+    'Every word has to be in its name or in its description, in capitals or not. What a file holds is not looked at, and neither are the names of the folders it is in.',
+  searchNothingTitle: (words: string) => `Nothing matches “${words}”`,
+  searchNothingHint:
+    'Every word has to be in the name or the description of a file or a folder. Fewer words find more.',
+  searchFound: 'What was found',
+  searchIn: 'In',
+
   open: (name: string) => `Open ${name}`,
   downloadFile: 'Download',
   versionsTitle: 'Versions',
