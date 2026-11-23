@@ -30,11 +30,13 @@ const app = createApp({
 // HTTP server
 const server = createAdaptorServer({ fetch: app.fetch }) as Server;
 
-// A request may take as long as its bytes take to arrive. Node by itself gives a whole request five minutes and
-// then answers 408, which cuts off the upload of a large file over a slow line: 100 MB at 2 Mbit/s takes seven.
-// The headers of a request keep their own limit of a minute. How long a connection may stay silent is for the
-// reverse proxy to limit: it is the one that talks to the outside
-server.requestTimeout = 0;
+// How long a whole request may take: three hours, which is the largest file over a slow line (1 GB at 100 KB/s
+// takes just under three).
+// Node by itself gives a request five minutes and then answers 408, which cuts off an ordinary upload: 100 MB at
+// 2 Mbit/s takes seven. No limit at all is wrong the other way: a caller that stops sending and does not close the
+// connection (a laptop that goes to sleep half way through an upload) would be waited for for ever, with the file
+// it was writing held open. The headers of a request keep their own limit of a minute.
+server.requestTimeout = 3 * 60 * 60 * 1000;
 
 // Listens on this machine only, unless HOST says otherwise: requests from outside come in through a reverse proxy.
 // A proxy on another machine cannot reach 127.0.0.1, and to a container every other container is another machine:

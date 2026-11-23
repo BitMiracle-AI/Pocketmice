@@ -107,14 +107,16 @@ curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<fi
 
 A file is at most 1 GB.
 
-The API listens on its own machine only, so a reverse proxy goes in front of it. The API counts on the proxy for
-three things:
+A reverse proxy goes in front of the API, which by itself listens on its own machine only. The API counts on the
+proxy for three things:
 
 - The limit on the size of a request body is raised to 1 GB (nginx allows 1 MB unless told otherwise).
 - `X-Forwarded-For` is set to the address each request came from, in place of whatever the client sent: the limit
-  on sign-in attempts counts by it.
-- A connection that goes silent is ended (nginx does so by itself, after a minute). The API gives an upload as
-  long as its bytes take to arrive, and ends nothing for being slow.
+  on sign-in attempts counts by it. In nginx that is `proxy_set_header X-Forwarded-For $remote_addr;`, and nginx
+  sends no such header unless told. Without it everyone shares one count, and thirty wrong passwords a minute from
+  anyone keep everybody from signing in.
+- A connection that goes silent is ended (nginx does so by itself, after a minute). The API itself ends a request
+  only when it has taken three hours, which is 1 GB over a slow line.
 
 Tried behind nginx, both holding a request body until all of it has arrived (its default) and passing it on as it
 comes.
