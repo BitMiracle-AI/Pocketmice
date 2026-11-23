@@ -33,17 +33,48 @@ async function entriesAt(spaceId: string, parentId: string | null, fresh: boolea
   }
 }
 
+/**
+ * Whether the list of the uploads is open. It is the page's, as the uploads are, and not the button's that opens
+ * it: each frame has a button of its own (the sidebar of a space, of the settings, the bar of the start), and a
+ * list the person closed in one stays closed in the next.
+ */
+const listOpen = createStore(false);
+
+/** How much the list calls for the person: how many uploads it has, and again each that waits for them or failed */
+function calling(uploads: readonly Upload[]): number {
+  return uploads.length + uploads.filter((upload) => upload.state === 'taken' || upload.state === 'failed').length;
+}
+
+/** What the list called for when it was last published */
+let called = 0;
+
+/**
+ * Publishes the uploads, and opens their list when it calls for the person more than it did: something was added
+ * to it, a name that is taken has to be decided on, or a failure is to be seen. A list with nothing in it is shut.
+ */
+function publish(uploads: Upload[]): void {
+  shown.set(uploads);
+  const now = calling(uploads);
+  if (now > called) listOpen.set(true);
+  if (uploads.length === 0) listOpen.set(false);
+  called = now;
+}
+
 const queue = createUploadQueue<Blob>({
   maxBytes: MAX_FILE_BYTES,
   atOnce: AT_ONCE,
   entriesAt,
   send: sendContent,
   changed: spaceChanged,
-  publish: shown.set
+  publish
 });
 
 /** The uploads there are, the first one taken first. For the panel */
 export const useUploads = shown.use;
+
+/** Whether the list of the uploads is open, and the way to open and shut it. For the panel */
+export const useUploadsOpen = listOpen.use;
+export const setUploadsOpen = listOpen.set;
 
 /**
  * Takes the files a person picked, to upload into a folder (parentId null: directly in the space).

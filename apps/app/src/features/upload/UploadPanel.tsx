@@ -1,7 +1,7 @@
 import { Cancel01Icon, CloudUploadIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { MAX_FILE_BYTES } from '@pocketmice/contract/domains/file';
-import { type ReactElement, useEffect, useRef, useState } from 'react';
+import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
@@ -13,7 +13,15 @@ import { failureText } from '@/lib/api';
 import { formatSize } from '@/lib/format';
 import { uploadText } from './text';
 import type { Upload, UploadFailure } from './uploadQueue';
-import { cancelUpload, clearUploads, decideUpload, retryUpload, useUploads } from './uploads';
+import {
+  cancelUpload,
+  clearUploads,
+  decideUpload,
+  retryUpload,
+  setUploadsOpen,
+  useUploads,
+  useUploadsOpen
+} from './uploads';
 
 /** What to tell a person about an upload that failed */
 function failureSentence(failure: UploadFailure): string {
@@ -35,24 +43,17 @@ function failureSentence(failure: UploadFailure): string {
  * part of whatever frames the page (the sidebar, or the bar of a page that has none) and not of any page.
  * render is the button itself, with nothing in it; side is where the list opens from it. Whoever puts it
  * somewhere leaves it out while there are no uploads (useUploads).
- * The list opens by itself when something is added to it and when an upload needs the person: a name that is
- * taken has to be decided on, and a failure is to be seen.
+ * The list opens by itself when something is added to it and when an upload needs the person (uploads.ts says
+ * when); whether it is open is kept with the uploads, so it is the same list whichever button shows it.
  */
 export function UploadPanel({ render, side }: { render: ReactElement; side: 'top' | 'right' | 'bottom' }) {
   const uploads = useUploads();
-  const [open, setOpen] = useState(true);
+  const open = useUploadsOpen();
 
   const count = (...states: Upload['state'][]) => uploads.filter((upload) => states.includes(upload.state)).length;
   const going = count('waiting', 'sending');
   const taken = count('taken');
   const failed = count('failed');
-
-  const calling = uploads.length + taken + failed;
-  const called = useRef(calling);
-  useEffect(() => {
-    if (calling > called.current) setOpen(true);
-    called.current = calling;
-  }, [calling]);
 
   // What the button says is what still needs the person, the most pressing first
   const title =
@@ -65,7 +66,7 @@ export function UploadPanel({ render, side }: { render: ReactElement; side: 'top
           : uploadText.uploaded(uploads.length);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setUploadsOpen}>
       <PopoverTrigger render={render}>
         {going > 0 ? <Spinner /> : <HugeiconsIcon icon={CloudUploadIcon} strokeWidth={2} />}
         <span>{title}</span>
