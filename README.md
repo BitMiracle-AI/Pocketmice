@@ -5,7 +5,8 @@ the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
 > invites, API keys for agents, and files — folders, upload and download, versions, a trash. There is no web app,
-> no SDK and no MCP server yet, so the only way in is the HTTP API. Nothing here is ready for production.
+> no SDK and no MCP server yet: the way in is the HTTP API, and for an agent the [skill](#agent-skill) that teaches
+> it. Nothing here is ready for production.
 
 ## What is planned
 
@@ -33,6 +34,7 @@ apps/api            the API server (Hono on Node)
 packages/contract   the definition of every operation: its input, its output, its error codes
 packages/client     the code every caller shares to call the API
 packages/db         the database: tables, connection and migrations (Drizzle on Postgres)
+skills/pocketmice   the agent skill: one file that teaches an agent with a shell to use the drive
 scripts/            checks of the repository's structure, run by `pnpm check`
 ```
 
@@ -115,6 +117,22 @@ three things:
 
 Tried behind nginx, both holding a request body until all of it has arrived (its default) and passing it on as it
 comes.
+
+## Agent skill
+
+An agent that has a shell learns the drive from one file, [`skills/pocketmice/SKILL.md`](skills/pocketmice/SKILL.md):
+a skill in the open [Agent Skills](https://agentskills.io) format.
+
+```sh
+npx skills add BitMiracle-AI/Pocketmice
+```
+
+It teaches the agent to find, download, upload and write over files with curl, to organise folders, to read the
+versions of a file and bring one back, and what an API key cannot do. The agent is given two environment variables:
+`POCKETMICE_URL`, the address of the server, and `POCKETMICE_API_KEY`, a key made by the person it works for.
+
+The skill lists every operation an API key may call, and `pnpm check` fails when that list and `packages/contract`
+disagree.
 
 ## Development
 

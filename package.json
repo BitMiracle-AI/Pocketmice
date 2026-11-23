@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @pocketmice/api dev",
-    "check": "biome check --error-on-warnings && node scripts/checkWorkspace.mjs && node scripts/checkTopLevel.mjs && node scripts/checkKindFolders.mjs && node scripts/checkFileNameCase.mjs && node scripts/checkAgentsFile.mjs && pnpm -r --if-present typecheck",
+    "check": "biome check --error-on-warnings && node scripts/checkWorkspace.mjs && node scripts/checkTopLevel.mjs && node scripts/checkKindFolders.mjs && node scripts/checkFileNameCase.mjs && node scripts/checkAgentsFile.mjs && node scripts/checkSkill.mjs && pnpm -r --if-present typecheck",
     "check:all": "pnpm run check && node --test \"scripts/*.test.mjs\" && pnpm --recursive --parallel --if-present test",
     "format": "biome check --write"
   },
