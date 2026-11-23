@@ -6,7 +6,8 @@ import { grantableRole, spaceRole } from '../spaceRole.ts';
 // Spaces. A space is the container everything in the drive belongs to, together with its members: whoever is a
 // member can get in, and nobody else can. What a member may do there is decided by their role (see spaceRole.ts).
 // Someone can be a member of many spaces, and of none: the server never makes a space for anyone.
-// "Space" always means this container. The room that files take up is called storage.
+// "Space" always means this container. How many bytes something is, is its size; the most a space may hold, when
+// there is such a limit, is its quota; and storage is where the bytes are kept.
 // How someone becomes a member of a space they did not make is in invite.ts.
 
 /** The name of a space has at most this many characters */
@@ -94,6 +95,21 @@ export const removeMember = operation({
   input: z.object({ spaceId: id, userId: id }),
   output: z.object({}),
   errors: ['NOT_FOUND', 'CONFLICT']
+});
+
+/**
+ * Deletes a space for good: its files with every version of them, its members and its invites. Nothing brings it
+ * back, so it is for the owner, signed in themselves.
+ */
+export const deleteSpace = operation({
+  name: 'deleteSpace',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'space',
+  minRole: 'owner',
+  input: z.object({ spaceId: id }),
+  output: z.object({}),
+  errors: []
 });
 
 /**

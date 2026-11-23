@@ -243,7 +243,7 @@ test("deleting a key that is not the caller's is NOT_FOUND, and the key keeps wo
 
 test('a bearer token that is no key is nobody, and the session is not looked at instead', async () => {
   const ada = await api.addPerson('Ada');
-  const { key } = await makeKey(ada, 'read');
+  const { apiKey, key } = await makeKey(ada, 'read');
   let askedSession = 0;
   const identify = identifyCaller(api.db, async () => {
     askedSession += 1;
@@ -262,7 +262,7 @@ test('a bearer token that is no key is nobody, and the session is not looked at 
   assert.equal(askedSession, 0);
 
   // The real key is the person; without a bearer token it is the session that tells
-  assert.deepEqual(await sentWith(key), { user: ada, apiKey: { permission: 'read' } });
+  assert.deepEqual(await sentWith(key), { user: ada, apiKey: { id: apiKey.id, permission: 'read' } });
   assert.deepEqual(await identify(new Headers()), { user: ada });
   assert.deepEqual(await identify(new Headers({ authorization: 'Basic dXNlcjpwYXNz' })), { user: ada });
   assert.equal(askedSession, 2);

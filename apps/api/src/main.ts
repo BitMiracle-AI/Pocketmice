@@ -9,7 +9,7 @@ import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
 import { portFromEnv } from './env.ts';
 import { logInternalError } from './http/errorLog.ts';
-import { auth, db, webOrigins } from './instances.ts';
+import { auth, db, storage, webOrigins } from './instances.ts';
 
 // The ports of this project start at 11210, one for each unit that listens. A port that is taken is an error and
 // the process exits: it never picks another one.
@@ -18,7 +18,8 @@ const port = portFromEnv('PORT', 11210);
 const app = createApp({
   auth,
   webOrigins,
-  implementations: domainImplementations({ db, version: manifest.version }),
+  implementations: domainImplementations({ db, storage, version: manifest.version, reportError: logInternalError }),
+  content: { db, storage },
   // By the API key a request carries, or else by who is signed in
   identifyCaller: identifyCaller(db, identifyBySession(auth)),
   spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),

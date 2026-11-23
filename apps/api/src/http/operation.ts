@@ -11,7 +11,8 @@ const INTERNAL_MESSAGE = 'The server ran into an internal error.';
 
 /**
  * The person calling an operation: themselves, signed in, or an agent calling with one of their API keys. Either
- * way what is done is done as this person, and an implementation is not told which of the two it was.
+ * way what is done is done as this person. Which of the two it was never decides what an implementation does; it is
+ * handed on only to be recorded (see apiKeyId in HandlerContext).
  * What else there is to know about them (the name they go by) is in their profile, and is read there by the
  * implementations that need it.
  */
@@ -29,7 +30,7 @@ export interface Identified {
    * The API key the request was sent with, when that is how the caller is known. Left out, the person signed in
    * themselves.
    */
-  apiKey?: { permission: ApiKeyPermission };
+  apiKey?: { id: string; permission: ApiKeyPermission };
   /**
    * Response headers that whoever identified the caller wants sent to the client, if any. This layer adds them to
    * the response of this request as they are, whether it succeeds or fails.
@@ -50,10 +51,13 @@ export interface Membership {
  * What an implementation is given: the input, checked against the definition. For an operation that is not public,
  * also the person calling. For an operation of a space, also what the caller is in that space — getting it means
  * the caller is a member, in a role the operation accepts.
+ * apiKeyId is the API key the request came with, or null when the person signed in themselves. It is there to be
+ * written down next to what was done (which key wrote this version of a file), and for nothing else: what the
+ * caller may do was settled before the implementation ran, and an implementation never branches on it.
  */
 type HandlerContext<Op extends Operation> = { input: CheckedInputOf<Op> } & (Op['access'] extends 'public'
   ? unknown
-  : { user: CurrentUser }) &
+  : { user: CurrentUser; apiKeyId: string | null }) &
   (Op['belongsTo'] extends 'space' ? { membership: Membership } : unknown);
 
 /**
@@ -66,8 +70,7 @@ export interface Implementation {
 }
 
 /** What this layer found out and hands to the implementation: who is calling. Which parts are set depends on the definition */
-export interface Caller {
-  user: CurrentUser | null;
+export interface Caller extends AdmittedCaller {
   membership: Membership | null;
 }
 
@@ -99,14 +102,20 @@ export function implement<Op extends Operation>(
     // By the time this runs the input has been checked against the definition, an operation that is not public
     // knows who is calling, and an operation of a space knows the caller is a member (see admit), so the assertion
     // holds
-    run: (input, { user, membership }) =>
-      handler({ input, ...(user && { user }), ...(membership && { membership }) } as unknown as HandlerContext<Op>)
+    run: (input, { user, apiKeyId, membership }) =>
+      handler({
+        input,
+        ...(user && { user, apiKeyId }),
+        ...(membership && { membership })
+      } as unknown as HandlerContext<Op>)
   };
 }
 
-export interface OperationDeps {
-  /** Every operation the api implements */
-  implementations: Implementation[];
+/**
+ * What it takes to tell whether a caller is let in. The operations take it, and so does every entrance that is not
+ * an operation and checks its callers the same way.
+ */
+export interface AdmissionDeps {
   /**
    * Tells who is calling from the request headers, and whether it is the person themselves or an API key of
    * theirs. Asked once for every call of an operation that is not public.
@@ -125,6 +134,11 @@ export interface OperationDeps {
    * reaching an operation.
    */
   reportError: (error: unknown, where: string) => void;
+}
+
+export interface OperationDeps extends AdmissionDeps {
+  /** Every operation the api implements */
+  implementations: Implementation[];
 }
 
 /**
@@ -151,11 +165,87 @@ export function mountOperations(app: Hono, deps: OperationDeps): void {
   });
 }
 
+/** What an entrance asks of its caller: the two things an operation states in its definition */
+export interface Gate {
+  access: Operation['access'];
+  kind: Operation['kind'];
+}
+
+/** Who got past admitCaller: the person, and the API key the request came with when that is how they are known */
+export interface AdmittedCaller {
+  /** Null only where anyone may call */
+  user: CurrentUser | null;
+  /** Null when the person signed in themselves */
+  apiKeyId: string | null;
+}
+
 /**
- * Whether a request is let in. Every request passes through here before the implementation runs, and the first
- * check it fails decides the response: how large the body is, which web page it comes from, who is calling, what
- * the API key it came with may do, whether the body fits the definition, whether the caller is a member of the
- * space, whether their role there is enough.
+ * The first half of letting a request in: which web page it comes from, who is calling, and what the API key it
+ * came with may do. It does not read the body.
+ * The operations pass through it (see admit), and so do the entrances that are not operations, like the address
+ * the content of files goes through: whoever may not call an operation does not get the same thing done another
+ * way.
+ */
+export async function admitCaller(c: Context, gate: Gate, deps: AdmissionDeps): Promise<AdmittedCaller | Response> {
+  // A browser always sends the origin with a request to another site, so a web page that is not on the list is
+  // refused here, whether or not its request carries the sign-in cookie. Callers that are not browsers send no
+  // origin, and they do not carry somebody else's cookie either.
+  const origin = c.req.header('origin');
+  if (origin !== undefined && !deps.webOrigins.includes(origin)) {
+    return fail(c, 'FORBIDDEN', 'Requests from this origin are not allowed.');
+  }
+  if (gate.access === 'public') return { user: null, apiKeyId: null };
+
+  const identified = await deps.identifyCaller(c.req.raw.headers);
+  // Whoever identified the caller has something for the client (a renewed cookie, say): it goes onto the response
+  // now, and stays there however the rest of this request turns out
+  identified.responseHeaders?.forEach((value, name) => {
+    c.header(name, value, { append: true });
+  });
+  const { user, apiKey } = identified;
+  if (!user) {
+    const how = gate.access === 'session' ? 'Sign in' : 'Sign in, or send a valid API key,';
+    return fail(c, 'UNAUTHENTICATED', `${how} to do this.`);
+  }
+
+  // The request came with an API key. A key only ever narrows what the person it belongs to may do: it never does
+  // what is kept for the person themselves, and a read-only key never changes anything
+  if (apiKey && gate.access === 'session') {
+    return fail(c, 'FORBIDDEN', 'This cannot be done with an API key: sign in to do it.');
+  }
+  if (apiKey?.permission === 'read' && gate.kind === 'write') {
+    return fail(c, 'FORBIDDEN', 'This API key is read-only, and this request changes something.');
+  }
+
+  return { user, apiKeyId: apiKey?.id ?? null };
+}
+
+/**
+ * The second half, for what belongs to a space: the caller must be a member of the space, in a role that is
+ * enough. Checked here once, so nothing that works inside a space has to remember to.
+ */
+export async function admitMember(
+  c: Context,
+  spaceId: string,
+  minRole: SpaceRole,
+  user: CurrentUser,
+  deps: AdmissionDeps
+): Promise<Membership | Response> {
+  const membership = await deps.spaceMembership(spaceId, user.id);
+  // Not a member and no such space get one answer: someone who is not a member cannot find out whether a space
+  // exists
+  if (!membership) return fail(c, 'UNKNOWN_SPACE', `There is no space ${spaceId}, or you are not a member of it.`);
+  if (!roleCovers(membership.role, minRole)) {
+    return fail(c, 'FORBIDDEN', `This takes the role ${minRole} in the space, and yours is ${membership.role}.`);
+  }
+  return membership;
+}
+
+/**
+ * Whether a request to an operation is let in. Every request passes through here before the implementation runs,
+ * and the first check it fails decides the response: how large the body is, which web page it comes from, who is
+ * calling, what the API key it came with may do, whether the body fits the definition, whether the caller is a
+ * member of the space, whether their role there is enough.
  * A request that passes yields the checked input and who is calling. Whether the caller may call the operation at
  * all is settled here, for every operation alike: an implementation does not check it again.
  */
@@ -180,38 +270,8 @@ async function admit(
     return fail(c, 'INVALID_INPUT', 'Send the request body with a content-length header, not in chunks.');
   }
 
-  // A browser always sends the origin with a request to another site, so a web page that is not on the list is
-  // refused here, whether or not its request carries the sign-in cookie. Callers that are not browsers send no
-  // origin, and they do not carry somebody else's cookie either.
-  const origin = c.req.header('origin');
-  if (origin !== undefined && !deps.webOrigins.includes(origin)) {
-    return fail(c, 'FORBIDDEN', 'Requests from this origin are not allowed.');
-  }
-
-  let user: CurrentUser | null = null;
-  if (operation.access !== 'public') {
-    const identified = await deps.identifyCaller(c.req.raw.headers);
-    // Whoever identified the caller has something for the client (a renewed cookie, say): it goes onto the response
-    // now, and stays there however the rest of this request turns out
-    identified.responseHeaders?.forEach((value, name) => {
-      c.header(name, value, { append: true });
-    });
-    user = identified.user;
-    if (!user) {
-      const how = operation.access === 'session' ? 'Sign in' : 'Sign in, or send a valid API key,';
-      return fail(c, 'UNAUTHENTICATED', `${how} to call this operation.`);
-    }
-
-    // The request came with an API key. A key only ever narrows what the person it belongs to may do: it never
-    // calls an operation kept for the person themselves, and a read-only key never changes anything
-    const { apiKey } = identified;
-    if (apiKey && operation.access === 'session') {
-      return fail(c, 'FORBIDDEN', 'This operation cannot be called with an API key: sign in to call it.');
-    }
-    if (apiKey?.permission === 'read' && operation.kind === 'write') {
-      return fail(c, 'FORBIDDEN', 'This API key is read-only, and this operation changes something.');
-    }
-  }
+  const admitted = await admitCaller(c, operation, deps);
+  if (admitted instanceof Response) return admitted;
 
   if (!c.req.header('content-type')?.toLowerCase().startsWith('application/json')) {
     return fail(c, 'INVALID_INPUT', 'The request body must be JSON, sent with content-type application/json.');
@@ -225,13 +285,11 @@ async function admit(
   const input = operation.input.safeParse(body);
   if (!input.success) return fail(c, 'INVALID_INPUT', describeIssues(input.error.issues));
 
-  // An operation of a space: the caller must be a member of the space the input names, in a role that is enough
-  // for the operation. Checked here once, so no implementation has to remember to.
   let membership: Membership | null = null;
   if (operation.belongsTo === 'space') {
     // The types of a definition guarantee all three (see operation in the contract). Reaching one of these lines
     // means someone wrote a definition around the types
-    if (!user) throw new Error(`Operation ${operation.name} belongs to a space, so it must not be public.`);
+    if (!admitted.user) throw new Error(`Operation ${operation.name} belongs to a space, so it must not be public.`);
     const spaceId = (input.data as { spaceId?: unknown } | null)?.spaceId;
     if (typeof spaceId !== 'string') {
       throw new Error(`Operation ${operation.name} belongs to a space, so its input must have a spaceId.`);
@@ -239,20 +297,12 @@ async function admit(
     const { minRole } = operation;
     if (!minRole) throw new Error(`Operation ${operation.name} belongs to a space, so it must state a minRole.`);
 
-    membership = await deps.spaceMembership(spaceId, user.id);
-    // Not a member and no such space get one answer: someone who is not a member cannot find out whether a space
-    // exists
-    if (!membership) return fail(c, 'UNKNOWN_SPACE', `There is no space ${spaceId}, or you are not a member of it.`);
-    if (!roleCovers(membership.role, minRole)) {
-      return fail(
-        c,
-        'FORBIDDEN',
-        `This operation takes the role ${minRole} in the space, and yours is ${membership.role}.`
-      );
-    }
+    const member = await admitMember(c, spaceId, minRole, admitted.user, deps);
+    if (member instanceof Response) return member;
+    membership = member;
   }
 
-  return { input: input.data, caller: { user, membership } };
+  return { input: input.data, caller: { ...admitted, membership } };
 }
 
 /** Handles one request to an operation. If a check fails, the implementation does not run */
@@ -302,12 +352,12 @@ async function handle(c: Context, { operation, run }: Implementation, deps: Oper
 }
 
 /** A failed response: the error code decides the status, and the body is the one error body */
-function fail(c: Context, code: ErrorCode, message: string): Response {
+export function fail(c: Context, code: ErrorCode, message: string): Response {
   const body: ErrorBody = { error: { code, message } };
   return c.json(body, ERROR_STATUS[code]);
 }
 
 /** Writes what failed a check as one sentence: which field, and what is wrong with it */
-function describeIssues(issues: readonly { path: PropertyKey[]; message: string }[]): string {
+export function describeIssues(issues: readonly { path: PropertyKey[]; message: string }[]): string {
   return issues.map((issue) => `${issue.path.map(String).join('.') || '(body)'}: ${issue.message}`).join('; ');
 }

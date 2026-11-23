@@ -40,6 +40,6 @@ export function getFileByPath({ db }: { db: Db }) {
     // It was there a moment ago: someone moved or trashed it in between
     if (!found || isInTrash(found)) throw nothingThere;
 
-    return { file: toFile(found.row, pathOfNames(found.names)) };
+    return { file: toFile(found.row, pathOfNames(found.names), found.version) };
   });
 }

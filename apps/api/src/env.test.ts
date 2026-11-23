@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { portFromEnv, requireEnv, requireOrigins } from './env.ts';
+import { portFromEnv, requireEnv, requireOrigins, storageFromEnv } from './env.ts';
 
 test('a variable that must be set and is missing or empty is an error that names it', () => {
   delete process.env.TEST_REQUIRED;
@@ -45,5 +45,67 @@ test('a port set to something that is not a port number is an error', () => {
     process.env.TEST_PORT = wrong;
 
     assert.throws(() => portFromEnv('TEST_PORT', 11210), /TEST_PORT.*port number/, `"${wrong}" should fail`);
+  }
+});
+
+/** Runs with exactly these storage settings in the environment, and puts back what was there */
+function withStorageEnv<Result>(settings: Record<string, string>, run: () => Result): Result {
+  const names = [
+    'STORAGE_DIR',
+    'S3_BUCKET',
+    'S3_REGION',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+    'S3_ENDPOINT',
+    'S3_FORCE_PATH_STYLE'
+  ];
+  const before = names.map((name) => [name, process.env[name]] as const);
+  for (const name of names) delete process.env[name];
+  Object.assign(process.env, settings);
+  try {
+    return run();
+  } finally {
+    for (const [name, value] of before) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+}
+
+const S3 = { S3_BUCKET: 'files', S3_REGION: 'us-east-1', S3_ACCESS_KEY_ID: 'id', S3_SECRET_ACCESS_KEY: 'secret' };
+
+test('files are kept in a folder or in a bucket, whichever is configured', () => {
+  assert.deepEqual(withStorageEnv({ STORAGE_DIR: './data/storage' }, storageFromEnv), {
+    kind: 'folder',
+    dir: './data/storage'
+  });
+  assert.deepEqual(withStorageEnv(S3, storageFromEnv), {
+    kind: 's3',
+    bucket: 'files',
+    region: 'us-east-1',
+    accessKeyId: 'id',
+    secretAccessKey: 'secret',
+    forcePathStyle: false
+  });
+  const minio = withStorageEnv(
+    { ...S3, S3_ENDPOINT: 'http://localhost:9000', S3_FORCE_PATH_STYLE: 'true' },
+    storageFromEnv
+  );
+  assert.deepEqual(
+    [minio.kind === 's3' && minio.endpoint, minio.kind === 's3' && minio.forcePathStyle],
+    ['http://localhost:9000', true]
+  );
+});
+
+test('both places configured, neither, or a bucket with part of its settings missing or wrong is an error', () => {
+  assert.throws(() => withStorageEnv({ ...S3, STORAGE_DIR: './data/storage' }, storageFromEnv), /Both STORAGE_DIR/);
+  assert.throws(() => withStorageEnv({}, storageFromEnv), /Neither STORAGE_DIR nor S3_BUCKET/);
+  assert.throws(
+    () => withStorageEnv({ ...S3, S3_SECRET_ACCESS_KEY: '' }, storageFromEnv),
+    /Missing environment variable S3_SECRET_ACCESS_KEY/
+  );
+  assert.throws(() => withStorageEnv({ ...S3, S3_FORCE_PATH_STYLE: 'yes' }, storageFromEnv), /true or false/);
+  for (const endpoint of ['localhost:9000', 'minio', 'ftp://localhost:9000']) {
+    assert.throws(() => withStorageEnv({ ...S3, S3_ENDPOINT: endpoint }, storageFromEnv), /not an address/, endpoint);
   }
 });

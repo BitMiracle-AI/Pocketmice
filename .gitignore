@@ -16,6 +16,9 @@ dist/
 # Scratch pages and scripts that only ever run on one machine
 /apps/*/temp/
 
+# What a unit keeps on the disk of the machine it runs on: for the api, the files people uploaded
+/apps/*/data/
+
 # System and editors
 .DS_Store
 .idea/

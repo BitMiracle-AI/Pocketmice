@@ -3,9 +3,9 @@
 **A cloud drive that people and AI agents share.** People use it the way they use any cloud drive. Agents work on
 the same files: they read what people give them and hand back what they make.
 
-> **Status: just started.** What exists is the foundation and the first pieces on it: signing up and signing in,
-> profiles, spaces with their members, invites, API keys for agents, and the tree of folders in a space with its
-> trash. Files cannot be uploaded yet, and nothing here is usable.
+> **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
+> invites, API keys for agents, and files — folders, upload and download, versions, a trash. There is no web app,
+> no SDK and no MCP server yet, so the only way in is the HTTP API. Nothing here is ready for production.
 
 ## What is planned
 
@@ -15,7 +15,16 @@ the same files: they read what people give them and hand back what they make.
 - Three ways in for agents: an HTTP API with a TypeScript SDK, an MCP server, and an agent skill. An agent calls the
   same API as a person, with an API key that person made. What it does is done as that person; a key can be
   read-only, and no key decides who gets into a space.
-- A server you can run yourself, on Postgres.
+- A server you can run yourself, on Postgres, with the files in a folder on its disk or in an S3-compatible bucket.
+
+## What it promises about files
+
+- **Nothing is written over unseen.** To write over a file, the caller names the version it is replacing. If
+  somebody else wrote in between, the write is refused with `CONFLICT`.
+- **What an agent does can be undone.** Every write is a new version and the versions before it stay; deleting
+  puts a file in the trash. Deleting for good, emptying the trash and deleting a space are for the owner of the
+  space, signed in themselves: no API key does them.
+- **Who wrote what is on record.** Every version says who wrote it, and through which API key when an agent did.
 
 ## Repository layout
 
@@ -76,6 +85,26 @@ curl -X POST http://localhost:11210/api/getSpaces \
   -H 'authorization: Bearer pm_...' -H 'content-type: application/json' -d '{}'
 ```
 
+The content of files does not go through operations, whose inputs and outputs are JSON. It goes through one
+address, `/api/content`, with the same checks on who is calling:
+
+```sh
+# Upload a new file, directly into the space (add parentId=<folder> for a folder). Answers with the file
+curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&name=report.md' \
+  -H 'authorization: Bearer pm_...'
+
+# Download it. The etag of the answer is the id of the version that was sent
+curl -o report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<file>' \
+  -H 'authorization: Bearer pm_...'
+
+# Write over it, naming the version being replaced: CONFLICT if it is no longer the current one
+curl -T report.md 'http://localhost:11210/api/content?spaceId=<space>&fileId=<file>&baseVersionId=<version>' \
+  -H 'authorization: Bearer pm_...'
+```
+
+A file is at most 1 GB. Behind a reverse proxy, raise its limit on the size of a request body to match (nginx
+allows 1 MB unless told otherwise). Uploading through a proxy has not been tried yet.
+
 ## Development
 
 You need Node 26 or later, pnpm 11 and a Postgres server.
@@ -92,7 +121,7 @@ Then:
 
 ```sh
 pnpm install
-cp apps/api/.env.example apps/api/.env    # fill in DATABASE_URL and BETTER_AUTH_SECRET
+cp apps/api/.env.example apps/api/.env    # fill in DATABASE_URL and BETTER_AUTH_SECRET; files go to ./data/storage
 pnpm --filter @pocketmice/api migrate
 pnpm dev
 ```

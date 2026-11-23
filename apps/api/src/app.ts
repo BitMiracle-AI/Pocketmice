@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AUTH_ROUTES } from './domains/auth/auth.ts';
+import { type FileContentDeps, mountFileContent } from './domains/file/fileContent.ts';
 import { mountOperations, type OperationDeps } from './http/operation.ts';
 
 /**
@@ -16,6 +17,12 @@ export interface AppDeps extends OperationDeps {
    * domains/auth/auth.ts).
    */
   auth: { handler: (request: Request) => Promise<Response> };
+  /**
+   * The address the content of files goes through (FILE_CONTENT_PATH in the contract). It is not an operation
+   * either: what is sent or answered is the bytes of a file. Its rules are in domains/file/fileContent.ts. Left
+   * out, it is not mounted.
+   */
+  content?: Pick<FileContentDeps, 'db' | 'storage'>;
 }
 
 /** Every route of the api. It does not listen on a port: main.ts does */
@@ -24,8 +31,17 @@ export function createApp(deps: AppDeps) {
 
   // The web pages that call the api are served from other origins, so browsers have to be told which of them may,
   // and that they may send the sign-in cookie along.
-  // Request headers have no list: whatever a preflight asks for is allowed.
-  app.use(cors({ origin: deps.webOrigins, credentials: true, maxAge: PREFLIGHT_MAX_AGE_SECONDS }));
+  // Request headers have no list: whatever a preflight asks for is allowed. Response headers are the other way
+  // round: one a web page is to read has to be named here. etag is what a download answers with: the version that
+  // was sent.
+  app.use(
+    cors({
+      origin: deps.webOrigins,
+      credentials: true,
+      maxAge: PREFLIGHT_MAX_AGE_SECONDS,
+      exposeHeaders: ['etag']
+    })
+  );
 
   // Health check: 200 as long as this process answers requests. The database is not asked: when the database is in
   // trouble, starting the api again does not help. Whoever starts or supervises the process asks it.
@@ -36,6 +52,9 @@ export function createApp(deps: AppDeps) {
   for (const { method, path } of AUTH_ROUTES) {
     app.on(method, path, (c) => deps.auth.handler(c.req.raw));
   }
+
+  // The content of files. Its callers pass the same checks as the callers of an operation
+  if (deps.content) mountFileContent(app, { ...deps, ...deps.content });
 
   // The operations, each at POST /api/<its name>
   mountOperations(app, deps);

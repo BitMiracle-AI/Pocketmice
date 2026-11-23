@@ -43,7 +43,8 @@ export interface Operation<
    * authenticated: a person the server knows, whichever way it knows them: someone who signed in, or an agent
    * calling with one of that person's API keys.
    * session: a person who signed in themselves; an API key is not enough. It is for whatever decides who can get
-   * in (API keys, members, invites), which an agent does not do on anyone's behalf.
+   * in (API keys, members, invites) and for what cannot be undone (deleting for good), which an agent does not do
+   * on anyone's behalf.
    */
   readonly access: Access;
   /**

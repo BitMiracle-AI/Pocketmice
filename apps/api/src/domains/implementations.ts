@@ -1,15 +1,20 @@
 import type { Db } from '@pocketmice/db';
 import type { Implementation } from '../http/operation.ts';
+import type { FileStorage } from '../storage/fileStorage.ts';
 import { createApiKey } from './apiKey/createApiKey.ts';
 import { deleteApiKey } from './apiKey/deleteApiKey.ts';
 import { getApiKeys } from './apiKey/getApiKeys.ts';
 import { createFolder } from './file/createFolder.ts';
+import { deleteFile } from './file/deleteFile.ts';
+import { emptyTrash } from './file/emptyTrash.ts';
 import { getFile } from './file/getFile.ts';
 import { getFileByPath } from './file/getFileByPath.ts';
 import { getFiles } from './file/getFiles.ts';
+import { getFileVersions } from './file/getFileVersions.ts';
 import { getTrashedFiles } from './file/getTrashedFiles.ts';
 import { moveFile } from './file/moveFile.ts';
 import { restoreFile } from './file/restoreFile.ts';
+import { restoreFileVersion } from './file/restoreFileVersion.ts';
 import { trashFile } from './file/trashFile.ts';
 import { updateFile } from './file/updateFile.ts';
 import { createInvite } from './invite/createInvite.ts';
@@ -20,6 +25,7 @@ import { getProfile } from './profile/getProfile.ts';
 import { updateProfile } from './profile/updateProfile.ts';
 import { getServerInfo } from './server/getServerInfo.ts';
 import { createSpace } from './space/createSpace.ts';
+import { deleteSpace } from './space/deleteSpace.ts';
 import { getMembers } from './space/getMembers.ts';
 import { getSpaces } from './space/getSpaces.ts';
 import { leaveSpace } from './space/leaveSpace.ts';
@@ -29,8 +35,15 @@ import { updateMember } from './space/updateMember.ts';
 /** What the implementations need from outside. main.ts passes it in; a test passes its own */
 export interface DomainDeps {
   db: Db;
+  /** Where the bytes of files are kept */
+  storage: FileStorage;
   /** The version of this server */
   version: string;
+  /**
+   * Called when something failed that the caller is not told about: what they asked for is done, and the server is
+   * left with something to clean up. where says in which part of the code.
+   */
+  reportError: (error: unknown, where: string) => void;
 }
 
 /**
@@ -48,6 +61,7 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     updateMember(deps),
     removeMember(deps),
     leaveSpace(deps),
+    deleteSpace(deps),
     createInvite(deps),
     getInvites(deps),
     deleteInvite(deps),
@@ -63,6 +77,10 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     moveFile(deps),
     trashFile(deps),
     restoreFile(deps),
-    getTrashedFiles(deps)
+    getTrashedFiles(deps),
+    getFileVersions(deps),
+    restoreFileVersion(deps),
+    deleteFile(deps),
+    emptyTrash(deps)
   ];
 }

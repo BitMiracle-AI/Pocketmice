@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { isOperation, type Operation } from '@pocketmice/contract/operation';
 import type { Db } from '@pocketmice/db';
+import type { FileStorage } from '../storage/fileStorage.ts';
 import { domainImplementations } from './implementations.ts';
 
 // The folder of the contract that holds the definitions. The path is not written out relative to this file: where
@@ -32,9 +33,14 @@ async function definedOperations(): Promise<Map<string, Defined>> {
   return defined;
 }
 
-// An implementation does not touch the database until it is called, and this file only looks at the list, so no real
-// connection is needed
-const implementations = domainImplementations({ db: {} as Db, version: '1.2.3' });
+// An implementation does not touch the database or the storage until it is called, and this file only looks at the
+// list, so neither has to be real
+const implementations = domainImplementations({
+  db: {} as Db,
+  storage: {} as FileStorage,
+  version: '1.2.3',
+  reportError: () => {}
+});
 
 test('every operation the contract defines has an implementation in the api', async () => {
   const defined = await definedOperations();

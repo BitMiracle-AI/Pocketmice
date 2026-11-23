@@ -73,6 +73,8 @@ test('createFolder makes a folder directly in the space or in a folder, and answ
       kind: 'folder',
       description: '',
       path: '/Reports',
+      // A folder has no content
+      version: null,
       createdAt: '',
       updatedAt: ''
     }

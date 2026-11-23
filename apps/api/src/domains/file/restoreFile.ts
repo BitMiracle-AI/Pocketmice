@@ -30,6 +30,6 @@ export function restoreFile({ db }: { db: Db }) {
     );
     if (!restored) throw new Error(`File ${input.fileId} was found in the trash and could not be restored.`);
 
-    return { file: toFile(restored, pathOfNames(found.names)) };
+    return { file: toFile(restored, pathOfNames(found.names), found.version) };
   });
 }

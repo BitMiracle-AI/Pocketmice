@@ -10,6 +10,8 @@ import { ApiError, type CurrentUser, implement, MAX_INPUT_BYTES, type Membership
 const WEB_ORIGIN = 'http://localhost:11211';
 const ADA: CurrentUser = { id: 'u1', email: 'ada@example.com' };
 const OWNER: Membership = { role: 'owner' };
+/** The id of the API key a request came with, in the tests that send one */
+const KEY = 'k1';
 // The ids the tests use. An id in an input is a lowercase uuid
 const S1 = '11111111-1111-4111-8111-111111111111';
 const N1 = '22222222-2222-4222-8222-222222222222';
@@ -61,7 +63,7 @@ interface Options {
   /** Who is calling. Left out, it is ADA; null is nobody */
   user?: CurrentUser | null;
   /** The API key the request came with. Left out, the person signed in themselves */
-  apiKey?: { permission: 'read' | 'write' };
+  apiKey?: { id: string; permission: 'read' | 'write' };
   /** Response headers that whoever identified the caller wants sent along. Left out, there are none */
   responseHeaders?: Headers;
   /** What the caller is in the space the input names. Left out, the owner; null means the space does not exist for them */
@@ -147,7 +149,7 @@ test('a request that fits the definition: the implementation gets the checked in
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { note: { id: N1, title: 'Groceries' } });
   // The default in the definition is filled in
-  assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, membership: OWNER }]);
+  assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, apiKeyId: null, membership: OWNER }]);
   assert.deepEqual(membershipLookups, [{ spaceId: S1, userId: 'u1' }]);
   assert.deepEqual(reported, []);
 });
@@ -162,44 +164,44 @@ test('an operation that is not public, called by nobody, is UNAUTHENTICATED; the
     assert.deepEqual(await failure(await post(name, input)), {
       status: 401,
       code: 'UNAUTHENTICATED',
-      message: 'Sign in, or send a valid API key, to call this operation.'
+      message: 'Sign in, or send a valid API key, to do this.'
     });
   }
   // An operation kept for the person themselves does not suggest an API key
   assert.deepEqual(await failure(await post('createToken', {})), {
     status: 401,
     code: 'UNAUTHENTICATED',
-    message: 'Sign in to call this operation.'
+    message: 'Sign in to do this.'
   });
   assert.deepEqual(calls, []);
   // Without knowing who is calling there is nobody to look up
   assert.deepEqual(membershipLookups, []);
 });
 
-test('a request that came with an API key is the person whose key it is: the implementation is given the same as when they sign in', async () => {
-  const { post, calls } = setup({ apiKey: { permission: 'write' } });
+test('a request that came with an API key is the person whose key it is: the implementation is given the same as when they sign in, and which key it was, to record', async () => {
+  const { post, calls } = setup({ apiKey: { id: KEY, permission: 'write' } });
 
   assert.equal((await post('renameNote', RENAME)).status, 200);
   assert.equal((await post('getSettings', {})).status, 200);
 
   assert.deepEqual(calls, [
-    { input: { ...RENAME, notify: false }, user: ADA, membership: OWNER },
-    { input: {}, user: ADA }
+    { input: { ...RENAME, notify: false }, user: ADA, apiKeyId: KEY, membership: OWNER },
+    { input: {}, user: ADA, apiKeyId: KEY }
   ]);
 });
 
 test('a read-only API key calls reads, and is FORBIDDEN to call a write whatever the person may do themselves', async () => {
   // The person is the owner of the space: the key still does not write
-  const { post, calls, membershipLookups } = setup({ apiKey: { permission: 'read' } });
+  const { post, calls, membershipLookups } = setup({ apiKey: { id: KEY, permission: 'read' } });
 
   assert.equal((await post('getSettings', {})).status, 200);
   assert.deepEqual(await failure(await post('renameNote', RENAME)), {
     status: 403,
     code: 'FORBIDDEN',
-    message: 'This API key is read-only, and this operation changes something.'
+    message: 'This API key is read-only, and this request changes something.'
   });
 
-  assert.deepEqual(calls, [{ input: {}, user: ADA }]);
+  assert.deepEqual(calls, [{ input: {}, user: ADA, apiKeyId: KEY }]);
   // Refused before the body was read or anyone was looked up
   assert.deepEqual(membershipLookups, []);
   const unread = await failure(await post('renameNote', '{"spaceId":'));
@@ -208,19 +210,19 @@ test('a read-only API key calls reads, and is FORBIDDEN to call a write whatever
 
 test('an operation kept for the person themselves is FORBIDDEN to any API key, and open to the person signed in', async () => {
   for (const permission of ['read', 'write'] as const) {
-    const { post, calls } = setup({ apiKey: { permission } });
+    const { post, calls } = setup({ apiKey: { id: KEY, permission } });
 
     assert.deepEqual(await failure(await post('createToken', {})), {
       status: 403,
       code: 'FORBIDDEN',
-      message: 'This operation cannot be called with an API key: sign in to call it.'
+      message: 'This cannot be done with an API key: sign in to do it.'
     });
     assert.deepEqual(calls, []);
   }
 
   const { post, calls } = setup();
   assert.deepEqual(await (await post('createToken', {})).json(), { token: 'abc' });
-  assert.deepEqual(calls, [{ input: {}, user: ADA }]);
+  assert.deepEqual(calls, [{ input: {}, user: ADA, apiKeyId: null }]);
 });
 
 test('a member whose role is lower than the operation takes is FORBIDDEN; the implementation does not run', async () => {
@@ -229,7 +231,7 @@ test('a member whose role is lower than the operation takes is FORBIDDEN; the im
   assert.deepEqual(await failure(await viewer.post('renameNote', RENAME)), {
     status: 403,
     code: 'FORBIDDEN',
-    message: 'This operation takes the role editor in the space, and yours is viewer.'
+    message: 'This takes the role editor in the space, and yours is viewer.'
   });
   assert.deepEqual(viewer.calls, []);
 
@@ -238,7 +240,7 @@ test('a member whose role is lower than the operation takes is FORBIDDEN; the im
     const { post, calls } = setup({ membership: { role } });
 
     assert.equal((await post('renameNote', RENAME)).status, 200, role);
-    assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, membership: { role } }]);
+    assert.deepEqual(calls, [{ input: { ...RENAME, notify: false }, user: ADA, apiKeyId: null, membership: { role } }]);
   }
 });
 
@@ -248,7 +250,7 @@ test('an operation that belongs to no space gets the caller and no membership; n
   const response = await post('getSettings', {});
 
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ input: {}, user: ADA }]);
+  assert.deepEqual(calls, [{ input: {}, user: ADA, apiKeyId: null }]);
   assert.deepEqual(membershipLookups, []);
 });
 

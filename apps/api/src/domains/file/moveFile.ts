@@ -19,7 +19,9 @@ export function moveFile({ db }: { db: Db }) {
       throw new ApiError('CONFLICT', 'A folder cannot be moved into itself, nor into a folder inside it.');
     }
     // It is there already: nothing to change
-    if (found.row.parentId === input.parentId) return { file: toFile(found.row, pathOfNames(found.names)) };
+    if (found.row.parentId === input.parentId) {
+      return { file: toFile(found.row, pathOfNames(found.names), found.version) };
+    }
 
     const [moved] = await unlessNameTaken(found.row.name, () =>
       db
@@ -30,6 +32,6 @@ export function moveFile({ db }: { db: Db }) {
     );
     if (!moved) throw new Error(`File ${input.fileId} was found and could not be moved.`);
 
-    return { file: toFile(moved, `${place.path}/${moved.name}`) };
+    return { file: toFile(moved, `${place.path}/${moved.name}`, found.version) };
   });
 }

@@ -24,6 +24,6 @@ export function createFolder({ db }: { db: Db }) {
     );
     if (!created) throw new Error('The folder was not created.');
 
-    return { file: toFile(created, `${place.path}/${created.name}`) };
+    return { file: toFile(created, `${place.path}/${created.name}`, null) };
   });
 }

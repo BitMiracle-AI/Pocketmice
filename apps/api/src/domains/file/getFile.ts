@@ -7,6 +7,6 @@ export function getFile({ db }: { db: Db }) {
   return implement(definition, async ({ input }) => {
     const found = await liveFile(db, input.spaceId, input.fileId);
 
-    return { file: toFile(found.row, pathOfNames(found.names)) };
+    return { file: toFile(found.row, pathOfNames(found.names), found.version) };
   });
 }

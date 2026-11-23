@@ -3,6 +3,7 @@ import type { Db } from '@pocketmice/db';
 import { files } from '@pocketmice/db/schema/file';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { ApiError } from '../../http/operation.ts';
+import { type FileVersion, findVersions } from './fileVersion.ts';
 
 // Finding a file. A row of files says what the file is called and which folder it is in, and nothing else about
 // where it is. Its path, and whether it is in the trash, are read from the folders it is in, up to the top of the
@@ -11,9 +12,11 @@ import { ApiError } from '../../http/operation.ts';
 /** A row of the files table */
 export type FileRow = typeof files.$inferSelect;
 
-/** A file, together with what the folders it is in say about it */
+/** A file, together with its content now and what the folders it is in say about it */
 export interface FoundFile {
   row: FileRow;
+  /** The version that is its content now. Null for a folder */
+  version: FileVersion | null;
   /** The names from the top of the space down to the file. The last one is its own */
   names: string[];
   /** The ids from the file up to the top: its own first, then the folder it is in, and so on */
@@ -68,13 +71,34 @@ export async function findFiles(db: Db, spaceId: string, ids: string[]): Promise
     `)
   ]);
 
+  const versions = await versionsOf(db, rows);
   const walkOf = new Map(walks.map((walk) => [walk.start_id, walk]));
   for (const row of rows) {
     const walk = walkOf.get(row.id);
     if (!walk) continue;
-    found.set(row.id, { row, names: walk.names, lineage: walk.lineage, inTrashedFolder: walk.in_trashed_folder });
+    found.set(row.id, {
+      row,
+      version: versions.get(row.id) ?? null,
+      names: walk.names,
+      lineage: walk.lineage,
+      inTrashedFolder: walk.in_trashed_folder
+    });
   }
   return found;
+}
+
+/** The content these rows have now, by the id of the file. A folder is left out: it has none */
+export async function versionsOf(db: Db, rows: FileRow[]): Promise<Map<string, FileVersion>> {
+  const current = await findVersions(
+    db,
+    rows.flatMap((row) => (row.versionId === null ? [] : [row.versionId]))
+  );
+  const byFile = new Map<string, FileVersion>();
+  for (const row of rows) {
+    const version = row.versionId === null ? undefined : current.get(row.versionId);
+    if (version) byFile.set(row.id, version);
+  }
+  return byFile;
 }
 
 /** The file with this id in this space, in the trash or not. Null when the space has no such file */
@@ -114,8 +138,8 @@ export async function findPlace(db: Db, spaceId: string, parentId: string | null
   return { path: pathOfNames(found.names), lineage: found.lineage };
 }
 
-/** A file as an operation answers with it: its row, and the path that was worked out for it */
-export function toFile(row: FileRow, path: string) {
+/** A file as an operation answers with it: its row, the path that was worked out for it, and its content now */
+export function toFile(row: FileRow, path: string, version: FileVersion | null) {
   return {
     id: row.id,
     parentId: row.parentId,
@@ -123,6 +147,7 @@ export function toFile(row: FileRow, path: string) {
     kind: row.kind,
     description: row.description,
     path,
+    version,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   };

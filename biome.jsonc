@@ -121,6 +121,33 @@
       }
     },
     {
+      // The storage keeps bytes and knows nothing of the product: it imports from neither of the other two folders,
+      // and reads no environment variable
+      "includes": ["apps/api/src/storage/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noProcessEnv": "error",
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["../**/domains/**", "../**/http/**"],
+                    "message": "Code in storage/ must not import from domains/ or http/: it keeps bytes, and knows nothing of files or requests."
+                  },
+                  {
+                    "group": ["../**/instances.ts", "../**/env.ts"],
+                    "message": "Code in storage/ does not read environment variables or import instances.ts. Take what you need as a parameter: main.ts passes it in."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["apps/api/src/http/**"],
       "linter": {
         "rules": {

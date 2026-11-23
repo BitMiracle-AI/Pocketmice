@@ -19,13 +19,13 @@ export function identifyCaller(db: Db, bySession: (headers: Headers) => Promise<
     if (!token.startsWith(API_KEY_PREFIX)) return { user: null };
 
     const [found] = await db
-      .select({ id: users.id, email: users.email, permission: apiKeys.permission })
+      .select({ id: users.id, email: users.email, keyId: apiKeys.id, permission: apiKeys.permission })
       .from(apiKeys)
       .innerJoin(users, eq(users.id, apiKeys.userId))
       // A key that was deleted keeps its row. This condition is what stops it from working
       .where(and(eq(apiKeys.key, token), isNull(apiKeys.deletedAt)));
     if (!found) return { user: null };
 
-    return { user: { id: found.id, email: found.email }, apiKey: { permission: found.permission } };
+    return { user: { id: found.id, email: found.email }, apiKey: { id: found.keyId, permission: found.permission } };
   };
 }

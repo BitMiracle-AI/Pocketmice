@@ -10,6 +10,8 @@ import {
   filePath,
   getFiles,
   namesOfPath,
+  newFileQuery,
+  newVersionQuery,
   PAGE_SIZE_DEFAULT,
   PAGE_SIZE_MAX,
   pathOfNames,
@@ -101,4 +103,17 @@ test('a page has the default size when limit is left out, and never more than th
   for (const limit of [0, -1, 1.5, PAGE_SIZE_MAX + 1]) {
     assert.equal(input.safeParse({ spaceId: SPACE, parentId: null, limit }).success, false, `${limit}`);
   }
+});
+
+test('the query of an upload says a new file or a new version, and refuses a parameter it does not know', () => {
+  // Left out, parentId means directly in the space: a query cannot say null
+  assert.deepEqual(newFileQuery.parse({ spaceId: SPACE, name: ' report.md ' }), { spaceId: SPACE, name: 'report.md' });
+  assert.equal(newFileQuery.safeParse({ spaceId: SPACE, parentId: FILE, name: 'report.md' }).success, true);
+  assert.equal(newFileQuery.safeParse({ spaceId: SPACE, name: 'a/b' }).success, false);
+  // A misspelled parameter is not dropped: the file would land somewhere the caller did not mean
+  assert.equal(newFileQuery.safeParse({ spaceId: SPACE, parentid: FILE, name: 'report.md' }).success, false);
+
+  assert.equal(newVersionQuery.safeParse({ spaceId: SPACE, fileId: FILE, baseVersionId: FILE }).success, true);
+  // Writing over a file without saying which version is replaced is not a query
+  assert.equal(newVersionQuery.safeParse({ spaceId: SPACE, fileId: FILE }).success, false);
 });

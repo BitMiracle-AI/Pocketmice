@@ -3,7 +3,7 @@ import type { Db } from '@pocketmice/db';
 import { files } from '@pocketmice/db/schema/file';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { implement } from '../../http/operation.ts';
-import { findPlace, toFile } from './findFile.ts';
+import { findPlace, toFile, versionsOf } from './findFile.ts';
 
 export function getFiles({ db }: { db: Db }) {
   return implement(definition, async ({ input }) => {
@@ -26,9 +26,10 @@ export function getFiles({ db }: { db: Db }) {
       .orderBy(files.name)
       .limit(input.limit + 1);
     const page = rows.slice(0, input.limit);
+    const versions = await versionsOf(db, page);
 
     return {
-      files: page.map((row) => toFile(row, `${place.path}/${row.name}`)),
+      files: page.map((row) => toFile(row, `${place.path}/${row.name}`, versions.get(row.id) ?? null)),
       nextCursor: rows.length > input.limit ? (page.at(-1)?.name ?? null) : null
     };
   });

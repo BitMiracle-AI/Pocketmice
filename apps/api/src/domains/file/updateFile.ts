@@ -24,6 +24,6 @@ export function updateFile({ db }: { db: Db }) {
     if (!updated) throw new Error(`File ${input.fileId} was found and could not be updated.`);
 
     // The folders it is in are the same as before; only its own name, the last of the path, may be another
-    return { file: toFile(updated, pathOfNames([...found.names.slice(0, -1), updated.name])) };
+    return { file: toFile(updated, pathOfNames([...found.names.slice(0, -1), updated.name]), found.version) };
   });
 }

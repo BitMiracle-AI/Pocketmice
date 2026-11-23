@@ -2,11 +2,13 @@ import { z } from 'zod';
 import { id } from '../id.ts';
 import { operation } from '../operation.ts';
 
-// Files: what is in a space. This file has four parts:
+// Files: what is in a space. This file has six parts:
 // 1. the tree, and how something in it is named and found;
-// 2. the trash;
-// 3. lists that come a page at a time;
-// 4. the operations.
+// 2. the content of a file, and its versions;
+// 3. the trash, and deleting for good;
+// 4. lists that come a page at a time;
+// 5. the address the content goes through, which is not an operation;
+// 6. the operations.
 //
 // 1. The tree. What is in a space is a tree of files and folders, and "a file" here means either: a folder is a file
 // of the kind folder. Every file has an id that never changes. Where it is, is the folder it is in (parentId), and
@@ -15,14 +17,30 @@ import { operation } from '../operation.ts';
 // file. It is not stored: it is worked out when asked for, so every file in an answer has its path, and
 // getFileByPath turns a path into the file. Renaming or moving a folder changes the path of everything in it.
 // In one folder a name is used once.
-// So far only folders can be made. A file gets its content by being uploaded, which is not here yet.
 //
-// 2. The trash. trashFile does not remove anything: it puts the file in the trash, and what is in a trashed folder
-// goes with it. What is in the trash does not exist for any operation but two: getTrashedFiles lists it, and
-// restoreFile puts it back. Its name is free while it is there.
+// 2. Content. A file has content, a folder has none. Every write to a file is a new version, and the versions
+// before it stay: nothing a person or an agent writes destroys what was there. The version a file points at is its
+// content now.
+// To write over a file, the caller says which version it is replacing (baseVersionId). When that is no longer the
+// current one, somebody else wrote in between, and the answer is CONFLICT: read the file again, then decide. No
+// write goes over a version its writer has not seen.
+// A version records who wrote it, and through which API key when an agent did. Bringing an old version back
+// (restoreFileVersion) adds a version with the same content, so the history only ever grows.
 //
-// 3. Pages. A list that can grow without limit comes a page at a time: at most limit files, and nextCursor when
+// 3. The trash. trashFile does not remove anything: it puts the file in the trash, and what is in a trashed folder
+// goes with it. What is in the trash does not exist for any operation but these: getTrashedFiles lists it,
+// restoreFile puts it back, and deleteFile and emptyTrash delete it for good. Its name is free while it is there.
+// Deleting for good is the one thing here that cannot be undone, so it is for the owner of the space, signed in
+// themselves: no API key does it. Whatever anyone else does to the files of a space, a member or an agent, the
+// owner can undo.
+//
+// 4. Pages. A list that can grow without limit comes a page at a time: at most limit entries, and nextCursor when
 // there are more. Pass nextCursor back as cursor, as it is, to get the next page.
+//
+// 5. The content address. Bytes do not go through operations, whose inputs and outputs are JSON. They go through
+// one address, FILE_CONTENT_PATH: PUT uploads and GET downloads, with what an operation would take as its input
+// written in the query. Who may call it is checked the way it is for an operation, and a failure is the same error
+// body.
 
 /** What a file is: a file with content, or a folder that holds others */
 export const FILE_KINDS = ['file', 'folder'] as const;
@@ -89,6 +107,21 @@ export const filePath = z
   .string()
   .refine((path) => namesOfPath(path) !== null, 'A path is written like /folder/name: it starts with /.');
 
+/** One content a file has had */
+export const fileVersion = z.object({
+  id: z.string(),
+  /** How many bytes it is */
+  size: z.number(),
+  /** Its SHA-256, in hex. Two contents with the same one are the same content */
+  sha256: z.string(),
+  /** When it was written: an ISO 8601 time in UTC */
+  createdAt: z.iso.datetime(),
+  /** Who wrote it, by the name they go by */
+  user: z.object({ id: z.string(), name: z.string() }),
+  /** The API key it was written through, when an agent wrote it for that person. Null when they wrote it themselves */
+  apiKey: z.object({ id: z.string(), name: z.string() }).nullable()
+});
+
 /** A file or a folder, as the members of its space see it */
 export const file = z.object({
   id: z.string(),
@@ -100,9 +133,11 @@ export const file = z.object({
   description: z.string(),
   /** Where it is: the names from the top of the space down to it */
   path: z.string(),
+  /** Its content now. Null for a folder */
+  version: fileVersion.nullable(),
   /** When it was made: an ISO 8601 time in UTC */
   createdAt: z.iso.datetime(),
-  /** When its name, its description or its place last changed */
+  /** When its name, its description, its place or its content last changed */
   updatedAt: z.iso.datetime()
 });
 
@@ -112,13 +147,13 @@ const trashedFile = file.extend({
   trashedAt: z.iso.datetime()
 });
 
-/** A page has at most this many files, whatever limit asks for */
+/** A page has at most this many entries, whatever limit asks for */
 export const PAGE_SIZE_MAX = 1000;
 
-/** How many files a page has when limit is left out */
+/** How many entries a page has when limit is left out */
 export const PAGE_SIZE_DEFAULT = 100;
 
-/** How many files to answer with at most */
+/** How many entries to answer with at most */
 const limit = z.number().int().min(1).max(PAGE_SIZE_MAX).default(PAGE_SIZE_DEFAULT);
 
 /** Where the page before ended: its nextCursor, as it was. Left out for the first page */
@@ -126,6 +161,40 @@ const cursor = z.string().optional();
 
 /** What to pass as cursor to get the page after this one. Null when this page is the last */
 const nextCursor = z.string().nullable();
+
+/**
+ * The address the content of files goes through. It is not an operation: what is sent, or answered, is the bytes of
+ * a file.
+ * PUT uploads. The body is the content, sent with a content-length (not in chunks) and no larger than
+ * MAX_FILE_BYTES; the query says what it is (newFileQuery or newVersionQuery). The answer is the file, as getFile
+ * answers.
+ * GET downloads. The query says which file (contentQuery), and the answer is its bytes, always as a download and
+ * never as a page to show. One range of it can be asked for with a Range header.
+ */
+export const FILE_CONTENT_PATH = '/api/content';
+
+/** The content of a file has at most this many bytes */
+export const MAX_FILE_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * The query of an upload that makes a file: in the folder parentId, or directly in the space when parentId is left
+ * out. (A query cannot say null, so here leaving it out is how "directly in the space" is said.)
+ * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.
+ */
+export const newFileQuery = z.strictObject({ spaceId: id, parentId: id.optional(), name: fileName });
+
+/**
+ * The query of an upload that writes over a file: the content becomes a new version, in place of baseVersionId.
+ * NOT_FOUND: there is no such file. CONFLICT: baseVersionId is not the current version of the file: somebody wrote
+ * to it since the caller read it, or it is a folder, which has no content.
+ */
+export const newVersionQuery = z.strictObject({ spaceId: id, fileId: id, baseVersionId: id });
+
+/**
+ * The query of a download: the content of a file now, or of the version versionId of it.
+ * NOT_FOUND: there is no such file, it is a folder, or it has no such version.
+ */
+export const contentQuery = z.strictObject({ spaceId: id, fileId: id, versionId: id.optional() });
 
 /**
  * Makes a folder, in the folder parentId or directly in the space.
@@ -254,6 +323,67 @@ export const restoreFile = operation({
   input: z.object({ spaceId: id, fileId: id }),
   output: z.object({ file }),
   errors: ['NOT_FOUND', 'CONFLICT']
+});
+
+/**
+ * The versions of a file, the latest first: the first is its content now. A page at a time. A folder has none.
+ * NOT_FOUND: there is no such file.
+ */
+export const getFileVersions = operation({
+  name: 'getFileVersions',
+  kind: 'read',
+  access: 'authenticated',
+  belongsTo: 'space',
+  minRole: 'viewer',
+  input: z.object({ spaceId: id, fileId: id, limit, cursor }),
+  output: z.object({ versions: z.array(fileVersion), nextCursor }),
+  errors: ['NOT_FOUND']
+});
+
+/**
+ * Makes an old version of a file its content again. The old version is not moved: a new version with the same
+ * content is added, written by the caller, in place of baseVersionId. Answers with the file.
+ * Asked to bring back the version that is current already, it changes nothing.
+ * NOT_FOUND: there is no such file, or it has no such version. CONFLICT: baseVersionId is not the current version of
+ * the file.
+ */
+export const restoreFileVersion = operation({
+  name: 'restoreFileVersion',
+  kind: 'write',
+  access: 'authenticated',
+  belongsTo: 'space',
+  minRole: 'editor',
+  input: z.object({ spaceId: id, fileId: id, versionId: id, baseVersionId: id }),
+  output: z.object({ file }),
+  errors: ['NOT_FOUND', 'CONFLICT']
+});
+
+/**
+ * Deletes for good a file that was put in the trash: every version of it, and with a folder everything in it.
+ * Nothing brings it back.
+ * NOT_FOUND: no such file was put in the trash. Only what is in the trash is deleted: trash it first.
+ */
+export const deleteFile = operation({
+  name: 'deleteFile',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'space',
+  minRole: 'owner',
+  input: z.object({ spaceId: id, fileId: id }),
+  output: z.object({}),
+  errors: ['NOT_FOUND']
+});
+
+/** Deletes for good everything in the trash of a space. Nothing brings it back */
+export const emptyTrash = operation({
+  name: 'emptyTrash',
+  kind: 'write',
+  access: 'session',
+  belongsTo: 'space',
+  minRole: 'owner',
+  input: z.object({ spaceId: id }),
+  output: z.object({}),
+  errors: []
 });
 
 /**

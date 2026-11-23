@@ -10,6 +10,7 @@ import { createTestDb, type TestDb } from '@pocketmice/db/testing';
 import { eq } from 'drizzle-orm';
 import { createApp } from '../../app.ts';
 import { requireEnv } from '../../env.ts';
+import type { FileStorage } from '../../storage/fileStorage.ts';
 import { identifyCaller } from '../apiKey/identifyCaller.ts';
 import { domainImplementations } from '../implementations.ts';
 import { prepareSignIn } from '../prepareSignIn.ts';
@@ -61,7 +62,8 @@ function setup({ prepare, authDb = db }: Options = {}) {
   const app = createApp({
     auth,
     webOrigins: [WEB_ORIGIN],
-    implementations: domainImplementations({ db, version: '1.2.3' }),
+    // No test here touches a file: the storage is never asked for anything
+    implementations: domainImplementations({ db, storage: {} as FileStorage, version: '1.2.3', reportError }),
     identifyCaller: identifyCaller(db, identifyBySession(auth)),
     spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
     reportError
