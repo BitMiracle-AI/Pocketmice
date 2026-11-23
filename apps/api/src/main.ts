@@ -5,6 +5,7 @@ import manifest from '../package.json' with { type: 'json' };
 import { createApp } from './app.ts';
 import { identifyCaller } from './domains/apiKey/identifyCaller.ts';
 import { identifyBySession } from './domains/auth/auth.ts';
+import { fileContentTools } from './domains/file/fileContentTools.ts';
 import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
 import { hostFromEnv, portFromEnv } from './env.ts';
@@ -26,6 +27,8 @@ const app = createApp({
     reportError: logInternalError
   }),
   content: { db, storage },
+  // The tools for the content of files go through the content address above
+  mcp: { version: manifest.version, tools: fileContentTools },
   // By the API key a request carries, or else by who is signed in
   identifyCaller: identifyCaller(db, identifyBySession(auth)),
   spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),

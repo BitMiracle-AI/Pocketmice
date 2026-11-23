@@ -328,7 +328,9 @@ export const trashFile = operation({
   name: 'trashFile',
   description:
     'Puts a file in the trash, and with a folder everything in it. Nothing is removed: restoreFile puts it ' +
-    'back. NOT_FOUND: there is no such file, or it is in the trash already.',
+    'back. This is as far as deleting goes with an API key: deleting for good is done by the owner of the ' +
+    'space, signed in themselves, on what is already in the trash. NOT_FOUND: there is no such file, or it is in ' +
+    'the trash already.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',

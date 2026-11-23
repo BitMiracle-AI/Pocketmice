@@ -21,6 +21,7 @@ import type { CurrentUser } from '../http/operation.ts';
 import type { FileStorage } from '../storage/fileStorage.ts';
 import { createFolderStorage } from '../storage/folderStorage.ts';
 import { identifyCaller } from './apiKey/identifyCaller.ts';
+import { fileContentTools } from './file/fileContentTools.ts';
 import { domainImplementations } from './implementations.ts';
 import { prepareSignIn } from './prepareSignIn.ts';
 import { findMembership } from './space/findMembership.ts';
@@ -70,7 +71,8 @@ export interface TestApi {
 
 /**
  * Call it once at the top of a test file. The file gets a temporary database and a temporary folder of its own,
- * both removed when the file is done, and an api on top of them with every operation and the content address.
+ * both removed when the file is done, and an api on top of them with every operation, the content address and the
+ * MCP entrance.
  */
 export function useTestApi(): TestApi {
   let testDb: TestDb | undefined;
@@ -102,6 +104,7 @@ export function useTestApi(): TestApi {
         reportError
       }),
       content: { db: connected, storage },
+      mcp: { version: '1.2.3', tools: fileContentTools },
       // An API key is recognised the way a running server does it. Who is signed in is read from the test's header,
       // which holds the id of a user row
       identifyCaller: identifyCaller(connected, async (headers) => {

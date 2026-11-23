@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AUTH_ROUTES } from './domains/auth/auth.ts';
 import { type FileContentDeps, mountFileContent } from './domains/file/fileContent.ts';
+import { mountMcp, type Tool } from './http/mcp.ts';
 import { mountOperations, type OperationDeps } from './http/operation.ts';
 
 /**
@@ -23,6 +24,13 @@ export interface AppDeps extends OperationDeps {
    * out, it is not mounted.
    */
   content?: Pick<FileContentDeps, 'db' | 'storage'>;
+  /**
+   * The address an agent that speaks the Model Context Protocol calls (MCP_PATH; its rules are in http/mcp.ts). It
+   * is not an operation either: every operation an API key may call is a tool of it, without being named here.
+   * version is what this server says it is, and tools are the tools that are not operations. Left out, it is not
+   * mounted.
+   */
+  mcp?: { version: string; tools: Tool[] };
 }
 
 /** Every route of the api. It does not listen on a port: main.ts does */
@@ -55,6 +63,11 @@ export function createApp(deps: AppDeps) {
 
   // The content of files. Its callers pass the same checks as the callers of an operation
   if (deps.content) mountFileContent(app, { ...deps, ...deps.content });
+
+  // The MCP entrance. What its tools do, they do by sending requests to this same app
+  if (deps.mcp) {
+    mountMcp(app, { ...deps, ...deps.mcp, operations: deps.implementations.map(({ operation }) => operation) });
+  }
 
   // The operations, each at POST /api/<its name>
   mountOperations(app, deps);

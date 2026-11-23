@@ -5,9 +5,9 @@ the same files: they read what people give them and hand back what they make.
 
 > **Status: early.** The server side of the drive works: signing up and signing in, spaces with their members and
 > invites, API keys for agents, and files — folders, upload and download, versions, a trash. There is no web app
-> and no MCP server yet: the way in is the HTTP API, for a program the [TypeScript SDK](#typescript-sdk), which is
-> in this repository and not on npm yet, and for an agent the [skill](#agent-skill) that teaches it. Nothing here
-> is ready for production.
+> yet: the way in is the HTTP API, for a program the [TypeScript SDK](#typescript-sdk), which is in this repository
+> and not on npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it
+> the API. Nothing here is ready for production.
 
 ## What is planned
 
@@ -185,6 +185,31 @@ try {
 - A method is one request. Writing to a path whose folders may be missing takes several: the
   [skill](#agent-skill) says which.
 - It uses no module of Node, so it should run wherever there is a `fetch`. It has been tried on Node only.
+
+## MCP server
+
+An agent whose host speaks the [Model Context Protocol](https://modelcontextprotocol.io) connects to one address
+of the API, `/api/mcp`, with an API key as a bearer token. In Claude Code:
+
+```sh
+claude mcp add --transport http pocketmice https://api.example.com/api/mcp \
+  --header "Authorization: Bearer pm_..."
+```
+
+Every operation an API key may call is a tool, under the operation's own name, with the description and the input
+its definition has. Three more tools read and write the content of files as text: `getFileContent`, `createFile`
+and `updateFileContent`. A long text is read a piece at a time, and writing over a file names the version being
+replaced, as everywhere else.
+
+A tool does what the same key does over HTTP, and nothing else: it sends a request to the API as the caller, and
+what the API refuses comes back as the error code and its message. So a read-only key reads, a viewer changes
+nothing, and what no API key does — deciding who gets in, deleting for good — is not a tool at all.
+
+What it does not do yet:
+
+- Content that is not text, and anything too large to pass through a model, goes through `/api/content`.
+- It takes an API key and has no OAuth. Hosts that connect with OAuth only, like the chat apps of Claude and
+  ChatGPT, cannot connect yet. Tried with Claude Code.
 
 ## Agent skill
 
