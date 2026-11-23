@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pocketmice</title>
-    <!-- There is no icon yet. This says so: without it every browser asks for /favicon.ico, and is answered that
-         there is none. -->
-    <link rel="icon" href="data:," />
+    <!-- The icon is one drawing, public/favicon.svg, at whatever size the browser wants it. There is no
+         /favicon.ico: a browser that cannot draw an SVG icon shows none. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Whether the page is dark: <html> then has the class dark, which the styles go by. It is what the person
          chose, and the system's when they chose nothing. Decided here, before anything is drawn and before our
          code arrives: decided later, someone whose page is dark would see a white one first, every time they open
