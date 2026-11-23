@@ -2,13 +2,14 @@ import { z } from 'zod';
 import { id } from '../id.ts';
 import { operation } from '../operation.ts';
 
-// Files: what is in a space. This file has six parts:
+// Files: what is in a space. This file has seven parts:
 // 1. the tree, and how something in it is named and found;
 // 2. the content of a file, and its versions;
 // 3. the trash, and deleting for good;
-// 4. lists that come a page at a time;
-// 5. the address the content goes through, which is not an operation;
-// 6. the operations.
+// 4. looking for a file by words;
+// 5. lists that come a page at a time;
+// 6. the address the content goes through, which is not an operation;
+// 7. the operations.
 //
 // 1. The tree. What is in a space is a tree of files and folders, and "a file" here means either: a folder is a file
 // of the kind folder. Every file has an id that never changes. Where it is, is the folder it is in (parentId), and
@@ -34,10 +35,15 @@ import { operation } from '../operation.ts';
 // themselves: no API key does it. Whatever anyone else does to the files of a space, a member or an agent, the
 // owner can undo.
 //
-// 4. Pages. A list that can grow without limit comes a page at a time: at most limit entries, and nextCursor when
+// 4. Looking for a file. Whoever does not know where a file is looks for it by words (getMatchingFiles): the files
+// of a space, or of one folder and the folders inside it, that have every one of the words in their name or their
+// description. Only what a file is called and how it is described is looked at: not what it holds, and not the
+// names of the folders it is in. What is in the trash is not found.
+//
+// 5. Pages. A list that can grow without limit comes a page at a time: at most limit entries, and nextCursor when
 // there are more. Pass nextCursor back as cursor, as it is, to get the next page.
 //
-// 5. The content address. Bytes do not go through operations, whose inputs and outputs are JSON. They go through
+// 6. The content address. Bytes do not go through operations, whose inputs and outputs are JSON. They go through
 // one address, FILE_CONTENT_PATH: PUT uploads and GET downloads, with what an operation would take as its input
 // written in the query. Who may call it is checked the way it is for an operation, and a failure is the same error
 // body.
@@ -106,6 +112,27 @@ export function pathOfNames(names: readonly string[]): string {
 export const filePath = z
   .string()
   .refine((path) => namesOfPath(path) !== null, 'A path is written like /folder/name: it starts with /.');
+
+/** What to look for has at most this many characters: as many as a name, so that a whole name can be looked for */
+export const SEARCH_QUERY_MAX_LENGTH = FILE_NAME_MAX_LENGTH;
+
+const QUERY_LENGTH = `What to look for has 1 to ${SEARCH_QUERY_MAX_LENGTH} characters.`;
+
+/**
+ * What to look for: one word, or several with spaces between. Spaces around it are dropped.
+ * A file matches when every word is in its name or in its description, in capitals or not: one word may be in the
+ * name and another in the description. A word is looked for as it is written. No character in it stands for
+ * others, and there is no way to say "or" or "not": a few words find more than a sentence does.
+ */
+export const searchQuery = z.string().trim().min(1, QUERY_LENGTH).max(SEARCH_QUERY_MAX_LENGTH, QUERY_LENGTH);
+
+/**
+ * The words of what to look for: what is between its spaces. A space is a space of any kind, a tab or the wide
+ * space of Chinese typing as well.
+ */
+export function wordsOfQuery(query: string): string[] {
+  return query.split(/\s+/u).filter((word) => word !== '');
+}
 
 /** One content a file has had */
 export const fileVersion = z.object({
@@ -285,6 +312,36 @@ export const getFileByPath = operation({
   minRole: 'viewer',
   input: z.object({ spaceId: id, path: filePath }),
   output: z.object({ file }),
+  errors: ['NOT_FOUND']
+});
+
+export const getMatchingFiles = operation({
+  name: 'getMatchingFiles',
+  description:
+    'Looks for files and folders by words, for when it is not known where something is. query is one word or ' +
+    'several with spaces between; a file or a folder matches when every word is in its name or in its ' +
+    'description, in capitals or not. One word may be in the name and another in the description. A word is ' +
+    'looked for as it is written: no character stands for others, and there is no "or" and no "not", so a few ' +
+    'words find more than a sentence does. Only names and descriptions are looked at: not what a file holds, ' +
+    'and not the names of the folders it is in. folderId is the folder to look in, together with the folders ' +
+    'inside it, or null for the whole space; the folder itself is not among what is found. With kind, only ' +
+    'files or only folders. What is in the trash is not found. The latest changed come first. ' +
+    PAGED +
+    ' Finding nothing is an empty list, not an error. A file that changes while the pages are being read moves ' +
+    'to the front, so the pages after may not have it. NOT_FOUND: there is no folder folderId.',
+  kind: 'read',
+  access: 'authenticated',
+  belongsTo: 'space',
+  minRole: 'viewer',
+  input: z.object({
+    spaceId: id,
+    folderId: id.nullable(),
+    query: searchQuery,
+    kind: fileKind.optional(),
+    limit,
+    cursor
+  }),
+  output: z.object({ files: z.array(file), nextCursor }),
   errors: ['NOT_FOUND']
 });
 

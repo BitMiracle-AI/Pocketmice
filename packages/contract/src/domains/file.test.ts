@@ -11,13 +11,17 @@ import {
   fileName,
   filePath,
   getFiles,
+  getMatchingFiles,
   namesOfPath,
   newFileQuery,
   newVersionQuery,
   PAGE_SIZE_DEFAULT,
   PAGE_SIZE_MAX,
   pathOfNames,
-  updateFile
+  SEARCH_QUERY_MAX_LENGTH,
+  searchQuery,
+  updateFile,
+  wordsOfQuery
 } from './file.ts';
 
 const SPACE = '11111111-1111-4111-8111-111111111111';
@@ -105,6 +109,39 @@ test('a page has the default size when limit is left out, and never more than th
   for (const limit of [0, -1, 1.5, PAGE_SIZE_MAX + 1]) {
     assert.equal(input.safeParse({ spaceId: SPACE, parentId: null, limit }).success, false, `${limit}`);
   }
+});
+
+test('what to look for is trimmed, is not empty, and can be as long as a whole name', () => {
+  assert.equal(searchQuery.parse('  q3 report '), 'q3 report');
+  assert.equal(searchQuery.safeParse('a'.repeat(SEARCH_QUERY_MAX_LENGTH)).success, true);
+  assert.equal(SEARCH_QUERY_MAX_LENGTH, FILE_NAME_MAX_LENGTH);
+  for (const query of ['', '   ', '\u3000', 'a'.repeat(SEARCH_QUERY_MAX_LENGTH + 1)]) {
+    assert.equal(searchQuery.safeParse(query).success, false, JSON.stringify(query.slice(0, 20)));
+  }
+});
+
+test('the words of what to look for are what is between its spaces, of whatever kind', () => {
+  assert.deepEqual(wordsOfQuery('report'), ['report']);
+  assert.deepEqual(wordsOfQuery('q3  报告\t2026\u3000draft'), ['q3', '报告', '2026', 'draft']);
+  // Nothing but a space separates: a dot, a dash and a quote are part of the word
+  assert.deepEqual(wordsOfQuery('summary.md "q3-report"'), ['summary.md', '"q3-report"']);
+  // What searchQuery lets through always has a word
+  assert.deepEqual(wordsOfQuery(searchQuery.parse('  a ')), ['a']);
+});
+
+test('getMatchingFiles says where to look: folderId is a folder, or null for the whole space, and cannot be left out', () => {
+  const input = getMatchingFiles.input;
+
+  assert.deepEqual(input.parse({ spaceId: SPACE, folderId: null, query: ' report ' }), {
+    spaceId: SPACE,
+    folderId: null,
+    query: 'report',
+    limit: PAGE_SIZE_DEFAULT
+  });
+  assert.equal(input.safeParse({ spaceId: SPACE, folderId: FILE, query: 'report', kind: 'folder' }).success, true);
+  assert.equal(input.safeParse({ spaceId: SPACE, query: 'report' }).success, false);
+  assert.equal(input.safeParse({ spaceId: SPACE, folderId: null }).success, false);
+  assert.equal(input.safeParse({ spaceId: SPACE, folderId: null, query: 'report', kind: 'image' }).success, false);
 });
 
 test('the query of an upload says a new file or a new version, and refuses a parameter it does not know', () => {

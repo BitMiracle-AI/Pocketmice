@@ -124,8 +124,29 @@ pm getFiles '{"spaceId":"<space>","parentId":"<folder id>"}'   # in a folder
 folders and files together. A list comes a page at a time, 100 files unless `"limit"` says otherwise (1000 at most).
 When `nextCursor` is not `null` there are more: call again with `"cursor":"<nextCursor>"`.
 
-There is no search, and no call that lists a whole tree: to find a file whose place you do not know, go through
-the folders one by one.
+By words, when you do not know where it is:
+
+```sh
+pm getMatchingFiles '{"spaceId":"<space>","folderId":null,"query":"q3 report"}'
+# {"files":[ …files as above… ],"nextCursor":null}
+```
+
+- A file or a folder matches when every word of `query` is in its name or in its description, in capitals or not.
+  One word may be in the name and another in the description. A word is looked for as it is written: `.pdf` finds
+  the names that have `.pdf` in them, and there is no `*`, no `OR`, no quoting.
+- Give a few words, not a sentence: each word more leaves less. When nothing is found, try fewer words, or other
+  ones.
+- Only names and descriptions are looked at. What a file holds is not, and neither are the names of the folders
+  above it: `2026` finds a folder called `2026`, and not `/2026/summary.md`.
+- `folderId` must be there: `null` for the whole space, or the id of a folder to look only in it and the folders
+  inside it. `NOT_FOUND` means there is no such folder.
+- Add `"kind":"folder"` or `"kind":"file"` to get only those: looking for the folder to save into is the common
+  case.
+- The latest changed come first, a page at a time like `getFiles`. Finding nothing is `"files":[]`, not an error.
+  What is in the trash is not found.
+
+No call lists a whole tree, and none looks into what files hold. When the words do not find it, go through the
+folders one by one; when the content decides, download the candidates and read them.
 
 ## Downloading
 
@@ -225,7 +246,8 @@ Each answers with the file as it is afterwards. All of them work on folders as w
 folder changes the `path` of everything in it, and no `id`.
 
 A description is up to 1024 characters of plain words about a file or a folder: what it holds, where it came from,
-what to do with it. When you make a file that others will come across, give it one.
+what to do with it. When you make a file that others will come across, give it one: `getMatchingFiles` looks in
+descriptions, so the words you write there are the words it will be found by.
 
 Unlike content, a name and a description have no versions: the one you replace is gone. Before you write a new
 description, read the one the file has, and when you replace one, tell the user what it said.
@@ -297,6 +319,7 @@ key and, inside a space, the role `editor`. `updateSpace` alone takes the role `
 | `getFiles`           | read  | `{spaceId, parentId, limit?, cursor?}`                 | `{files, nextCursor}`                             | `NOT_FOUND`             |
 | `getFile`            | read  | `{spaceId, fileId}`                                    | `{file}`                                          | `NOT_FOUND`             |
 | `getFileByPath`      | read  | `{spaceId, path}`                                      | `{file}`                                          | `NOT_FOUND`             |
+| `getMatchingFiles`   | read  | `{spaceId, folderId, query, kind?, limit?, cursor?}`   | `{files, nextCursor}`                             | `NOT_FOUND`             |
 | `getFileVersions`    | read  | `{spaceId, fileId, limit?, cursor?}`                   | `{versions, nextCursor}`                          | `NOT_FOUND`             |
 | `getTrashedFiles`    | read  | `{spaceId, limit?, cursor?}`                           | `{files, nextCursor}`                             |                         |
 | `createSpace`        | write | `{name}`                                               | `{space}`: the person owns it                     |                         |

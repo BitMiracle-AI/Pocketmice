@@ -80,6 +80,8 @@ test('createFolder makes a folder directly in the space or in a folder, and answ
     }
   );
   assert.ok(Math.abs(Date.parse(top.data.file.createdAt) - before) < 60_000);
+  // Nobody has changed it yet: when it last changed is when it was made, to the millisecond
+  assert.equal(top.data.file.updatedAt, top.data.file.createdAt);
   assert.equal(inside.data.file.parentId, top.data.file.id);
   assert.equal(inside.data.file.path, '/Reports/2026');
   assert.equal(inside.data.file.description, 'One folder for each quarter.');

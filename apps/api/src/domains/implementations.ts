@@ -13,6 +13,7 @@ import { getFile } from './file/getFile.ts';
 import { getFileByPath } from './file/getFileByPath.ts';
 import { getFiles } from './file/getFiles.ts';
 import { getFileVersions } from './file/getFileVersions.ts';
+import { getMatchingFiles } from './file/getMatchingFiles.ts';
 import { getTrashedFiles } from './file/getTrashedFiles.ts';
 import { moveFile } from './file/moveFile.ts';
 import { restoreFile } from './file/restoreFile.ts';
@@ -79,6 +80,7 @@ export function domainImplementations(deps: DomainDeps): Implementation[] {
     getFiles(deps),
     getFile(deps),
     getFileByPath(deps),
+    getMatchingFiles(deps),
     createFolder(deps),
     updateFile(deps),
     moveFile(deps),

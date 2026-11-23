@@ -1,13 +1,15 @@
 import { pathOfNames } from '@pocketmice/contract/domains/file';
 import type { DbReader } from '@pocketmice/db';
 import { files } from '@pocketmice/db/schema/file';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, type SQL, sql } from 'drizzle-orm';
 import { ApiError } from '../../http/operation.ts';
 import { type FileVersion, findVersions } from './fileVersion.ts';
 
 // Finding a file. A row of files says what the file is called and which folder it is in, and nothing else about
 // where it is. Its path, and whether it is in the trash, are read from the folders it is in, up to the top of the
 // space: that walk is done here, and nowhere else.
+// It is done in two directions. For a few files that are known, up from each of them (findFiles). For everything
+// in a place, down from the place (foldersWithin): walking up from every file of a space would be a walk for each.
 
 /** A row of the files table */
 export type FileRow = typeof files.$inferSelect;
@@ -136,6 +138,31 @@ export async function findPlace(db: DbReader, spaceId: string, parentId: string 
     throw new ApiError('NOT_FOUND', `There is no folder ${parentId} in space ${spaceId}.`);
   }
   return { path: pathOfNames(found.names), lineage: found.lineage };
+}
+
+/**
+ * The folders in a place, and the folders in those, down to the last: each with its id and its path. It is a part
+ * of a statement, to be joined to under a name.
+ * Folders in the trash are left out, and so is everything below them, which the walk then never reaches. So of the
+ * rows of the space that are not trashed themselves, the ones not in the trash are those directly in the place and
+ * those whose folder is among these; and the path of one of those is the path of its folder, a / and its name.
+ * place is what findPlace answered for parentId. That is also why this walk needs no limit on its depth: the place
+ * reaches the top of the space, so nothing that is reached from it is in a loop.
+ */
+export function foldersWithin(spaceId: string, parentId: string | null, place: Place): SQL {
+  return sql`(
+    with recursive down as (
+      select f.id, ${place.path}::text || '/' || f.name as path
+      from files f
+      where f.space_id = ${spaceId} and ${parentId === null ? sql`f.parent_id is null` : sql`f.parent_id = ${parentId}`}
+        and f.kind = 'folder' and f.deleted_at is null
+      union all
+      select c.id, down.path || '/' || c.name
+      from down join files c on c.parent_id = down.id
+      where c.kind = 'folder' and c.deleted_at is null
+    )
+    select id, path from down
+  )`;
 }
 
 /** A file as an operation answers with it: its row, the path that was worked out for it, and its content now */

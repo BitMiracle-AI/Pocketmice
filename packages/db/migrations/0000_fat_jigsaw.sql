@@ -78,8 +78,8 @@ CREATE TABLE "files" (
 	"version_id" uuid,
 	"user_id" uuid NOT NULL,
 	"deleted_at" timestamp (3) with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp (3) with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp (3) with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "files_space_id_id_unique" UNIQUE("space_id","id"),
 	CONSTRAINT "files_content_check" CHECK (("files"."kind" = 'file') = ("files"."version_id" is not null))
 );

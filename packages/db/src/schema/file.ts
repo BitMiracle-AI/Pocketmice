@@ -60,8 +60,15 @@ export const files = pgTable(
      * finer time would not come back from a cursor as it was.
      */
     deletedAt: timestamp('deleted_at', { withTimezone: true, precision: 3 }),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
+    /**
+     * When it was made, and when its name, its description, its place or its content last changed. Going into the
+     * trash and coming back change neither.
+     * Both are kept to the millisecond, for the same reason as deletedAt: looking for files lists them by when they
+     * last changed (see getMatchingFiles.ts in the api). Both, and not that one alone: a file nobody has changed
+     * yet says the same time twice, and it would not if one of the two were rounded and the other cut off.
+     */
+    createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, precision: 3 })
       .defaultNow()
       .notNull()
       .$onUpdate(() => new Date())
