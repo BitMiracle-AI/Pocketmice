@@ -11,7 +11,12 @@ export const en = {
     editor: 'Joins as an editor',
     viewer: 'Joins as a viewer'
   } satisfies Record<Exclude<SpaceRole, 'owner'>, string>,
+  /** What an invite with a storage limit says of it, in its row */
+  limit: (size: string) => `Limit ${size}`,
   expires: (date: string) => `Expires ${date}`,
+  roleLabel: 'Role',
+  limitHint: 'The most whoever joins with this link may hold in the space. Leave it empty for no limit.',
+  createLink: 'Create link',
   created: 'Invite link created',
   copyLink: 'Copy link',
   copyOf: 'Copy the invite link',

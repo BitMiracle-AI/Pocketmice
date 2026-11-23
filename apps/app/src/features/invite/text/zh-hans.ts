@@ -10,7 +10,11 @@ export const zhHans: typeof en = {
     editor: '加入后是编辑者',
     viewer: '加入后是查看者'
   },
+  limit: (size) => `上限 ${size}`,
   expires: (date) => `${date} 过期`,
+  roleLabel: '角色',
+  limitHint: '用这个链接加入的人在这个空间里最多能占用多少。留空就是不限。',
+  createLink: '创建链接',
   created: '已建好邀请链接',
   copyLink: '复制链接',
   copyOf: '复制邀请链接',

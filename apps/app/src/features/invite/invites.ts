@@ -4,7 +4,8 @@ import { nowIn, type Space } from '@/features/space/spaces';
 import { call, failureText, readQuery, spaceChanged } from '@/lib/api';
 
 // Invites: how someone becomes a member of a space they did not make. The owner makes an invite, which says what
-// role it gives, and hands its link to the people they want in; whoever is signed in and opens the link can join.
+// role it gives and how much whoever joins with it may hold, and hands its link to the people they want in;
+// whoever is signed in and opens the link can join.
 // The link carries the id of the invite and nothing else, and the id is all it takes: it is shown to the owner of
 // the space alone.
 
@@ -21,13 +22,16 @@ export function inviteLink(inviteId: string): string {
   return new URL(`/join/${inviteId}`, window.location.origin).href;
 }
 
-/** Makes an invite that gives role. Answers with it, or with the sentence that says why it was not made */
+/**
+ * Makes an invite that gives role, and storageLimit as the most whoever joins with it may hold: in bytes, null for
+ * no limit. Answers with it, or with the sentence that says why it was not made.
+ */
 export async function makeInvite(
   spaceId: string,
-  role: Invite['role']
+  role: Invite['role'],
+  storageLimit: number | null
 ): Promise<{ invite: Invite } | { problem: string }> {
-  // No storage limit: the page does not ask for one yet, so whoever joins is held by the limit of the space alone
-  const result = await call(createInvite, { spaceId, role, storageLimit: null });
+  const result = await call(createInvite, { spaceId, role, storageLimit });
   if (!result.ok) return { problem: failureText(result.code, {}) };
   spaceChanged(spaceId);
   return { invite: result.data.invite };

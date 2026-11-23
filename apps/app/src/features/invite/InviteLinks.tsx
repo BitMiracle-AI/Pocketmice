@@ -1,6 +1,5 @@
 import { Add01Icon, Delete02Icon, Link01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { grantableRole } from '@pocketmice/contract/spaceRole';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
@@ -15,23 +14,23 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
-import { spaceText } from '@/features/space/text';
 import { copyText } from '@/lib/clipboard';
-import { formatDate } from '@/lib/format';
-import { type Invite, inviteLink, invitesQuery, makeInvite, removeInvite } from './invites';
+import { formatDate, formatSize } from '@/lib/format';
+import { type Invite, inviteLink, invitesQuery, removeInvite } from './invites';
+import { NewInviteDialog } from './NewInviteDialog';
 import { inviteText } from './text';
 
-/** The roles an invite can give, in the order they are offered: the one that may do more first */
-const OFFERED = [...grantableRole.options].reverse();
+/** The dot between two things an invite says of itself in its row */
+function Dot() {
+  return (
+    <span aria-hidden="true" className="px-1.5 text-muted-foreground/50">
+      ·
+    </span>
+  );
+}
 
 /**
  * The invite links to a space, on the page of its members: the owner makes one, copies it to send it, and deletes
@@ -39,23 +38,15 @@ const OFFERED = [...grantableRole.options].reverse();
  */
 export function InviteLinks({ spaceId }: { spaceId: string }) {
   const { invites } = useSuspenseQuery(invitesQuery(spaceId)).data;
-  const [making, setMaking] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Invite | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const copyFailed = () => toast.add({ type: 'error', title: inviteText.copyFailed });
 
-  const make = async (role: Invite['role']) => {
-    if (making) return;
-    setMaking(true);
-    const result = await makeInvite(spaceId, role);
-    setMaking(false);
-    if ('problem' in result) {
-      toast.add({ type: 'error', title: result.problem });
-      return;
-    }
+  const made = (invite: Invite) => {
     // Copying from here is copying at a click, which is when a browser lets a page write to the clipboard
-    const link = inviteLink(result.invite.id);
+    const link = inviteLink(invite.id);
     const said = toast.add({
       title: inviteText.created,
       actionProps: {
@@ -87,26 +78,10 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
           </h2>
           <p className="max-w-xl text-sm text-pretty text-muted-foreground">{inviteText.hint}</p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" disabled={making} className="shrink-0 self-start" />}>
-            {making ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
-            )}
-            {inviteText.newLink}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-64">
-            {OFFERED.map((role) => (
-              <DropdownMenuItem key={role} onClick={() => make(role)}>
-                <span className="flex flex-col gap-0.5">
-                  <span>{inviteText.joinsAs[role]}</span>
-                  <span className="text-xs text-muted-foreground">{spaceText.roleHints[role]}</span>
-                </span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="outline" onClick={() => setAdding(true)} className="shrink-0 self-start">
+          <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
+          {inviteText.newLink}
+        </Button>
       </div>
 
       {invites.length === 0 ? (
@@ -131,9 +106,13 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
                 </ItemTitle>
                 <ItemDescription className="text-xs">
                   {inviteText.joinsAs[invite.role]}
-                  <span aria-hidden="true" className="px-1.5 text-muted-foreground/50">
-                    ·
-                  </span>
+                  {invite.storageLimit !== null && (
+                    <>
+                      <Dot />
+                      {inviteText.limit(formatSize(invite.storageLimit))}
+                    </>
+                  )}
+                  <Dot />
                   {inviteText.expires(formatDate(invite.expiresAt))}
                 </ItemDescription>
               </ItemContent>
@@ -154,6 +133,8 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
           ))}
         </ItemGroup>
       )}
+
+      <NewInviteDialog spaceId={spaceId} open={adding} onOpenChange={setAdding} onCreated={made} />
 
       <AlertDialog open={removing !== null} onOpenChange={(open) => !open && !deleting && setRemoving(null)}>
         <AlertDialogContent size="sm">
