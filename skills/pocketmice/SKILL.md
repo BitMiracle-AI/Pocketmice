@@ -375,6 +375,18 @@ curl -sN "$POCKETMICE_URL/api/events?spaceId=$SPACE" -H "authorization: Bearer $
 - With the TypeScript SDK this is `watchSpace({spaceId})`, read with `for await`: one channel for each call.
 - Over MCP there is no channel: you look when you are asked to.
 
+A program keeps a channel open and reads it as it comes. If you run one command at a time, a command that does
+not end is no use to you: wait for the next thing that happens instead, for at most 100 seconds.
+
+```sh
+curl -sN -m 100 "$POCKETMICE_URL/api/events?spaceId=$SPACE" -H "authorization: Bearer $POCKETMICE_API_KEY" \
+  | awk '/"type":"(message|conversation)"/ { print; exit }'
+```
+
+It prints the first event and ends a few seconds after it, or prints nothing when the time is up. Either way read
+then (`getConversations`), and read before each wait too: what is said while you are not waiting is not told
+afterwards.
+
 ## Errors
 
 Each is the `code` of a failure, with its HTTP status:
