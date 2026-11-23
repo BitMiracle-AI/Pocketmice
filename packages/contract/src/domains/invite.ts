@@ -26,9 +26,11 @@ const invite = z.object({
   expiresAt: z.iso.datetime()
 });
 
-/** Makes an invite to a space */
 export const createInvite = operation({
   name: 'createInvite',
+  description:
+    'Makes an invite to a space, which gives the role it names to whoever joins with it. Answers with the ' +
+    'invite, which says when it stops working.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -38,9 +40,9 @@ export const createInvite = operation({
   errors: []
 });
 
-/** The invites to a space that still work, the oldest first */
 export const getInvites = operation({
   name: 'getInvites',
+  description: 'The invites to a space that still work, the oldest first.',
   kind: 'read',
   access: 'session',
   belongsTo: 'space',
@@ -50,12 +52,11 @@ export const getInvites = operation({
   errors: []
 });
 
-/**
- * Deletes an invite: its link stops working. Whoever joined with it stays a member.
- * NOT_FOUND: the space has no such invite.
- */
 export const deleteInvite = operation({
   name: 'deleteInvite',
+  description:
+    'Deletes an invite: its link stops working. Whoever joined with it stays a member. NOT_FOUND: the space ' +
+    'has no such invite.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -65,13 +66,12 @@ export const deleteInvite = operation({
   errors: ['NOT_FOUND']
 });
 
-/**
- * The caller joins the space an invite is to, in the role the invite gives. Answers with the space.
- * Someone who is a member already stays in the role they have.
- * NOT_FOUND: there is no such invite, or it has expired.
- */
 export const joinSpace = operation({
   name: 'joinSpace',
+  description:
+    'The caller joins the space an invite is to, in the role the invite gives. Answers with the space. ' +
+    'Someone who is a member already stays in the role they have. NOT_FOUND: there is no such invite, or it ' +
+    'has expired.',
   kind: 'write',
   access: 'session',
   belongsTo: 'none',

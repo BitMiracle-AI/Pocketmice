@@ -4,13 +4,12 @@ import { signInMethod } from './auth.ts';
 
 // The server: what a caller can ask about the Pocketmice server it is talking to.
 
-/**
- * Which server this is. Anyone can ask, before anything else is known: a caller that works with several servers,
- * or with a server it does not run itself, uses it to tell which version it is talking to; and a page asks it how
- * people sign in here before it shows them a form.
- */
 export const getServerInfo = operation({
   name: 'getServerInfo',
+  description:
+    'Which server this is: its version, and how people sign in to it. Anyone can ask, before anything else is ' +
+    'known: a caller that works with several servers, or with a server it does not run itself, uses it to tell ' +
+    'which version it is talking to; and a page asks it how people sign in here before it shows them a form.',
   kind: 'read',
   access: 'public',
   belongsTo: 'none',

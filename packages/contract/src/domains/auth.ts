@@ -80,17 +80,16 @@ export const SIGN_IN_CODE_WRONG_TRIES = 3;
 /** A sign-in code: exactly SIGN_IN_CODE_LENGTH digits */
 export const signInCode = z.string().regex(new RegExp(`^\\d{${SIGN_IN_CODE_LENGTH}}$`));
 
-/**
- * Sends a sign-in code to an email address, to sign in with at CODE_SIGN_IN_PATH. Anyone may ask, for any address:
- * the answer is the same whether or not the address has an account.
- * A new code takes the place of the one sent to the same address before it: only the last one works.
- * UNKNOWN_OPERATION: this server signs people in with a password, and sends no codes.
- * TOO_MANY_REQUESTS: codes were asked for too often, from where this request comes from or for this address. No
- * mail was sent.
- * CODE_NOT_SENT: the mail did not go out. Asking again may work.
- */
+// The code is signed in with at CODE_SIGN_IN_PATH, below
 export const requestSignInCode = operation({
   name: 'requestSignInCode',
+  description:
+    'Sends a sign-in code to an email address: the code a person then signs in with. Anyone may ask, for any ' +
+    'address: the answer is the same whether or not the address has an account. A new code takes the place of ' +
+    'the one sent to the same address before it: only the last one works. UNKNOWN_OPERATION: this server signs ' +
+    'people in with a password, and sends no codes. TOO_MANY_REQUESTS: codes were asked for too often, from ' +
+    'where this request comes from or for this address; no mail was sent. CODE_NOT_SENT: the mail did not go ' +
+    'out; asking again may work.',
   kind: 'write',
   access: 'public',
   belongsTo: 'none',

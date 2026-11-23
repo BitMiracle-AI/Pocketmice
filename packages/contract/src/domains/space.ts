@@ -32,9 +32,11 @@ const member = z.object({
   role: spaceRole
 });
 
-/** The spaces the caller is a member of, the oldest first. Empty for someone who is in none */
 export const getSpaces = operation({
   name: 'getSpaces',
+  description:
+    "The spaces the caller is a member of, the oldest first, each with the caller's role in it. Empty for " +
+    'someone who is in none.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'none',
@@ -43,9 +45,9 @@ export const getSpaces = operation({
   errors: []
 });
 
-/** Makes a space. The caller is its owner and, to begin with, its only member */
 export const createSpace = operation({
   name: 'createSpace',
+  description: 'Makes a space. The caller is its owner and, to begin with, its only member. Answers with the space.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'none',
@@ -54,13 +56,12 @@ export const createSpace = operation({
   errors: []
 });
 
-/**
- * Changes the name of a space. Answers with the space as it is after the change.
- * The name is what every member finds the space under, so it is the owner's to change. An API key of the owner may
- * do it too: a new name lets nobody in and can be changed back.
- */
+// An API key of the owner may do it too: a new name lets nobody in and can be changed back.
 export const updateSpace = operation({
   name: 'updateSpace',
+  description:
+    'Changes the name of a space. Answers with the space as it is after the change. The name is what every ' +
+    "member finds the space under, so it is the owner's to change.",
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -70,9 +71,9 @@ export const updateSpace = operation({
   errors: []
 });
 
-/** The members of a space, in the order they became members */
 export const getMembers = operation({
   name: 'getMembers',
+  description: 'The members of a space, in the order they became members, each with their role there.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -82,12 +83,11 @@ export const getMembers = operation({
   errors: []
 });
 
-/**
- * Changes the role of a member. Answers with the member as they are after the change.
- * NOT_FOUND: the space has no such member. CONFLICT: the member is the owner, whose role does not change.
- */
 export const updateMember = operation({
   name: 'updateMember',
+  description:
+    'Changes the role of a member. Answers with the member as they are after the change. NOT_FOUND: the space ' +
+    'has no such member. CONFLICT: the member is the owner, whose role does not change.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -97,13 +97,12 @@ export const updateMember = operation({
   errors: ['NOT_FOUND', 'CONFLICT']
 });
 
-/**
- * Takes a member out of a space. From then on the space does not exist for them, nor for an agent calling with
- * one of their API keys — unless they join again with an invite that still works (see invite.ts).
- * NOT_FOUND: the space has no such member. CONFLICT: the member is the owner, who cannot be removed.
- */
 export const removeMember = operation({
   name: 'removeMember',
+  description:
+    'Takes a member out of a space. From then on the space does not exist for them, nor for an agent calling ' +
+    'with one of their API keys, unless they join again with an invite that still works. NOT_FOUND: the space ' +
+    'has no such member. CONFLICT: the member is the owner, who cannot be removed.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -113,12 +112,11 @@ export const removeMember = operation({
   errors: ['NOT_FOUND', 'CONFLICT']
 });
 
-/**
- * Deletes a space for good: its files with every version of them, its members and its invites. Nothing brings it
- * back, so it is for the owner, signed in themselves.
- */
 export const deleteSpace = operation({
   name: 'deleteSpace',
+  description:
+    'Deletes a space for good: its files with every version of them, its members and its invites. Nothing ' +
+    'brings it back, so it is for the owner, signed in themselves.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -128,12 +126,11 @@ export const deleteSpace = operation({
   errors: []
 });
 
-/**
- * The caller stops being a member of a space.
- * CONFLICT: the caller is the owner, who cannot leave: the space would be left with nobody to decide who is in it.
- */
 export const leaveSpace = operation({
   name: 'leaveSpace',
+  description:
+    'The caller stops being a member of a space. CONFLICT: the caller is the owner, who cannot leave: the ' +
+    'space would be left with nobody to decide who is in it.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',

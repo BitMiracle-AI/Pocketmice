@@ -8,6 +8,7 @@ import { isOperation, operation, operationPath } from './operation.ts';
 function named(name: string) {
   return operation({
     name,
+    description: 'An operation of the tests.',
     kind: name.startsWith('get') ? 'read' : 'write',
     access: 'public',
     belongsTo: 'none',
@@ -33,6 +34,7 @@ test('a name that says read on a write, or a read whose name does not say so, is
   const define = (name: string, kind: 'read' | 'write') =>
     operation({
       name,
+      description: 'An operation of the tests.',
       kind,
       access: 'public',
       belongsTo: 'none',
@@ -50,10 +52,30 @@ test('a name that says read on a write, or a read whose name does not say so, is
   assert.throws(() => define('getThings', 'write'), /Operation getThings is a write, and its name says otherwise/);
 });
 
+test('an operation says what it does: a definition whose description is empty is refused', () => {
+  const define = (description: string) =>
+    operation({
+      name: 'getThing',
+      description,
+      kind: 'read',
+      access: 'public',
+      belongsTo: 'none',
+      input: z.object({}),
+      output: z.object({}),
+      errors: []
+    });
+
+  assert.equal(define('One thing.').description, 'One thing.');
+  for (const empty of ['', '   ', '\n']) {
+    assert.throws(() => define(empty), /Operation getThing has no description/);
+  }
+});
+
 test('an input field called id or ending in Id must be the shared id', () => {
   const define = (input: z.ZodObject) =>
     operation({
       name: 'getThing',
+      description: 'An operation of the tests.',
       kind: 'read',
       access: 'public',
       belongsTo: 'none',
@@ -90,6 +112,7 @@ test('isOperation tells a definition apart from the other things a file exports'
 test('an operation only lists error codes that exist: a made-up code fails the type check', () => {
   operation({
     name: 'getThing',
+    description: 'An operation of the tests.',
     kind: 'read',
     access: 'public',
     belongsTo: 'none',
@@ -104,6 +127,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   // Right: the caller is known, the input says which space, and the lowest role is stated
   operation({
     name: 'getSpaceThings',
+    description: 'An operation of the tests.',
     kind: 'read',
     access: 'authenticated',
     belongsTo: 'space',
@@ -116,6 +140,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   // Right as well: an operation of a space that an API key cannot call
   operation({
     name: 'deleteSpaceThings',
+    description: 'An operation of the tests.',
     kind: 'write',
     access: 'session',
     belongsTo: 'space',
@@ -127,6 +152,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
 
   operation({
     name: 'getSpaceThings',
+    description: 'An operation of the tests.',
     kind: 'read',
     // @ts-expect-error -- without knowing who is calling, membership cannot be checked
     access: 'public',
@@ -139,6 +165,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
 
   operation({
     name: 'getSpaceThings',
+    description: 'An operation of the tests.',
     kind: 'read',
     access: 'authenticated',
     belongsTo: 'space',
@@ -152,6 +179,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
   // @ts-expect-error -- it does not say which members may call it
   operation({
     name: 'getSpaceThings',
+    description: 'An operation of the tests.',
     kind: 'read',
     access: 'authenticated',
     belongsTo: 'space',
@@ -162,6 +190,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
 
   operation({
     name: 'getSpaceThings',
+    description: 'An operation of the tests.',
     kind: 'read',
     access: 'authenticated',
     belongsTo: 'space',
@@ -176,6 +205,7 @@ test('an operation of a space is not public, takes a spaceId and states a role: 
 test('an operation that belongs to no space states no role: one that does fails the type check', () => {
   operation({
     name: 'getThings',
+    description: 'An operation of the tests.',
     kind: 'read',
     access: 'authenticated',
     belongsTo: 'none',

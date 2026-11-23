@@ -49,9 +49,9 @@ const apiKey = z.object({
   createdAt: z.iso.datetime()
 });
 
-/** Makes a key for the caller */
 export const createApiKey = operation({
   name: 'createApiKey',
+  description: 'Makes an API key for the caller. Answers with it, the key itself included.',
   kind: 'write',
   access: 'session',
   belongsTo: 'none',
@@ -60,9 +60,11 @@ export const createApiKey = operation({
   errors: []
 });
 
-/** The caller's keys that work, the oldest first. A key that was deleted is not among them */
 export const getApiKeys = operation({
   name: 'getApiKeys',
+  description:
+    "The caller's API keys that work, the oldest first, each with the key itself. A key that was deleted is " +
+    'not among them.',
   kind: 'read',
   access: 'session',
   belongsTo: 'none',
@@ -71,13 +73,11 @@ export const getApiKeys = operation({
   errors: []
 });
 
-/**
- * Deletes one of the caller's keys: from then on a request sent with it is from nobody, and nothing brings the key
- * back.
- * NOT_FOUND: the caller has no such key, or deleted it before.
- */
 export const deleteApiKey = operation({
   name: 'deleteApiKey',
+  description:
+    "Deletes one of the caller's API keys: from then on a request sent with it is from nobody, and nothing " +
+    'brings the key back. NOT_FOUND: the caller has no such key, or deleted it before.',
   kind: 'write',
   access: 'session',
   belongsTo: 'none',

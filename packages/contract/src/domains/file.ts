@@ -162,6 +162,11 @@ const cursor = z.string().optional();
 /** What to pass as cursor to get the page after this one. Null when this page is the last */
 const nextCursor = z.string().nullable();
 
+/** How the description of an operation that answers with a page says so: the convention, in one sentence */
+const PAGED =
+  'It comes a page at a time: at most limit entries, and when nextCursor is not null there are more: pass it back ' +
+  'as cursor, as it is, to get the next page.';
+
 /**
  * The address the content of files goes through. It is not an operation: what is sent, or answered, is the bytes of
  * a file.
@@ -220,12 +225,11 @@ export const newVersionQuery = z.strictObject({ spaceId: id, fileId: id, baseVer
  */
 export const contentQuery = z.strictObject({ spaceId: id, fileId: id, versionId: id.optional() });
 
-/**
- * Makes a folder, in the folder parentId or directly in the space.
- * NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.
- */
 export const createFolder = operation({
   name: 'createFolder',
+  description:
+    'Makes a folder, in the folder parentId or directly in the space when parentId is null. Answers with the ' +
+    'folder. NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -240,12 +244,13 @@ export const createFolder = operation({
   errors: ['NOT_FOUND', 'CONFLICT']
 });
 
-/**
- * What is in the folder parentId, or directly in the space, in the order of the names. A page at a time.
- * NOT_FOUND: there is no folder parentId.
- */
 export const getFiles = operation({
   name: 'getFiles',
+  description:
+    'What is in the folder parentId, or directly in the space when parentId is null: files and folders ' +
+    'together, in the order of their names. ' +
+    PAGED +
+    ' NOT_FOUND: there is no folder parentId.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -255,9 +260,11 @@ export const getFiles = operation({
   errors: ['NOT_FOUND']
 });
 
-/** One file, by its id. NOT_FOUND: there is no such file */
 export const getFile = operation({
   name: 'getFile',
+  description:
+    'One file or folder, by its id: its name, its description, its path, and for a file its content now ' +
+    '(version). NOT_FOUND: there is no such file.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -267,9 +274,11 @@ export const getFile = operation({
   errors: ['NOT_FOUND']
 });
 
-/** One file, by its path. NOT_FOUND: there is nothing at the path */
 export const getFileByPath = operation({
   name: 'getFileByPath',
+  description:
+    'One file or folder, by its path: the names from the top of the space down to it, like ' +
+    '/Reports/2026/summary.md. NOT_FOUND: there is nothing at the path.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -279,13 +288,12 @@ export const getFileByPath = operation({
   errors: ['NOT_FOUND']
 });
 
-/**
- * Changes the name of a file, its description, or both: what is left out stays as it is. Where the file is does not
- * change; that is moveFile. Answers with the file as it is after the change.
- * NOT_FOUND: there is no such file. CONFLICT: the new name is taken in the folder it is in.
- */
 export const updateFile = operation({
   name: 'updateFile',
+  description:
+    'Changes the name of a file or a folder, its description, or both: what is left out stays as it is. Where ' +
+    'it is does not change; that is moveFile. Answers with the file as it is after the change. NOT_FOUND: ' +
+    'there is no such file. CONFLICT: the new name is taken in the folder it is in.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -300,14 +308,13 @@ export const updateFile = operation({
   errors: ['NOT_FOUND', 'CONFLICT']
 });
 
-/**
- * Moves a file into the folder parentId, or to directly in the space. It keeps its name. Answers with the file as
- * it is after the move.
- * NOT_FOUND: there is no such file, or no folder parentId. CONFLICT: its name is taken there, or the folder to move
- * it into is the file itself or inside it.
- */
 export const moveFile = operation({
   name: 'moveFile',
+  description:
+    'Moves a file or a folder into the folder parentId, or to directly in the space when parentId is null. It ' +
+    'keeps its name. Answers with the file as it is after the move. NOT_FOUND: there is no such file, or no ' +
+    'folder parentId. CONFLICT: its name is taken there, or the folder to move it into is the file itself or ' +
+    'inside it.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -317,12 +324,11 @@ export const moveFile = operation({
   errors: ['NOT_FOUND', 'CONFLICT']
 });
 
-/**
- * Puts a file in the trash, and with a folder everything in it. Nothing is removed: restoreFile puts it back.
- * NOT_FOUND: there is no such file, or it is in the trash already.
- */
 export const trashFile = operation({
   name: 'trashFile',
+  description:
+    'Puts a file in the trash, and with a folder everything in it. Nothing is removed: restoreFile puts it ' +
+    'back. NOT_FOUND: there is no such file, or it is in the trash already.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -332,14 +338,13 @@ export const trashFile = operation({
   errors: ['NOT_FOUND']
 });
 
-/**
- * Puts a file that was trashed back where it was, under the name it had. Answers with the file.
- * NOT_FOUND: no such file was put in the trash. A file that is in the trash only because a folder it is in was
- * trashed is not restored on its own: restore the folder.
- * CONFLICT: its name has been taken in the meantime, or the folder it was in is in the trash now.
- */
 export const restoreFile = operation({
   name: 'restoreFile',
+  description:
+    'Puts a file that was trashed back where it was, under the name it had. Answers with the file. NOT_FOUND: ' +
+    'no such file was put in the trash. A file that is in the trash only because a folder it is in was ' +
+    'trashed is not restored on its own: restore the folder. CONFLICT: its name has been taken in the ' +
+    'meantime, or the folder it was in is in the trash now.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -349,12 +354,12 @@ export const restoreFile = operation({
   errors: ['NOT_FOUND', 'CONFLICT']
 });
 
-/**
- * The versions of a file, the latest first: the first is its content now. A page at a time. A folder has none.
- * NOT_FOUND: there is no such file.
- */
 export const getFileVersions = operation({
   name: 'getFileVersions',
+  description:
+    'The versions of a file, the latest first: the first is its content now. A folder has none. ' +
+    PAGED +
+    ' NOT_FOUND: there is no such file.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -364,15 +369,14 @@ export const getFileVersions = operation({
   errors: ['NOT_FOUND']
 });
 
-/**
- * Makes an old version of a file its content again. The old version is not moved: a new version with the same
- * content is added, written by the caller, in place of baseVersionId. Answers with the file.
- * Asked to bring back the version that is current already, it changes nothing.
- * NOT_FOUND: there is no such file, or it has no such version. CONFLICT: baseVersionId is not the current version of
- * the file.
- */
 export const restoreFileVersion = operation({
   name: 'restoreFileVersion',
+  description:
+    'Makes an old version of a file its content again. The old version is not moved: a new version with the ' +
+    'same content is added, written by the caller, in place of baseVersionId, the version that is current ' +
+    'now. Answers with the file. Asked to bring back the version that is current already, it changes nothing. ' +
+    'NOT_FOUND: there is no such file, or it has no such version. CONFLICT: baseVersionId is not the current ' +
+    'version of the file: somebody wrote to it in the meantime.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -382,13 +386,12 @@ export const restoreFileVersion = operation({
   errors: ['NOT_FOUND', 'CONFLICT']
 });
 
-/**
- * Deletes for good a file that was put in the trash: every version of it, and with a folder everything in it.
- * Nothing brings it back.
- * NOT_FOUND: no such file was put in the trash. Only what is in the trash is deleted: trash it first.
- */
 export const deleteFile = operation({
   name: 'deleteFile',
+  description:
+    'Deletes for good a file that was put in the trash: every version of it, and with a folder everything in ' +
+    'it. Nothing brings it back. NOT_FOUND: no such file was put in the trash. Only what is in the trash is ' +
+    'deleted: trash it first.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -398,9 +401,9 @@ export const deleteFile = operation({
   errors: ['NOT_FOUND']
 });
 
-/** Deletes for good everything in the trash of a space. Nothing brings it back */
 export const emptyTrash = operation({
   name: 'emptyTrash',
+  description: 'Deletes for good everything in the trash of a space. Nothing brings it back.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
@@ -410,12 +413,12 @@ export const emptyTrash = operation({
   errors: []
 });
 
-/**
- * The files that were put in the trash in a space, the latest first. A page at a time.
- * What is inside a trashed folder is not listed: it comes back with the folder.
- */
 export const getTrashedFiles = operation({
   name: 'getTrashedFiles',
+  description:
+    'The files that were put in the trash in a space, the latest first. ' +
+    PAGED +
+    ' What is inside a trashed folder is not listed: it comes back with the folder.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',

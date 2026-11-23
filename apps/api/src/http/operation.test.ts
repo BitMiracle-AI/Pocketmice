@@ -20,6 +20,7 @@ const N1 = '22222222-2222-4222-8222-222222222222';
 // anyone may call, and one kept for the person themselves
 const renameNote = operation({
   name: 'renameNote',
+  description: 'An operation of the tests.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -31,6 +32,7 @@ const renameNote = operation({
 
 const getSettings = operation({
   name: 'getSettings',
+  description: 'An operation of the tests.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'none',
@@ -41,6 +43,7 @@ const getSettings = operation({
 
 const getInvitation = operation({
   name: 'getInvitation',
+  description: 'An operation of the tests.',
   kind: 'read',
   access: 'public',
   belongsTo: 'none',
@@ -51,6 +54,7 @@ const getInvitation = operation({
 
 const createToken = operation({
   name: 'createToken',
+  description: 'An operation of the tests.',
   kind: 'write',
   access: 'session',
   belongsTo: 'none',

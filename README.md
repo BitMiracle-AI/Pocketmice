@@ -51,6 +51,7 @@ is written down once, in `packages/contract`:
 ```ts
 export const getMembers = operation({
   name: 'getMembers',
+  description: 'The members of a space, in the order they became members, each with their role there.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -60,6 +61,8 @@ export const getMembers = operation({
   errors: []
 });
 ```
+
+`description` says what the operation does, in sentences a caller can act on: it is the one place that says so.
 
 The definition also says who may call the operation. The server checks all of it in one place, before the
 implementation runs:

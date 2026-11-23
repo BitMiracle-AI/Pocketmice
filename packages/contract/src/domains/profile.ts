@@ -21,9 +21,11 @@ const profile = z.object({
   name: z.string()
 });
 
-/** The caller's own profile. Callers also use it to answer "who is signed in" */
 export const getProfile = operation({
   name: 'getProfile',
+  description:
+    "The caller's own profile: the name they go by and the email address they sign in with. Callers also use " +
+    'it to answer "who is signed in"; called with an API key, it says whose key it is.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'none',
@@ -32,9 +34,10 @@ export const getProfile = operation({
   errors: []
 });
 
-/** Changes the caller's own profile. Answers with the profile as it is after the change */
 export const updateProfile = operation({
   name: 'updateProfile',
+  description:
+    "Changes the caller's own profile: the name they go by. Answers with the profile as it is after the " + 'change.',
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'none',

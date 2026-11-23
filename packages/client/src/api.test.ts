@@ -7,6 +7,7 @@ import { type ApiClientConfig, createApiClient } from './api.ts';
 
 const getNote = operation({
   name: 'getNote',
+  description: 'An operation of the tests.',
   kind: 'read',
   access: 'public',
   belongsTo: 'none',

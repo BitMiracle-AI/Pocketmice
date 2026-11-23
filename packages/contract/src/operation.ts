@@ -33,6 +33,15 @@ export interface Operation<
   /** The operation's name, like getServerInfo. The constant that exports the definition has the same name */
   readonly name: string;
   /**
+   * What the operation does, what it answers with, and what each error code it lists means here: sentences a
+   * caller can act on without having read anything else. A model that is offered the operation as a tool (see
+   * mcp.ts in the api) reads this and nothing more about it, so it also says what the rest of the contract leaves
+   * to a convention, like null for "directly in the space".
+   * It is the one place that says so: there is no comment above a definition saying it a second time. Why an
+   * operation is the way it is, is for whoever maintains it and stays a comment.
+   */
+  readonly description: string;
+  /**
    * Read or write. A read changes nothing, so calling it again is always safe. An API key that is read-only calls
    * reads only, so a write that said read here would be open to it: the name has to say the same (see NAME).
    */
@@ -96,6 +105,7 @@ interface OperationsOfASpaceAreNotPublic {
  * Defines an operation. A definition that is wrong fails here, when the file loads, not when someone calls it:
  * - the name breaks the rule above;
  * - the name says read (it starts with get) and the kind says write, or the other way round;
+ * - the description is empty;
  * - an input field called id, or ending in Id, is not the shared id, nor that id made nullable (see id.ts).
  */
 export function operation<
@@ -118,6 +128,11 @@ export function operation<
       `Operation ${definition.name} is a ${definition.kind}, and its name says otherwise. A read is named get…, and nothing else is.`
     );
   }
+  if (definition.description.trim() === '') {
+    throw new Error(
+      `Operation ${definition.name} has no description. Say what it does: a caller that is offered it as a tool reads nothing else about it.`
+    );
+  }
   for (const [field, schema] of Object.entries(definition.input.shape)) {
     if ((field === 'id' || field.endsWith('Id')) && !isSharedId(schema)) {
       throw new Error(
@@ -136,7 +151,9 @@ function isSharedId(schema: unknown): boolean {
 /** Whether value is the definition of an operation. Used to pick the operations out of what a file exports */
 export function isOperation(value: unknown): value is Operation {
   if (typeof value !== 'object' || value === null) return false;
-  return ['name', 'kind', 'access', 'belongsTo', 'input', 'output', 'errors'].every((field) => field in value);
+  return ['name', 'description', 'kind', 'access', 'belongsTo', 'input', 'output', 'errors'].every(
+    (field) => field in value
+  );
 }
 
 /**
