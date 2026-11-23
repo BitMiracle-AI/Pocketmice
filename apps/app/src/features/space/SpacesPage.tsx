@@ -2,13 +2,16 @@ import { Add01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { AloneHeading } from '@/components/Alone';
+import { ALONE_LINK, AloneFoot, AloneHeading } from '@/components/Alone';
 import { PageHead } from '@/components/Page';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
+import { signOut } from '@/features/auth/signOut';
+import { authText } from '@/features/auth/text';
 import { UserButton } from '@/features/shell/UserMenu';
 import { UploadPanel } from '@/features/upload/UploadPanel';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { NewSpaceDialog } from './NewSpaceDialog';
 import { SpaceMark } from './SpaceMark';
 import { SpaceNameField } from './SpaceNameField';
@@ -85,8 +88,12 @@ function SpaceCard({ space }: { space: Space }) {
   );
 }
 
-/** What the start shows to someone who is in no space: the form that makes their first one */
+/**
+ * What the start shows to someone who is in no space: the form that makes their first one. Under it is the address
+ * they signed in with, and the way out: someone who has spaces and sees none has signed in with another address.
+ */
 function FirstSpace() {
+  const user = useCurrentUser();
   const form = useNewSpace();
   return (
     <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-6 pt-4 pb-32">
@@ -99,6 +106,12 @@ function FirstSpace() {
             {spaceText.create}
           </Button>
         </form>
+        <AloneFoot>
+          <span>{authText.signedInAs(user.email)}</span>
+          <button type="button" className={ALONE_LINK} onClick={signOut}>
+            {authText.signOut}
+          </button>
+        </AloneFoot>
       </div>
     </main>
   );
