@@ -1,3 +1,5 @@
+import type { SpaceRole } from '@pocketmice/contract/spaceRole';
+
 /** The sentences of the pages that show files, in English. This file says which sentences there are */
 export const en = {
   upload: 'Upload',
@@ -56,6 +58,30 @@ export const en = {
   undo: 'Undo',
   restoreConflict: 'It could not be put back: its name is taken where it was, or the folder it was in is in the trash.',
   restoreGone: 'It is no longer in the trash.',
+
+  /** Under the title of the trash: what is there, and what the person may do with it */
+  trashHints: {
+    owner: 'What was deleted from this space. It stays here until you delete it for good.',
+    editor: 'What was deleted from this space. You can put it back; only the owner can delete it for good.',
+    viewer: 'What was deleted from this space. An editor can put it back.'
+  } satisfies Record<SpaceRole, string>,
+  trashEmptyTitle: 'The trash is empty',
+  trashEmptyHint: 'What is deleted from this space comes here, and can be put back.',
+  wasIn: 'Was in',
+  deleted: 'Deleted',
+  restore: (name: string) => `Put ${name} back`,
+  restored: (name: string) => `Put “${name}” back`,
+  show: 'Show',
+  deleteForGood: (name: string) => `Delete ${name} for good`,
+  deleteTitle: (name: string) => `Delete “${name}” for good?`,
+  deleteFileHint: 'Every version of it is deleted. Nothing brings it back.',
+  deleteFolderHint: 'Everything in it is deleted, with every version of every file. Nothing brings it back.',
+  deleteConfirm: 'Delete for good',
+  emptyTrash: 'Empty trash',
+  emptyTrashTitle: 'Empty the trash?',
+  emptyTrashHint:
+    'Everything in the trash of this space is deleted for good, with every version of every file. Nothing brings it back.',
+  showMore: 'Show more',
 
   folderTitle: 'New folder',
   nameLabel: 'Name',

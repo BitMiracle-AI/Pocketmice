@@ -3,7 +3,7 @@ import { createAuthClient } from '@pocketmice/client/auth';
 import { getProfile } from '@pocketmice/contract/domains/profile';
 import type { UniversalErrorCode } from '@pocketmice/contract/errors';
 import type { CodeOf, InputOf, Operation, OutputOf } from '@pocketmice/contract/operation';
-import { QueryClient, queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, QueryClient, queryOptions } from '@tanstack/react-query';
 import { commonText } from '@/lib/text';
 
 // How the pages talk to the api, and where what the api said is kept.
@@ -111,6 +111,30 @@ export function readQuery<Op extends Operation<'read'>>(operation: Op, input: In
       if (!result.ok) throw new ApiFailure<CodeOf<Op>>(result.code, result.message);
       return result.data;
     }
+  });
+}
+
+/**
+ * The answer to a read that comes a page at a time, as the cache keeps it: the pages read so far, the first one
+ * first. Hand it to useSuspenseInfiniteQuery or queryClient.ensureInfiniteQueryData; fetchNextPage reads the page
+ * after the last. input is what the operation takes, without the cursor: where a page starts is kept here.
+ * Only an operation that answers with nextCursor passes the type check. The pages are kept under the name of the
+ * operation and the input, as a single call would be, so marking what was read from a space as stale reaches them:
+ * they are then read again from the first, as many as there were.
+ */
+export function readPages<Op extends Operation<'read'>>(
+  operation: OutputOf<Op> extends { nextCursor: string | null } ? Op : never,
+  input: Omit<InputOf<Op>, 'cursor'>
+) {
+  return infiniteQueryOptions({
+    queryKey: [operation.name, input, 'pages'],
+    queryFn: async ({ pageParam }): Promise<OutputOf<Op> & { nextCursor: string | null }> => {
+      const result = await call<Op>(operation, { ...input, cursor: pageParam } as InputOf<Op>);
+      if (!result.ok) throw new ApiFailure<CodeOf<Op>>(result.code, result.message);
+      return result.data as OutputOf<Op> & { nextCursor: string | null };
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined
   });
 }
 

@@ -17,6 +17,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppSettingsKeysRouteImport } from './routes/_app/settings/keys'
 import { Route as AppSpacesSpaceIdRouteImport } from './routes/_app/spaces/$spaceId'
 import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app/spaces/$spaceId/index'
+import { Route as AppSpacesSpaceIdTrashRouteImport } from './routes/_app/spaces/$spaceId/trash'
 import { Route as AppSpacesSpaceIdFilesFileIdRouteImport } from './routes/_app/spaces/$spaceId/files/$fileId'
 
 const AppRoute = AppRouteImport.update({
@@ -58,6 +59,11 @@ const AppSpacesSpaceIdIndexRoute = AppSpacesSpaceIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSpacesSpaceIdRoute,
 } as any)
+const AppSpacesSpaceIdTrashRoute = AppSpacesSpaceIdTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => AppSpacesSpaceIdRoute,
+} as any)
 const AppSpacesSpaceIdFilesFileIdRoute =
   AppSpacesSpaceIdFilesFileIdRouteImport.update({
     id: '/files/$fileId',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRouteWithChildren
   '/settings/keys': typeof AppSettingsKeysRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
+  '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
 }
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRouteWithChildren
   '/': typeof AppIndexRoute
   '/settings/keys': typeof AppSettingsKeysRoute
+  '/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdIndexRoute
   '/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/settings/keys': typeof AppSettingsKeysRoute
   '/_app/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
+  '/_app/spaces/$spaceId/trash': typeof AppSpacesSpaceIdTrashRoute
   '/_app/spaces/$spaceId/': typeof AppSpacesSpaceIdIndexRoute
   '/_app/spaces/$spaceId/files/$fileId': typeof AppSpacesSpaceIdFilesFileIdRoute
 }
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/settings/keys'
     | '/spaces/$spaceId'
+    | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId/'
     | '/spaces/$spaceId/files/$fileId'
   fileRoutesByTo: FileRoutesByTo
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/'
     | '/settings/keys'
+    | '/spaces/$spaceId/trash'
     | '/spaces/$spaceId'
     | '/spaces/$spaceId/files/$fileId'
   id:
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/settings/keys'
     | '/_app/spaces/$spaceId'
+    | '/_app/spaces/$spaceId/trash'
     | '/_app/spaces/$spaceId/'
     | '/_app/spaces/$spaceId/files/$fileId'
   fileRoutesById: FileRoutesById
@@ -193,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSpacesSpaceIdIndexRouteImport
       parentRoute: typeof AppSpacesSpaceIdRoute
     }
+    '/_app/spaces/$spaceId/trash': {
+      id: '/_app/spaces/$spaceId/trash'
+      path: '/trash'
+      fullPath: '/spaces/$spaceId/trash'
+      preLoaderRoute: typeof AppSpacesSpaceIdTrashRouteImport
+      parentRoute: typeof AppSpacesSpaceIdRoute
+    }
     '/_app/spaces/$spaceId/files/$fileId': {
       id: '/_app/spaces/$spaceId/files/$fileId'
       path: '/files/$fileId'
@@ -216,11 +235,13 @@ const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
 )
 
 interface AppSpacesSpaceIdRouteChildren {
+  AppSpacesSpaceIdTrashRoute: typeof AppSpacesSpaceIdTrashRoute
   AppSpacesSpaceIdIndexRoute: typeof AppSpacesSpaceIdIndexRoute
   AppSpacesSpaceIdFilesFileIdRoute: typeof AppSpacesSpaceIdFilesFileIdRoute
 }
 
 const AppSpacesSpaceIdRouteChildren: AppSpacesSpaceIdRouteChildren = {
+  AppSpacesSpaceIdTrashRoute: AppSpacesSpaceIdTrashRoute,
   AppSpacesSpaceIdIndexRoute: AppSpacesSpaceIdIndexRoute,
   AppSpacesSpaceIdFilesFileIdRoute: AppSpacesSpaceIdFilesFileIdRoute,
 }

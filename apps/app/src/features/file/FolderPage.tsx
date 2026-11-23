@@ -26,6 +26,7 @@ import { FileIcon } from './FileIcon';
 import { type FileAction, FileMenu } from './FileMenu';
 import { foldersAbove } from './fileOrder';
 import { type DriveFile, folderQuery } from './files';
+import { COLUMNS, HEAD, MEDIUM, ROW, ROW_BUTTON, SIZE, WIDE } from './listLayout';
 import { MoveDialog } from './MoveDialog';
 import { NewFolderDialog } from './NewFolderDialog';
 import { RenameDialog } from './RenameDialog';
@@ -37,25 +38,6 @@ import { moveToTrash } from './trash';
 // on the same line, in grey, and is cut where the room ends.
 // A row ends with what can be done with it: a file can be downloaded by anyone who sees it, and an editor has a
 // menu that renames it, describes it, moves it and puts it in the trash.
-
-/**
- * The columns of the list: the name takes what is left, then who wrote it last, when, how large, and what can be
- * done with the row. They go by the width of the list, not of the window: the sidebar may be open or away. A list
- * that is narrow drops who first, then when, then how large.
- */
-const COLUMNS =
-  'grid grid-cols-[minmax(0,1fr)_3.625rem] items-center gap-x-5 px-3 @lg:grid-cols-[minmax(0,1fr)_4.5rem_3.625rem] @2xl:grid-cols-[minmax(0,1fr)_8.5rem_4.5rem_3.625rem] @4xl:grid-cols-[minmax(0,1fr)_16rem_8.5rem_4.5rem_3.625rem]';
-const WHO = 'hidden min-w-0 @4xl:flex';
-const WHEN = 'hidden truncate @2xl:block';
-const SIZE = 'hidden text-right @lg:block';
-
-/**
- * A button at the end of a row. Where a pointer can hover, it shows when the row is pointed at, when it has the
- * focus, and while the menu it opens is open; on a touch screen it is always there. It is above the link that
- * covers the row of a folder.
- */
-const ROW_BUTTON =
-  'relative z-10 text-muted-foreground group-hover/row:opacity-100 hover:bg-foreground/8 focus-visible:opacity-100 data-popup-open:opacity-100 [@media(hover:hover)]:opacity-0';
 
 /** What is being done to one file of the list in a dialog: the dialog of that is open */
 type Acting = { file: DriveFile; what: Exclude<FileAction, 'trash'> } | null;
@@ -165,10 +147,10 @@ function FilesView({ folder }: { folder: DriveFile | null }) {
           </Empty>
         ) : (
           <div className="@container -mx-3">
-            <div className={cn(COLUMNS, 'h-9 border-b text-xs font-medium text-muted-foreground')}>
+            <div className={cn(COLUMNS, HEAD)}>
               <span>{fileText.name}</span>
-              <span className={WHO}>{fileText.writtenBy}</span>
-              <span className={WHEN}>{fileText.modified}</span>
+              <span className={WIDE}>{fileText.writtenBy}</span>
+              <span className={MEDIUM}>{fileText.modified}</span>
               <span className={SIZE}>{fileText.size}</span>
               <span />
             </div>
@@ -219,7 +201,7 @@ function FileRow({
 }) {
   const isFolder = file.kind === 'folder';
   return (
-    <li className={cn(COLUMNS, 'group/row relative h-10 rounded-xl text-sm hover:bg-muted/70')}>
+    <li className={cn(COLUMNS, ROW)}>
       <div className="flex min-w-0 items-center gap-3">
         <FileIcon name={file.name} folder={isFolder} className="size-4.5" />
         {isFolder ? (
@@ -241,10 +223,10 @@ function FileRow({
         )}
       </div>
 
-      <div className={cn(WHO, 'text-muted-foreground')}>
+      <div className={cn(WIDE, 'text-muted-foreground')}>
         <WrittenBy file={file} />
       </div>
-      <span className={cn(WHEN, 'text-muted-foreground tabular-nums')}>{formatWhen(file.updatedAt)}</span>
+      <span className={cn(MEDIUM, 'text-muted-foreground tabular-nums')}>{formatWhen(file.updatedAt)}</span>
       <span className={cn(SIZE, 'text-muted-foreground tabular-nums')}>
         {file.version && formatSize(file.version.size)}
       </span>

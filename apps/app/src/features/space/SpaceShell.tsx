@@ -1,5 +1,5 @@
-import { Folder01Icon, Key01Icon } from '@hugeicons/core-free-icons';
-import { Link } from '@tanstack/react-router';
+import { Delete02Icon, Folder01Icon, Key01Icon } from '@hugeicons/core-free-icons';
+import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SidebarGroup, SidebarMenu } from '@/components/ui/sidebar';
 import { NavRow, Shell } from '@/features/shell/Shell';
@@ -17,7 +17,10 @@ import { UnknownSpacePage } from './UnknownSpacePage';
  */
 export function SpaceShell({ spaceId, children }: { spaceId: string; children: ReactNode }) {
   const space = useSpaces().find((each) => each.id === spaceId);
+  const matches = useMatchRoute();
   if (!space) return <UnknownSpacePage />;
+  // Which row of the sidebar the page is on is read from the address: the trash, or else the files
+  const onTrash = matches({ to: '/spaces/$spaceId/trash' }) !== false;
 
   return (
     <CurrentSpaceProvider space={space}>
@@ -36,12 +39,17 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
         nav={
           <SidebarGroup>
             <SidebarMenu>
-              {/* Every page of a space is a page of its files, for now: there is no other row to be on */}
               <NavRow
                 link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
                 icon={Folder01Icon}
                 label={shellText.files}
-                active
+                active={!onTrash}
+              />
+              <NavRow
+                link={<Link to="/spaces/$spaceId/trash" params={{ spaceId }} />}
+                icon={Delete02Icon}
+                label={shellText.trash}
+                active={onTrash}
               />
             </SidebarMenu>
           </SidebarGroup>

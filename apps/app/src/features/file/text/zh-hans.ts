@@ -49,6 +49,28 @@ export const zhHans: typeof en = {
   restoreConflict: '没能放回去：原来的位置已经有同名的，或者它所在的文件夹在回收站里。',
   restoreGone: '它已经不在回收站里了。',
 
+  trashHints: {
+    owner: '这个空间里被删除的东西。它们留在这里，直到你彻底删除。',
+    editor: '这个空间里被删除的东西。你可以把它们放回去；彻底删除只有所有者能做。',
+    viewer: '这个空间里被删除的东西。编辑者可以把它们放回去。'
+  },
+  trashEmptyTitle: '回收站是空的',
+  trashEmptyHint: '从这个空间里删除的东西会到这里，可以再放回去。',
+  wasIn: '原位置',
+  deleted: '删除时间',
+  restore: (name) => `把 ${name} 放回去`,
+  restored: (name) => `已把「${name}」放回去`,
+  show: '查看',
+  deleteForGood: (name) => `彻底删除 ${name}`,
+  deleteTitle: (name) => `彻底删除「${name}」？`,
+  deleteFileHint: '它的每一个版本都会被删除，无法恢复。',
+  deleteFolderHint: '里面的所有东西都会被删除，包括每个文件的每一个版本，无法恢复。',
+  deleteConfirm: '彻底删除',
+  emptyTrash: '清空回收站',
+  emptyTrashTitle: '清空回收站？',
+  emptyTrashHint: '这个空间回收站里的所有东西都会被彻底删除，包括每个文件的每一个版本，无法恢复。',
+  showMore: '显示更多',
+
   folderTitle: '新建文件夹',
   nameLabel: '名称',
   folderPlaceholder: '未命名文件夹',
