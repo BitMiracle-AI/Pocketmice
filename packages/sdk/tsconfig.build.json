@@ -1,0 +1,14 @@
+{
+  // What the build reads (the "build" script in package.json), and nothing else.
+  // The package that is published holds the contract and the client inside it: they are not published, so nobody
+  // could install them. The build writes the declarations of all three into one file, and the compiler writes a
+  // declaration only for what it reads as source. Found through node_modules, where the workspace links them, the
+  // two packages are libraries to it and get none. Found by these paths, they are source.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@pocketmice/contract/*": ["../contract/src/*.ts"],
+      "@pocketmice/client/*": ["../client/src/*.ts"]
+    }
+  }
+}
