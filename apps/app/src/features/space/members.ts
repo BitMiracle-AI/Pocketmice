@@ -2,7 +2,7 @@ import { getMembers, leaveSpace, removeMember, updateMember } from '@pocketmice/
 import type { InputOf, OutputOf } from '@pocketmice/contract/operation';
 import { invitesQuery } from '@/features/invite/invites';
 import { call, failureText, queryClient, readQuery, spaceChanged } from '@/lib/api';
-import { noLongerIn, type Space, spacesQuery } from './spaces';
+import { spacesQuery } from './spaces';
 import { spaceText } from './text';
 
 // The members of a space: whoever is one can get in, and what they may do there is their role. Every member sees
@@ -55,12 +55,12 @@ export async function removeFromSpace(spaceId: string, userId: string): Promise<
 /**
  * The person leaves a space. Null when they are out of it, or the sentence that says why they are not. Someone
  * who turns out to be no member any more (the owner removed them a moment ago) is out too.
+ * The list of spaces still has it: the page that asked is one of that space, and leaves it first (noLongerIn).
  */
-export async function leave(space: Space): Promise<string | null> {
-  const result = await call(leaveSpace, { spaceId: space.id });
+export async function leave(spaceId: string): Promise<string | null> {
+  const result = await call(leaveSpace, { spaceId });
   if (!result.ok && result.code !== 'UNKNOWN_SPACE') {
     return failureText(result.code, { CONFLICT: spaceText.ownerCannotLeave });
   }
-  noLongerIn(space.id);
   return null;
 }

@@ -1,4 +1,4 @@
-import { createSpace, getSpaces, spaceName } from '@pocketmice/contract/domains/space';
+import { createSpace, deleteSpace, getSpaces, spaceName, updateSpace } from '@pocketmice/contract/domains/space';
 import type { OutputOf } from '@pocketmice/contract/operation';
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
 import { call, failureText, queryClient, readQuery } from '@/lib/api';
@@ -59,7 +59,40 @@ export function nowIn(space: Space): void {
   void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
 }
 
-/** The person is no longer in a space: they left it. It is taken out of the list at once, and the list asked for again */
+/**
+ * Gives a space another name. Null when it has it, or the sentence that says why it has not. The list of spaces
+ * has the new name at once, and with it every page that names the space.
+ */
+export async function renameSpace(spaceId: string, name: string): Promise<string | null> {
+  const checked = spaceName.safeParse(name);
+  if (!checked.success) return spaceText.nameMissing;
+
+  const result = await call(updateSpace, { spaceId, name: checked.data });
+  if (!result.ok) return failureText(result.code, {});
+
+  const { space } = result.data;
+  queryClient.setQueryData(spacesQuery.queryKey, (old) =>
+    old ? { spaces: old.spaces.map((each) => (each.id === space.id ? space : each)) } : old
+  );
+  void queryClient.invalidateQueries({ queryKey: spacesQuery.queryKey });
+  return null;
+}
+
+/**
+ * Deletes a space for good. Null when it is gone, or the sentence that says why it is not. A space that turns out
+ * to be gone already is gone, which is what was asked for.
+ * The list of spaces still has it: the page that asked is one of that space, and leaves it first (noLongerIn).
+ */
+export async function removeSpace(spaceId: string): Promise<string | null> {
+  const result = await call(deleteSpace, { spaceId });
+  if (!result.ok && result.code !== 'UNKNOWN_SPACE') return failureText(result.code, {});
+  return null;
+}
+
+/**
+ * The person is no longer in a space: they left it, or deleted it. It is taken out of the list at once, and the
+ * list asked for again.
+ */
 export function noLongerIn(spaceId: string): void {
   queryClient.setQueryData(spacesQuery.queryKey, (old) =>
     old ? { spaces: old.spaces.filter((each) => each.id !== spaceId) } : old

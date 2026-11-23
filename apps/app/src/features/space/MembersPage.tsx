@@ -37,6 +37,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLastGiven } from '@/hooks/useLastGiven';
 import { useCurrentSpace } from './CurrentSpaceProvider';
 import { changeRole, type GrantableRole, leave, type Member, membersQuery, removeFromSpace } from './members';
+import { noLongerIn } from './spaces';
 import { spaceText } from './text';
 
 // Who is in a space, and what each may do there. Every member sees the list. The owner changes the role of
@@ -73,16 +74,19 @@ export function MembersPage() {
   const confirm = async () => {
     if (!asking || confirming) return;
     setConfirming(true);
-    const problem = asking === 'leave' ? await leave(space) : await removeFromSpace(space.id, asking.member.userId);
+    const problem = asking === 'leave' ? await leave(space.id) : await removeFromSpace(space.id, asking.member.userId);
+    if (problem === null && asking === 'leave') {
+      // This space is no longer the person's: they go to the start, where the ones that are theirs are. The page
+      // leaves the space before the space leaves the list: a page of a space that is not on the list says "no
+      // such space", which is not what happened here
+      await navigate({ to: '/', replace: true });
+      noLongerIn(space.id);
+      toast.add({ title: spaceText.left(space.name) });
+      return;
+    }
     setConfirming(false);
     setAsking(null);
-    if (problem !== null) {
-      toast.add({ type: 'error', title: problem });
-    } else if (asking === 'leave') {
-      // This space is no longer the person's: they go to the start, where the ones that are theirs are
-      toast.add({ title: spaceText.left(space.name) });
-      await navigate({ to: '/', replace: true });
-    }
+    if (problem !== null) toast.add({ type: 'error', title: problem });
   };
 
   return (

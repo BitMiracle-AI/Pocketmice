@@ -41,6 +41,18 @@ export const zhHans: typeof en = {
   ownerCannotLeave: '空间的所有者不能退出。',
   left: (name) => `你已退出「${name}」`,
 
+  settingsTitle: '空间设置',
+  settingsHint: '这个空间叫什么，以及删除它。这两件事只有你作为所有者能做。',
+  settingsOwnerOnly: '只有这个空间的所有者能给它改名或删除它。',
+  renameHint: '每个成员都按这个名字找到这个空间。',
+  renamed: '空间已改名',
+  deleteSpaceTitle: '删除这个空间',
+  deleteSpaceHint: '里面的每个文件连同它的所有版本都会被删除，成员和邀请链接也一样。删除后无法恢复。',
+  deleteSpace: '删除空间',
+  deleteSpaceAsk: (name) => `删除「${name}」？`,
+  deleteSpaceTypeLabel: '输入空间的名称以确认',
+  deletedSpace: (name) => `已删除「${name}」`,
+
   unknownTitle: '没有这个空间',
   unknownDescription: '这个地址上没有空间，或者你不是它的成员。',
   toHome: '去我的空间'

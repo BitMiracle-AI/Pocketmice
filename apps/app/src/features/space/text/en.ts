@@ -46,6 +46,19 @@ export const en = {
   ownerCannotLeave: 'The owner of a space cannot leave it.',
   left: (name: string) => `You left “${name}”`,
 
+  settingsTitle: 'Space settings',
+  settingsHint: 'What this space is called, and deleting it. Both are yours alone, as its owner.',
+  settingsOwnerOnly: 'Only the owner of this space can rename or delete it.',
+  renameHint: 'Every member finds the space under this name.',
+  renamed: 'Space renamed',
+  deleteSpaceTitle: 'Delete this space',
+  deleteSpaceHint:
+    'Every file in it is deleted with every version, and so are its members and its invite links. Nothing brings it back.',
+  deleteSpace: 'Delete space',
+  deleteSpaceAsk: (name: string) => `Delete “${name}”?`,
+  deleteSpaceTypeLabel: 'Type the name of the space to confirm',
+  deletedSpace: (name: string) => `Deleted “${name}”`,
+
   unknownTitle: 'No such space',
   unknownDescription: 'There is no space at this address, or you are not a member of it.',
   toHome: 'Go to your spaces'

@@ -40,6 +40,7 @@ export const zhHans: typeof en = {
     commandPalette: '命令面板',
     commandPaletteDescription: '搜索要执行的命令'
   },
+  save: '保存',
   somethingWentWrong: '出了点问题',
   tryAgain: '重试',
   notFoundTitle: '没有这个页面',

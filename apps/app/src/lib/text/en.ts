@@ -45,6 +45,7 @@ export const en = {
     commandPalette: 'Command palette',
     commandPaletteDescription: 'Search for a command to run'
   },
+  save: 'Save',
   somethingWentWrong: 'Something went wrong',
   tryAgain: 'Try again',
   notFoundTitle: 'Page not found',

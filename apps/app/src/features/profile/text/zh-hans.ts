@@ -6,7 +6,6 @@ export const zhHans: typeof en = {
   nameLabel: '名字',
   nameHint: '空间里的成员看得到它；你和你的 Agent 写的每个文件旁边也是它。',
   nameMissing: '请填一个名字。',
-  save: '保存',
   saved: '名字已修改',
   emailLabel: '邮箱',
   emailHint: '你用来登录的地址，不能修改。'

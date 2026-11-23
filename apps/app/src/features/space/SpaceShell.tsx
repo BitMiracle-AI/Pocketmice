@@ -1,4 +1,11 @@
-import { ArrowLeft01Icon, Delete02Icon, Folder01Icon, Key01Icon, UserMultiple02Icon } from '@hugeicons/core-free-icons';
+import {
+  ArrowLeft01Icon,
+  Delete02Icon,
+  Folder01Icon,
+  Key01Icon,
+  Settings01Icon,
+  UserMultiple02Icon
+} from '@hugeicons/core-free-icons';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
@@ -19,9 +26,11 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
   const space = useSpaces().find((each) => each.id === spaceId);
   const matches = useMatchRoute();
   if (!space) return <UnknownSpacePage />;
-  // Which row of the sidebar the page is on is read from the address: the members, the trash, or else the files
+  // Which row of the sidebar the page is on is read from the address: the members, the trash, the settings, or
+  // else the files
   const onMembers = matches({ to: '/spaces/$spaceId/members' }) !== false;
   const onTrash = matches({ to: '/spaces/$spaceId/trash' }) !== false;
+  const onSettings = matches({ to: '/spaces/$spaceId/settings' }) !== false;
 
   return (
     <CurrentSpaceProvider space={space}>
@@ -55,7 +64,7 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
                 link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
                 icon={Folder01Icon}
                 label={shellText.files}
-                active={!onMembers && !onTrash}
+                active={!onMembers && !onTrash && !onSettings}
               />
               <NavRow
                 link={<Link to="/spaces/$spaceId/members" params={{ spaceId }} />}
@@ -69,6 +78,15 @@ export function SpaceShell({ spaceId, children }: { spaceId: string; children: R
                 label={shellText.trash}
                 active={onTrash}
               />
+              {/* What the settings of a space hold is the owner's alone */}
+              {space.role === 'owner' && (
+                <NavRow
+                  link={<Link to="/spaces/$spaceId/settings" params={{ spaceId }} />}
+                  icon={Settings01Icon}
+                  label={shellText.settings}
+                  active={onSettings}
+                />
+              )}
             </SidebarMenu>
           </SidebarGroup>
         }
