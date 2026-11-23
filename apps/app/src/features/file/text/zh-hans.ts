@@ -16,7 +16,6 @@ export const zhHans: typeof en = {
   emptySpace: '还没有文件',
   emptyHint: '把文件上传到这里，或者让 Agent 写进来。',
   emptyHintViewer: '这里还没有放东西。',
-  download: (name) => `下载 ${name}`,
   fileGone: '这个文件已经不在这里了。',
   itemGone: '它已经不在这里了。',
 

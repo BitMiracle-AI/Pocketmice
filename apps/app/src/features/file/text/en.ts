@@ -24,7 +24,6 @@ export const en = {
   emptySpace: 'No files yet',
   emptyHint: 'Upload files here, or let an agent write them.',
   emptyHintViewer: 'Nothing has been put here yet.',
-  download: (name: string) => `Download ${name}`,
   fileGone: 'That file is no longer here.',
   /** Said of a file or a folder that something was asked of, and that is gone: renamed away, moved, or trashed */
   itemGone: 'It is no longer here.',
