@@ -29,8 +29,6 @@ export const en = {
   /** Said of a file or a folder that something was asked of, and that is gone: renamed away, moved, or trashed */
   itemGone: 'It is no longer here.',
 
-  /** What the button at the end of a row is called, for whoever cannot see its three dots */
-  more: (name: string) => `More about ${name}`,
   rename: 'Rename',
   addDescription: 'Add description',
   editDescription: 'Edit description',
@@ -84,24 +82,17 @@ export const en = {
   showMore: 'Show more',
 
   searchLabel: 'Search this space',
-  searchPlaceholder: 'Words from a name or a description',
   searchClear: 'Clear',
-  searchStartTitle: 'Look for a file or a folder by words',
-  searchStartHint:
-    'Every word has to be in its name or in its description, in capitals or not. What a file holds is not looked at, and neither are the names of the folders it is in.',
   searchNothingTitle: (words: string) => `Nothing matches “${words}”`,
   searchNothingHint:
     'Every word has to be in the name or the description of a file or a folder. Fewer words find more.',
   searchFound: 'What was found',
-  searchIn: 'In',
 
   downloadFile: 'Download',
   versionsTitle: 'Versions',
   versionsHint: 'Every write to this file is kept. The one at the top is its content now.',
   versionsHintEditor:
     'Every write to this file is kept. The one at the top is its content now; restoring another puts a copy of it on top.',
-  versionWritten: 'Written',
-  versionBy: 'By',
   current: 'Current',
   downloadVersion: (when: string) => `Download the version of ${when}`,
   restoreVersion: (when: string) => `Restore the version of ${when}`,
@@ -125,5 +116,25 @@ export const en = {
 
   goneTitle: 'Nothing here',
   goneDescription: 'There is no file or folder at this address. It may have been moved to the trash.',
-  toFiles: 'Go to the files of this space'
+  toFiles: 'Go to the files of this space',
+
+  /** What the columns of folders are, for whoever cannot see them */
+  browse: 'Browse the files of this space',
+  /** What the pane on the right holds: what is known of the file or the folder that was picked */
+  details: 'Details',
+  where: 'Location',
+  holds: 'Holds',
+  nothingInside: 'Nothing',
+  pickHint: 'Pick a file or a folder to see it here.',
+  showInFolder: 'Show in folder',
+  /** On the button of a version, and of something in the trash */
+  restoreShort: 'Restore',
+  putBack: 'Put back',
+
+  noPreview: 'No preview for this kind of file',
+  previewTooLarge: 'Too large to preview here',
+  previewEmpty: 'This file is empty',
+  /** Under a text that is longer than what is shown of it */
+  previewCut: (size: string) => `The first ${size} of the file.`,
+  previewOpen: 'Enlarge the preview'
 };

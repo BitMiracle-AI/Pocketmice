@@ -3,7 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { MainBar } from '@/features/shell/MainBar';
+import { PageBar } from '@/features/shell/PageBar';
 import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { fileText } from './text';
@@ -16,7 +16,7 @@ export function FileGonePage() {
   const space = useCurrentSpace();
   return (
     <>
-      <MainBar trail={[]} title={shellText.files} />
+      <PageBar title={shellText.files} />
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">

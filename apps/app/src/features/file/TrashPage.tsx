@@ -1,11 +1,9 @@
-import { ArrowTurnBackwardIcon, Delete02Icon } from '@hugeicons/core-free-icons';
+import { Delete02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { roleCovers } from '@pocketmice/contract/spaceRole';
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { cn } from 'cn';
 import { useState } from 'react';
-import { Page, PageHead } from '@/components/Page';
+import { Page } from '@/components/Page';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,15 +17,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
-import { MainBar } from '@/features/shell/MainBar';
+import { PageBar } from '@/features/shell/PageBar';
 import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { useLastGiven } from '@/hooks/useLastGiven';
 import { formatSize, formatWhen } from '@/lib/format';
 import { FileIcon } from './FileIcon';
+import { useGoToFiles } from './FilesLink';
 import { placeOf } from './fileOrder';
-import { COLUMNS, HEAD, MEDIUM, ROW, ROW_BUTTON, SIZE, WIDE } from './listLayout';
 import { fileText } from './text';
 import { deleteForGood, emptyTheTrash, putBack, type TrashedFile, trashQuery } from './trash';
 
@@ -40,7 +39,7 @@ type Asking = { file: TrashedFile } | 'everything' | null;
 
 export function TrashPage() {
   const space = useCurrentSpace();
-  const navigate = useNavigate();
+  const goTo = useGoToFiles(space.id);
   const trash = useSuspenseInfiniteQuery(trashQuery(space.id));
   const files = trash.data.pages.flatMap((page) => page.files);
   // The rows something is being done to: their buttons are off until the api has answered
@@ -69,12 +68,8 @@ export function TrashPage() {
       title: fileText.restored(back.name),
       actionProps: {
         children: fileText.show,
-        onClick: () =>
-          void navigate(
-            back.parentId
-              ? { to: '/spaces/$spaceId/files/$fileId', params: { spaceId: space.id, fileId: back.parentId } }
-              : { to: '/spaces/$spaceId', params: { spaceId: space.id } }
-          )
+        // Where it is again: picked, in the folder it was put back into
+        onClick: () => void goTo(back.id)
       }
     });
   };
@@ -91,93 +86,105 @@ export function TrashPage() {
 
   return (
     <>
-      <MainBar trail={[]} title={shellText.trash} />
-
-      <Page wide>
-        <PageHead title={shellText.trash} hint={fileText.trashHints[space.role]}>
-          {isOwner && files.length > 0 && (
-            <Button variant="outline" onClick={() => setAsking('everything')}>
+      <PageBar
+        title={shellText.trash}
+        actions={
+          isOwner &&
+          files.length > 0 && (
+            <Button variant="destructive" onClick={() => setAsking('everything')}>
               <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} data-icon="inline-start" />
               {fileText.emptyTrash}
             </Button>
-          )}
-        </PageHead>
+          )
+        }
+      />
 
-        {files.length === 0 ? (
-          <Empty className="pb-24">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-              </EmptyMedia>
-              <EmptyTitle>{fileText.trashEmptyTitle}</EmptyTitle>
-              <EmptyDescription>{fileText.trashEmptyHint}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <div className="@container -mx-3">
-            <div className={cn(COLUMNS, HEAD)}>
-              <span>{fileText.name}</span>
-              <span className={WIDE}>{fileText.wasIn}</span>
-              <span className={MEDIUM}>{fileText.deleted}</span>
-              <span className={SIZE}>{fileText.size}</span>
-              <span />
-            </div>
-            <ul className="pt-1.5">
-              {files.map((file) => (
-                <li key={file.id} className={cn(COLUMNS, ROW)}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <FileIcon name={file.name} folder={file.kind === 'folder'} className="size-4.5" />
-                    <span className="min-w-0 truncate">{file.name}</span>
-                  </div>
-                  <span className={cn(WIDE, 'text-muted-foreground')}>
-                    <span className="truncate">{placeOf(file.path) ?? space.name}</span>
-                  </span>
-                  <span className={cn(MEDIUM, 'text-muted-foreground tabular-nums')}>{formatWhen(file.trashedAt)}</span>
-                  <span className={cn(SIZE, 'text-muted-foreground tabular-nums')}>
-                    {file.version && formatSize(file.version.size)}
-                  </span>
-                  <div className="flex items-center justify-end gap-0.5">
+      {files.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
+            </EmptyMedia>
+            <EmptyTitle>{fileText.trashEmptyTitle}</EmptyTitle>
+            <EmptyDescription>{fileText.trashEmptyHint}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <Page wide>
+          <p className="text-sm text-muted-foreground">{fileText.trashHints[space.role]}</p>
+          <div className="overflow-hidden rounded-xl border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{fileText.name}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{fileText.wasIn}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{fileText.deleted}</TableHead>
+                  <TableHead className="hidden text-right md:table-cell">{fileText.size}</TableHead>
+                  {canEdit && <TableHead />}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {files.map((file) => (
+                  <TableRow key={file.id}>
+                    <TableCell className="max-w-0 w-full">
+                      <div className="flex items-center gap-3">
+                        <FileIcon name={file.name} folder={file.kind === 'folder'} className="size-4" />
+                        <span className="truncate font-medium" title={file.name}>
+                          {file.name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                      {placeOf(file.path) ?? space.name}
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">
+                      {formatWhen(file.trashedAt)}
+                    </TableCell>
+                    <TableCell className="hidden text-right text-muted-foreground tabular-nums md:table-cell">
+                      {file.version && formatSize(file.version.size)}
+                    </TableCell>
                     {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={fileText.restore(file.name)}
-                        title={fileText.restore(file.name)}
-                        disabled={busy.has(file.id)}
-                        onClick={() => restore(file)}
-                        className={ROW_BUTTON}
-                      >
-                        <HugeiconsIcon icon={ArrowTurnBackwardIcon} strokeWidth={2} />
-                      </Button>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-label={fileText.restore(file.name)}
+                            disabled={busy.has(file.id)}
+                            onClick={() => restore(file)}
+                          >
+                            {fileText.putBack}
+                          </Button>
+                          {isOwner && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={fileText.deleteForGood(file.name)}
+                              title={fileText.deleteForGood(file.name)}
+                              disabled={busy.has(file.id)}
+                              onClick={() => setAsking({ file })}
+                            >
+                              <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     )}
-                    {isOwner && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={fileText.deleteForGood(file.name)}
-                        title={fileText.deleteForGood(file.name)}
-                        disabled={busy.has(file.id)}
-                        onClick={() => setAsking({ file })}
-                        className={ROW_BUTTON}
-                      >
-                        <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {trash.hasNextPage && (
-              <div className="flex justify-center pt-4">
-                <Button variant="outline" disabled={trash.isFetchingNextPage} onClick={() => trash.fetchNextPage()}>
-                  {trash.isFetchingNextPage && <Spinner data-icon="inline-start" />}
-                  {fileText.showMore}
-                </Button>
-              </div>
-            )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-        )}
-      </Page>
+          {trash.hasNextPage && (
+            <div className="flex justify-center">
+              <Button variant="outline" disabled={trash.isFetchingNextPage} onClick={() => trash.fetchNextPage()}>
+                {trash.isFetchingNextPage && <Spinner data-icon="inline-start" />}
+                {fileText.showMore}
+              </Button>
+            </div>
+          )}
+        </Page>
+      )}
 
       <AlertDialog open={asking !== null} onOpenChange={(open) => !open && !deleting && setAsking(null)}>
         <AlertDialogContent size="sm">

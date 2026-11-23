@@ -4,7 +4,6 @@ import type { Theme } from '../../../lib/theme.ts';
 export const en = {
   files: 'Files',
   conversations: 'Conversations',
-  search: 'Search',
   trash: 'Trash',
   members: 'Members',
   settings: 'Settings',

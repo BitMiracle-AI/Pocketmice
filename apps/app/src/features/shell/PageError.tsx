@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { thrownText } from '@/lib/api';
 import { commonText } from '@/lib/text';
-import { MainBar } from './MainBar';
+import { PageBar } from './PageBar';
 import { shellText } from './text';
 
 /**
@@ -17,7 +17,7 @@ export function PageError({ error, title = shellText.files }: ErrorComponentProp
   const router = useRouter();
   return (
     <>
-      <MainBar trail={[]} title={title} />
+      <PageBar title={title} />
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">

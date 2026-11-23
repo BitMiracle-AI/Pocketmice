@@ -1,18 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { FileGonePage } from '@/features/file/FileGonePage';
-import { FileOrFolderPage } from '@/features/file/FileOrFolderPage';
-import { loadFile } from '@/features/file/loadFile';
+import { FilesPage } from '@/features/file/FilesPage';
+import { loadFiles } from '@/features/file/loadFiles';
+import { wordsOf } from '@/features/file/searchWords';
 import { PageError } from '@/features/shell/PageError';
 
-// A folder of the space, or a file of it: what is in the folder, or what the file is and has been.
+// The files of the space with a file or a folder of it picked: the folders down to it, and what it is. The words
+// being looked for are in the address (?q=…).
 export const Route = createFileRoute('/_app/spaces/$spaceId/files/$fileId')({
-  loader: ({ params }) => loadFile(params.spaceId, params.fileId),
-  component: FileOrFolder,
+  validateSearch: (search: Record<string, unknown>): { q?: string } => ({ q: wordsOf(search.q) }),
+  loader: ({ params }) => loadFiles(params.spaceId, params.fileId),
+  component: PickedFile,
   notFoundComponent: FileGonePage,
   errorComponent: PageError
 });
 
-function FileOrFolder() {
+function PickedFile() {
   const { fileId } = Route.useParams();
-  return <FileOrFolderPage fileId={fileId} />;
+  const { q } = Route.useSearch();
+  return <FilesPage fileId={fileId} words={q ?? ''} />;
 }

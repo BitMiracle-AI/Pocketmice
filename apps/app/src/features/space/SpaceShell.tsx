@@ -4,7 +4,6 @@ import {
   Delete02Icon,
   Folder01Icon,
   Key01Icon,
-  Search01Icon,
   Settings01Icon,
   UserMultiple02Icon
 } from '@hugeicons/core-free-icons';
@@ -39,10 +38,9 @@ function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) 
   const matches = useMatchRoute();
   const unread = useUnreadTotal(spaceId);
   useSpaceEvents(spaceId);
-  // Which row of the sidebar the page is on is read from the address: the conversations, the search, the members,
-  // the trash, the settings, or else the files
+  // Which row of the sidebar the page is on is read from the address: the conversations, the members, the trash,
+  // the settings, or else the files
   const onConversations = matches({ to: '/spaces/$spaceId/conversations', fuzzy: true }) !== false;
-  const onSearch = matches({ to: '/spaces/$spaceId/search' }) !== false;
   const onMembers = matches({ to: '/spaces/$spaceId/members' }) !== false;
   const onTrash = matches({ to: '/spaces/$spaceId/trash' }) !== false;
   const onSettings = matches({ to: '/spaces/$spaceId/settings' }) !== false;
@@ -62,7 +60,7 @@ function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) 
               link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
               icon={Folder01Icon}
               label={shellText.files}
-              active={!onConversations && !onSearch && !onMembers && !onTrash && !onSettings}
+              active={!onConversations && !onMembers && !onTrash && !onSettings}
             />
             <NavRow
               link={<Link to="/spaces/$spaceId/conversations" params={{ spaceId }} />}
@@ -70,12 +68,6 @@ function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) 
               label={shellText.conversations}
               active={onConversations}
               count={unread}
-            />
-            <NavRow
-              link={<Link to="/spaces/$spaceId/search" params={{ spaceId }} />}
-              icon={Search01Icon}
-              label={shellText.search}
-              active={onSearch}
             />
             <NavRow
               link={<Link to="/spaces/$spaceId/members" params={{ spaceId }} />}

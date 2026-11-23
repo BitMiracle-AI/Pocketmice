@@ -20,7 +20,6 @@ export const zhHans: typeof en = {
   fileGone: '这个文件已经不在这里了。',
   itemGone: '它已经不在这里了。',
 
-  more: (name) => `${name} 的更多操作`,
   rename: '重命名',
   addDescription: '添加描述',
   editDescription: '修改描述',
@@ -72,22 +71,16 @@ export const zhHans: typeof en = {
   showMore: '显示更多',
 
   searchLabel: '在这个空间里搜索',
-  searchPlaceholder: '名称或描述里的词',
   searchClear: '清除',
-  searchStartTitle: '按词找文件或文件夹',
-  searchStartHint: '每个词都要出现在名称或描述里，不分大小写。不看文件的内容，也不看它所在文件夹的名称。',
   searchNothingTitle: (words) => `没有匹配「${words}」的文件或文件夹`,
   searchNothingHint: '每个词都要出现在文件或文件夹的名称或描述里。词越少，找到的越多。',
   searchFound: '找到的文件和文件夹',
-  searchIn: '位置',
 
   downloadFile: '下载',
   versionsTitle: '版本',
   versionsHint: '每次写入这个文件都会留下一个版本，最上面的是它现在的内容。',
   versionsHintEditor:
     '每次写入这个文件都会留下一个版本，最上面的是它现在的内容；恢复别的版本，就是把它复制一份放到最上面。',
-  versionWritten: '写入时间',
-  versionBy: '写入者',
   current: '当前',
   downloadVersion: (when) => `下载 ${when} 的版本`,
   restoreVersion: (when) => `恢复 ${when} 的版本`,
@@ -110,5 +103,21 @@ export const zhHans: typeof en = {
 
   goneTitle: '这里什么都没有',
   goneDescription: '这个地址上没有文件，也没有文件夹，它可能已经被移到回收站。',
-  toFiles: '去这个空间的文件'
+  toFiles: '去这个空间的文件',
+
+  browse: '浏览这个空间的文件',
+  details: '详情',
+  where: '位置',
+  holds: '包含',
+  nothingInside: '空',
+  pickHint: '选一个文件或文件夹，在这里查看。',
+  showInFolder: '在文件夹中显示',
+  restoreShort: '恢复',
+  putBack: '放回',
+
+  noPreview: '这种文件没有预览',
+  previewTooLarge: '文件太大，不在这里预览',
+  previewEmpty: '这个文件是空的',
+  previewCut: (size) => `这是文件的前 ${size}。`,
+  previewOpen: '放大预览'
 };

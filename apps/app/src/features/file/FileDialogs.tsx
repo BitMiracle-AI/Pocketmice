@@ -1,28 +1,31 @@
 import { useState } from 'react';
 import { DescriptionDialog } from './DescriptionDialog';
-import type { FileAction } from './FileMenu';
 import type { DriveFile } from './files';
 import { MoveDialog } from './MoveDialog';
 import { RenameDialog } from './RenameDialog';
 import { moveToTrash } from './trash';
 
-// What the menu of a file does, for the pages that have such a menu: the list of a folder, and the page of a
-// file. Three of the four things are done in a dialog; putting something in the trash takes none, since it can be
-// undone, and the page says so.
+// What an editor does to a file or a folder, for the places that offer it: the menu of a row in the columns, and
+// the buttons of the pane that shows what was picked. Three of the four things are done in a dialog; putting
+// something in the trash takes none, since it can be undone, and the page says so.
+
+/** What can be done to a file or a folder. Each changes it, so they are there for an editor */
+export type FileAction = 'rename' | 'describe' | 'move' | 'trash';
 
 /** What is being done to a file in a dialog: the dialog of that is open */
 type Acting = { file: DriveFile; what: Exclude<FileAction, 'trash'> } | null;
 
 /**
- * What a page with file menus holds: pick is what a menu calls with what was picked, and dialogs is handed to
- * FileDialogs as it is. leave is for the page of the file itself: where it goes once the file is in the trash
- * (see moveToTrash).
+ * What a place that offers these things holds: pick is called with the file and what was picked for it, and
+ * dialogs is handed to FileDialogs as it is.
+ * leave is for a page that shows the file itself, or something inside it: it is called once the file is in the
+ * trash, and takes the person elsewhere when the page has nothing left to show (see moveToTrash).
  */
-export function useFileActions(spaceId: string, leave?: () => Promise<void>) {
+export function useFileActions(spaceId: string, leave?: (file: DriveFile) => Promise<void>) {
   const [acting, setActing] = useState<Acting>(null);
   return {
     pick(file: DriveFile, what: FileAction): void {
-      if (what === 'trash') void moveToTrash(spaceId, file, leave);
+      if (what === 'trash') void moveToTrash(spaceId, file, leave && (() => leave(file)));
       else setActing({ file, what });
     },
     dialogs: { spaceId, acting, onClose: () => setActing(null) }
