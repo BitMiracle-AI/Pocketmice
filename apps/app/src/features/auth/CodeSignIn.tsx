@@ -5,14 +5,15 @@ import {
   signInEmail
 } from '@pocketmice/contract/domains/auth';
 import { type FormEvent, useRef, useState } from 'react';
-import { ALONE_LINK, Alone, AloneFoot, AloneHeading } from '@/components/Alone';
+import { CardPage } from '@/components/CardPage';
 import { Button } from '@/components/ui/button';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { auth, call, failureText } from '@/lib/api';
+import { Tagline } from './Tagline';
 import { authText } from './text';
 
 // Signing in on a server that sends mail: the person gives their address, is sent a code, and enters it. An
@@ -62,31 +63,34 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
   };
 
   return (
-    <Alone>
-      <AloneHeading title={authText.signInTitle}>{authText.codeIntro}</AloneHeading>
-      <form onSubmit={submit} noValidate className="mt-8 flex flex-col gap-6">
-        <Field data-invalid={problem !== null || undefined}>
-          <FieldLabel htmlFor="auth-email">{authText.email}</FieldLabel>
-          <Input
-            id="auth-email"
-            type="email"
-            autoComplete="email"
-            autoFocus
-            value={email}
-            aria-invalid={problem !== null || undefined}
-            onChange={(event) => {
-              setEmail(event.target.value);
-              setProblem(null);
-            }}
-          />
-          {problem !== null && <FieldError>{problem}</FieldError>}
-        </Field>
-        <Button type="submit" disabled={sending} className="w-full">
-          {sending && <Spinner data-icon="inline-start" />}
-          {authText.sendCode}
-        </Button>
+    <CardPage title={authText.signInTitle} description={authText.codeIntro} foot={<Tagline />}>
+      <form onSubmit={submit} noValidate>
+        <FieldGroup>
+          <Field data-invalid={problem !== null || undefined}>
+            <FieldLabel htmlFor="auth-email">{authText.email}</FieldLabel>
+            <Input
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              aria-invalid={problem !== null || undefined}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setProblem(null);
+              }}
+            />
+            {problem !== null && <FieldError>{problem}</FieldError>}
+          </Field>
+          <Field>
+            <Button type="submit" disabled={sending}>
+              {sending && <Spinner data-icon="inline-start" />}
+              {authText.sendCode}
+            </Button>
+          </Field>
+        </FieldGroup>
       </form>
-    </Alone>
+    </CardPage>
   );
 }
 
@@ -143,52 +147,50 @@ function CodeStep({
   };
 
   return (
-    <Alone>
-      <AloneHeading title={authText.codeTitle}>
-        {authText.codeSent(email, SIGN_IN_CODE_LENGTH, SIGN_IN_CODE_TTL_SECONDS / 60)}
-      </AloneHeading>
-      <Field data-invalid={problem !== null || undefined} className="mt-8">
-        <div className="flex items-center gap-3">
-          <InputOTP
-            ref={input}
-            autoFocus
-            maxLength={SIGN_IN_CODE_LENGTH}
-            value={code}
-            disabled={spent}
-            aria-label={authText.codeLabel}
-            aria-invalid={problem !== null || undefined}
-            onChange={(value) => {
-              // While a code is being checked, what is typed is not taken: the field keeps the caret, so the
-              // person can type again the moment the answer is there
-              if (busy !== null) return;
-              setCode(value);
-              if (value) setProblem(null);
-            }}
-            onComplete={check}
-          >
-            <InputOTPGroup>
-              {SLOTS.map((index) => (
-                <InputOTPSlot
-                  key={index}
-                  index={index}
-                  aria-invalid={problem !== null || undefined}
-                  className="size-10 text-base"
-                />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
-          {busy === 'checking' && <Spinner className="text-muted-foreground" />}
-        </div>
-        {problem !== null && <FieldError>{problem}</FieldError>}
-      </Field>
-      <AloneFoot>
-        <button type="button" className={ALONE_LINK} disabled={busy !== null} onClick={sendAnother}>
-          {authText.newCode}
-        </button>
-        <button type="button" className={ALONE_LINK} disabled={busy !== null} onClick={onOtherEmail}>
-          {authText.otherEmail}
-        </button>
-      </AloneFoot>
-    </Alone>
+    <CardPage
+      title={authText.codeTitle}
+      description={authText.codeSent(email, SIGN_IN_CODE_LENGTH, SIGN_IN_CODE_TTL_SECONDS / 60)}
+      foot={<Tagline />}
+    >
+      <FieldGroup>
+        <Field data-invalid={problem !== null || undefined}>
+          <div className="flex items-center justify-center gap-3">
+            <InputOTP
+              ref={input}
+              autoFocus
+              maxLength={SIGN_IN_CODE_LENGTH}
+              value={code}
+              disabled={spent}
+              aria-label={authText.codeLabel}
+              aria-invalid={problem !== null || undefined}
+              onChange={(value) => {
+                // While a code is being checked, what is typed is not taken: the field keeps the caret, so the
+                // person can type again the moment the answer is there
+                if (busy !== null) return;
+                setCode(value);
+                if (value) setProblem(null);
+              }}
+              onComplete={check}
+            >
+              <InputOTPGroup>
+                {SLOTS.map((index) => (
+                  <InputOTPSlot key={index} index={index} aria-invalid={problem !== null || undefined} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+            {busy === 'checking' && <Spinner />}
+          </div>
+          {problem !== null && <FieldError className="text-center">{problem}</FieldError>}
+        </Field>
+        <Field orientation="horizontal" className="justify-center">
+          <Button variant="link" size="sm" disabled={busy !== null} onClick={sendAnother}>
+            {authText.newCode}
+          </Button>
+          <Button variant="link" size="sm" disabled={busy !== null} onClick={onOtherEmail}>
+            {authText.otherEmail}
+          </Button>
+        </Field>
+      </FieldGroup>
+    </CardPage>
   );
 }

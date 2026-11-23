@@ -47,8 +47,6 @@ export const en = {
   left: (name: string) => `You left “${name}”`,
 
   settingsTitle: 'Space settings',
-  settingsHint:
-    'What this space is called, how much it may hold, and deleting it. All of it is yours alone, as its owner.',
   settingsOwnerOnly: 'Only the owner of this space can rename it, set its storage limit or delete it.',
   renameHint: 'Every member finds the space under this name.',
   renamed: 'Space renamed',

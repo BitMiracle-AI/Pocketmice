@@ -12,7 +12,7 @@ import { cn } from 'cn';
 import { useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import { KeyMark } from '@/components/KeyMark';
-import { Page, PageHead } from '@/components/Page';
+import { Page } from '@/components/Page';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,8 +37,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
-import { MainBar } from '@/features/shell/MainBar';
-import { shellText } from '@/features/shell/text';
+import { PageBar } from '@/features/shell/PageBar';
 import { formatDate } from '@/lib/format';
 import { type ApiKey, apiKeysQuery, removeApiKey } from './apiKeys';
 import { NewKeyDialog } from './NewKeyDialog';
@@ -75,39 +75,47 @@ export function KeysPage() {
 
   return (
     <>
-      <MainBar trail={[{ label: shellText.settings }]} title={apiKeyText.title} />
+      <PageBar title={apiKeyText.title} />
 
       <Page>
-        <PageHead title={apiKeyText.title} hint={apiKeyText.intro}>
-          <Button onClick={() => setCreating(true)}>
-            <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
-            {apiKeyText.newKey}
-          </Button>
-        </PageHead>
-
-        {data.apiKeys.length === 0 ? (
-          <Empty className="pb-24">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <HugeiconsIcon icon={Key01Icon} strokeWidth={2} />
-              </EmptyMedia>
-              <EmptyTitle>{apiKeyText.emptyTitle}</EmptyTitle>
-              <EmptyDescription>{apiKeyText.emptyDescription}</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <ItemGroup aria-label={apiKeyText.listLabel}>
-            {data.apiKeys.map((each) => (
-              <KeyRow
-                key={each.id}
-                apiKey={each}
-                shown={shown.has(each.id)}
-                onShow={(on) => show(each.id, on)}
-                onRemove={() => setRemoving(each)}
-              />
-            ))}
-          </ItemGroup>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>{apiKeyText.title}</CardTitle>
+            <CardDescription>{apiKeyText.intro}</CardDescription>
+            <CardAction>
+              {/* On a narrow window the button keeps its icon and drops its words, which stay as its name */}
+              <Button aria-label={apiKeyText.newKey} onClick={() => setCreating(true)}>
+                <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
+                <span className="hidden sm:inline">{apiKeyText.newKey}</span>
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {data.apiKeys.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <HugeiconsIcon icon={Key01Icon} strokeWidth={2} />
+                  </EmptyMedia>
+                  <EmptyTitle>{apiKeyText.emptyTitle}</EmptyTitle>
+                  <EmptyDescription>{apiKeyText.emptyDescription}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <ItemGroup aria-label={apiKeyText.listLabel}>
+                {data.apiKeys.map((each) => (
+                  <KeyRow
+                    key={each.id}
+                    apiKey={each}
+                    shown={shown.has(each.id)}
+                    onShow={(on) => show(each.id, on)}
+                    onRemove={() => setRemoving(each)}
+                  />
+                ))}
+              </ItemGroup>
+            )}
+          </CardContent>
+        </Card>
       </Page>
 
       {/* A key that was just made is written out: the person made it to hand it to something */}
@@ -155,12 +163,12 @@ function KeyRow({
           <span className="truncate">{apiKey.name}</span>
           <Badge variant="secondary">{apiKeyText.permissions[apiKey.permission]}</Badge>
         </ItemTitle>
-        <ItemDescription className="line-clamp-1 flex items-baseline gap-2.5 text-xs">
+        <ItemDescription className="line-clamp-1 flex items-baseline gap-2.5">
           <code className={cn('truncate font-mono', shown && 'text-foreground')}>{shown ? apiKey.key : masked}</code>
           <span className="shrink-0">{apiKeyText.created(formatDate(apiKey.createdAt))}</span>
         </ItemDescription>
       </ItemContent>
-      <ItemActions className="gap-0.5">
+      <ItemActions>
         <CopyButton
           text={apiKey.key}
           label={apiKeyText.copyKey(apiKey.name)}
@@ -173,14 +181,7 @@ function KeyRow({
 
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={apiKeyText.more(apiKey.name)}
-                className="text-muted-foreground"
-              />
-            }
+            render={<Button variant="ghost" size="icon-sm" aria-label={apiKeyText.more(apiKey.name)} />}
           >
             <HugeiconsIcon icon={MoreHorizontalIcon} strokeWidth={2} />
           </DropdownMenuTrigger>

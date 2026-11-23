@@ -12,33 +12,3 @@ export function Page({ wide = false, children }: { wide?: boolean; children: Rea
     </div>
   );
 }
-
-/**
- * The top of a page as the pages before the redesign have it. It goes when the last of them is laid out anew: what
- * a page is called is in its bar (PageBar).
- */
-export function PageHead({
-  title,
-  mark,
-  tag,
-  hint,
-  children
-}: {
-  title: string;
-  mark?: ReactNode;
-  tag?: ReactNode;
-  hint?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <header className="flex flex-col gap-1.5">
-      <div className="flex min-h-8 items-center gap-2.5">
-        {mark}
-        <h1 className="truncate font-heading text-lg font-medium tracking-tight">{title}</h1>
-        {tag}
-        {children && <div className="ml-auto flex shrink-0 items-center gap-2">{children}</div>}
-      </div>
-      {hint && <p className="max-w-xl text-sm text-pretty whitespace-pre-line text-muted-foreground">{hint}</p>}
-    </header>
-  );
-}

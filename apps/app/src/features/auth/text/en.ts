@@ -50,5 +50,8 @@ export const en = {
     /** Codes were asked for too often */
     TOO_MANY_CODES: 'Too many codes were asked for. Try again later.',
     CODE_NOT_SENT: 'The mail with the code could not be sent. Try again in a moment.'
-  }
+  },
+
+  /** What Pocketmice is, in one line: under the card a person signs in or signs up in */
+  tagline: 'A cloud drive that people and AI agents share.'
 };

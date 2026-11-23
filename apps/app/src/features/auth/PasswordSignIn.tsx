@@ -1,12 +1,13 @@
 import { signInEmail } from '@pocketmice/contract/domains/auth';
 import { Link } from '@tanstack/react-router';
 import { type FormEvent, useState } from 'react';
-import { ALONE_LINK, Alone, AloneFoot, AloneHeading } from '@/components/Alone';
+import { CardPage } from '@/components/CardPage';
 import { Button } from '@/components/ui/button';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { auth, failureText } from '@/lib/api';
+import { Tagline } from './Tagline';
 import { authText } from './text';
 
 /**
@@ -48,53 +49,54 @@ export function PasswordSignIn({ next }: { next: string | undefined }) {
   const wrong = (field: 'email' | 'password') => (problem?.field === field ? problem.text : null);
 
   return (
-    <Alone>
-      <AloneHeading title={authText.signInTitle}>{authText.passwordIntro}</AloneHeading>
-      <form onSubmit={submit} noValidate className="mt-8 flex flex-col gap-6">
-        <Field data-invalid={wrong('email') !== null || undefined}>
-          <FieldLabel htmlFor="auth-email">{authText.email}</FieldLabel>
-          <Input
-            id="auth-email"
-            type="email"
-            autoComplete="email"
-            autoFocus
-            value={email}
-            aria-invalid={wrong('email') !== null || undefined}
-            onChange={(event) => {
-              setEmail(event.target.value);
-              setProblem(null);
-            }}
-          />
-          {wrong('email') !== null && <FieldError>{wrong('email')}</FieldError>}
-        </Field>
-        <Field data-invalid={wrong('password') !== null || undefined}>
-          <FieldLabel htmlFor="auth-password">{authText.password}</FieldLabel>
-          <Input
-            id="auth-password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            aria-invalid={wrong('password') !== null || undefined}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setProblem(null);
-            }}
-          />
-          {wrong('password') !== null && <FieldError>{wrong('password')}</FieldError>}
-        </Field>
-        <Button type="submit" disabled={busy} className="w-full">
-          {busy && <Spinner data-icon="inline-start" />}
-          {authText.signIn}
-        </Button>
+    <CardPage title={authText.signInTitle} description={authText.passwordIntro} foot={<Tagline />}>
+      <form onSubmit={submit} noValidate>
+        <FieldGroup>
+          <Field data-invalid={wrong('email') !== null || undefined}>
+            <FieldLabel htmlFor="auth-email">{authText.email}</FieldLabel>
+            <Input
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              aria-invalid={wrong('email') !== null || undefined}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setProblem(null);
+              }}
+            />
+            {wrong('email') !== null && <FieldError>{wrong('email')}</FieldError>}
+          </Field>
+          <Field data-invalid={wrong('password') !== null || undefined}>
+            <FieldLabel htmlFor="auth-password">{authText.password}</FieldLabel>
+            <Input
+              id="auth-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              aria-invalid={wrong('password') !== null || undefined}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setProblem(null);
+              }}
+            />
+            {wrong('password') !== null && <FieldError>{wrong('password')}</FieldError>}
+          </Field>
+          <Field>
+            <Button type="submit" disabled={busy}>
+              {busy && <Spinner data-icon="inline-start" />}
+              {authText.signIn}
+            </Button>
+            <FieldDescription className="text-center">
+              {authText.newHere}{' '}
+              <Link to="/signup" search={{ next }}>
+                {authText.toSignUp}
+              </Link>
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
       </form>
-      <AloneFoot>
-        <span>
-          {authText.newHere}{' '}
-          <Link to="/signup" search={{ next }} className={ALONE_LINK}>
-            {authText.toSignUp}
-          </Link>
-        </span>
-      </AloneFoot>
-    </Alone>
+    </CardPage>
   );
 }

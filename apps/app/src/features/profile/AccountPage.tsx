@@ -1,11 +1,10 @@
 import { PROFILE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/profile';
-import { Page, PageHead } from '@/components/Page';
-import { SavedField } from '@/components/SavedField';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Page } from '@/components/Page';
+import { SavedCard } from '@/components/SavedCard';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
-import { MainBar } from '@/features/shell/MainBar';
-import { shellText } from '@/features/shell/text';
+import { PageBar } from '@/features/shell/PageBar';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { changeName } from './profile';
 import { profileText } from './text';
@@ -24,28 +23,28 @@ export function AccountPage() {
 
   return (
     <>
-      <MainBar trail={[{ label: shellText.settings }]} title={profileText.title} />
+      <PageBar title={profileText.title} />
 
       <Page>
-        <PageHead title={profileText.title} hint={profileText.intro} />
+        <SavedCard
+          id="account-name"
+          title={profileText.nameLabel}
+          hint={profileText.nameHint}
+          value={user.name}
+          maxLength={PROFILE_NAME_MAX_LENGTH}
+          autoComplete="name"
+          save={save}
+        />
 
-        <div className="flex max-w-md flex-col gap-7">
-          <SavedField
-            id="account-name"
-            label={profileText.nameLabel}
-            hint={profileText.nameHint}
-            value={user.name}
-            maxLength={PROFILE_NAME_MAX_LENGTH}
-            autoComplete="name"
-            save={save}
-          />
-
-          <Field>
-            <FieldLabel htmlFor="account-email">{profileText.emailLabel}</FieldLabel>
-            <Input id="account-email" value={user.email} readOnly disabled />
-            <FieldDescription>{profileText.emailHint}</FieldDescription>
-          </Field>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle id="account-email-title">{profileText.emailLabel}</CardTitle>
+            <CardDescription>{profileText.emailHint}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Input id="account-email" aria-labelledby="account-email-title" value={user.email} readOnly disabled />
+          </CardContent>
+        </Card>
       </Page>
     </>
   );

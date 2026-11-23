@@ -44,5 +44,7 @@ export const zhHans: typeof en = {
     TOO_MANY_TRIES: '尝试的次数太多，请过一分钟再试。',
     TOO_MANY_CODES: '验证码要得太频繁，请稍后再试。',
     CODE_NOT_SENT: '验证码邮件没有发出去，请稍后再试。'
-  }
+  },
+
+  tagline: '人和 AI Agent 共用的云盘。'
 };

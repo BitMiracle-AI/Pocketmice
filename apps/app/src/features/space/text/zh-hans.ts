@@ -42,7 +42,6 @@ export const zhHans: typeof en = {
   left: (name) => `你已退出「${name}」`,
 
   settingsTitle: '空间设置',
-  settingsHint: '这个空间叫什么、最多能放多少，以及删除它。这些只有你作为所有者能做。',
   settingsOwnerOnly: '只有这个空间的所有者能给它改名、设存储上限或删除它。',
   renameHint: '每个成员都按这个名字找到这个空间。',
   renamed: '空间已改名',
