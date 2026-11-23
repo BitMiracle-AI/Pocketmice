@@ -113,13 +113,30 @@ proxy for three things:
 - The limit on the size of a request body is raised to 1 GB (nginx allows 1 MB unless told otherwise).
 - `X-Forwarded-For` is set to the address each request came from, in place of whatever the client sent: the limit
   on sign-in attempts counts by it. In nginx that is `proxy_set_header X-Forwarded-For $remote_addr;`, and nginx
-  sends no such header unless told. Without it everyone shares one count, and thirty wrong passwords a minute from
-  anyone keep everybody from signing in.
+  sends no such header unless told. Traefik sets it by itself, unless it is told to trust the headers of its
+  clients. Without it everyone shares one count, and thirty wrong passwords a minute from anyone keep everybody
+  from signing in.
 - A connection that goes silent is ended (nginx does so by itself, after a minute). The API itself ends a request
-  only when it has taken three hours, which is 1 GB over a slow line.
+  only when it has taken three hours, which is 1 GB over a slow line. Traefik by its own default gives a whole
+  request, body included, one minute: lift that limit (`respondingTimeouts.readTimeout` of the entry point), or an
+  upload that takes longer is cut off.
 
 Tried behind nginx, both holding a request body until all of it has arrived (its default) and passing it on as it
-comes.
+comes. Tried behind Traefik 3.6 with that limit lifted: an upload that took 78 seconds and one of 300 MB arrived
+whole, and a client that named an `X-Forwarded-For` of its own was still counted by its real address.
+
+## Running the API in a container
+
+`apps/api/Dockerfile` builds an image of the API. The build context is the root of the repository:
+
+```sh
+docker build -f apps/api/Dockerfile -t pocketmice-api .
+```
+
+A container applies the migrations that have not run yet and then starts the API on port 11210, on every address
+the container has. It takes its configuration from the environment, with the variables of
+[`apps/api/.env.example`](apps/api/.env.example). When the files are kept in a folder, mount a volume at `/data`
+and set `STORAGE_DIR=/data/storage`: without a volume the files are gone with the container.
 
 ## Agent skill
 
