@@ -18,16 +18,38 @@ import { errorOf, PocketmiceError } from './pocketmiceError.ts';
 /**
  * What can be uploaded: text (sent as UTF-8), bytes, or a Blob. Each of them says how long it is, and the server
  * takes no upload without a length: that is why a stream is not among them.
- * A file on disk is uploaded as the Blob that Node's openAsBlob (in node:fs) gives for it, and not as its bytes
- * read into memory. Why, as measured on Node 26:
- * - Node's fetch hands content that is in memory to the connection as one piece, whatever its size, and gives the
- *   sending of a piece five minutes. An upload from memory that takes longer fails with UNREACHABLE, however well
- *   it is going: about 40 MB over a line of 1 Mbit/s is that long. The Blob of a file goes out 64 KB at a time,
- *   and has as long as the server gives a request.
- * - The Blob of a file is not read into memory whole. Node still holds much of it while it is sent: an 800 MB file
- *   took about 570 MB.
+ * A file on disk is uploaded as the Blob that Node's openAsBlob (in node:fs) gives for it, so that it is not read
+ * into memory whole. Node still holds much of it while it is sent: an 800 MB file took about 570 MB.
  */
 export type Content = string | Uint8Array | Blob;
+
+/** The size of the pieces content is sent in: the size Node reads the Blob of a file on disk in */
+const PIECE_BYTES = 64 * 1024;
+
+/**
+ * The content as fetch is given it: a Blob that is read a piece at a time, whatever the content came as.
+ * Node's fetch hands the connection what it reads from a body piece by piece, and content that is in memory is
+ * one piece, whatever its size. Sent that way, two things go wrong, both measured on Node 26:
+ * - The sending of a piece has five minutes. An upload that takes longer fails with UNREACHABLE, however well it
+ *   is going: about 40 MB over a line of 1 Mbit/s is that long.
+ * - To a server that is reached over HTTP/2, which Node's fetch speaks whenever the server offers it and a server
+ *   behind a proxy usually does, a piece that waits to be sent counts against the 10 MB of memory Node allows a
+ *   connection. Above that, Node refuses the answer to every request on the connection: a call made while 20 MB
+ *   go up fails, and so does that upload when the server refuses it before taking it, as UNREACHABLE where
+ *   CONFLICT was answered. What still waited is never taken off the count, and the connection, which fetch goes
+ *   on using, fails every call from then on.
+ * In pieces neither happens.
+ * What is left: a refused upload still leaves what waited of one piece on the count. About 250 uploads of some MB
+ * each, refused in one program, end its connection the same way.
+ */
+function inPieces(content: Content): Blob {
+  // The types of a Blob take bytes over a buffer that is not shared only. Content does not ask a caller to say
+  // which kind theirs is, and a Blob copies either
+  const whole = content instanceof Blob ? content : new Blob([content as BlobPart]);
+  const pieces: Blob[] = [];
+  for (let start = 0; start < whole.size; start += PIECE_BYTES) pieces.push(whole.slice(start, start + PIECE_BYTES));
+  return new Blob(pieces);
+}
 
 /** The file an upload answers with, as getFile answers */
 type FileAnswer = OutputOf<typeof getFile>;
@@ -94,14 +116,12 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
   async function request(
     name: string,
     query: Parameters<typeof fileContentPath>[0],
-    init: { method: string; body?: Content }
+    init: { method: string; body?: Blob }
   ): Promise<Response> {
     const url = new URL(fileContentPath(query), baseUrl).href;
     let response: Response;
     try {
-      // The types of fetch take bytes over a buffer that is not shared only. Content does not ask a caller to say
-      // which kind theirs is: a shared one is refused by fetch itself
-      response = await send(url, { method: init.method, body: init.body as BodyInit | undefined });
+      response = await send(url, init);
     } catch (thrown) {
       throw errorOf(failureOfThrown(thrown, name), name);
     }
@@ -111,8 +131,9 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
     throw errorOf(failureOf(name, response.status, text, DECLARED), name);
   }
 
-  /** The file an upload was answered with */
-  async function uploaded(name: string, response: Response): Promise<FileAnswer> {
+  /** Uploads content with the query of a new file or of a new version. Returns the file the server answered with */
+  async function upload(name: string, query: NewFileQuery | NewVersionQuery, content: Content): Promise<FileAnswer> {
+    const response = await request(name, query, { method: 'PUT', body: inPieces(content) });
     const text = await read(name, () => response.text());
     try {
       // Not checked against the definition, as the output of an operation is not: the server checked it
@@ -128,11 +149,11 @@ export function contentMethods(baseUrl: string, send: Send): ContentMethods {
 
   return {
     async uploadFile({ content, ...query }) {
-      return uploaded('uploadFile', await request('uploadFile', query, { method: 'PUT', body: content }));
+      return upload('uploadFile', query, content);
     },
 
     async uploadFileVersion({ content, ...query }) {
-      return uploaded('uploadFileVersion', await request('uploadFileVersion', query, { method: 'PUT', body: content }));
+      return upload('uploadFileVersion', query, content);
     },
 
     async downloadFile(query) {

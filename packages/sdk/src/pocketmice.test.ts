@@ -57,6 +57,12 @@ async function thrownBy(call: Promise<unknown>): Promise<PocketmiceError> {
   return assert.fail('the call should have failed');
 }
 
+/** The bytes a request was sent with: its body, which for an upload is a Blob */
+async function bytesSent(init: RequestInit | undefined): Promise<Uint8Array> {
+  assert.ok(init?.body instanceof Blob, 'the body of an upload should be a Blob');
+  return new Uint8Array(await init.body.arrayBuffer());
+}
+
 /** The path of an address, and its query as the server reads it */
 function addressOf(url: string) {
   const { origin, pathname, searchParams } = new URL(url);
@@ -293,16 +299,38 @@ test('uploadFile is a PUT of the content to the address of the content, as the q
       { origin: SERVER, pathname: '/api/content', query: { spaceId: SPACE, name: 'top.md' } }
     ]
   );
-  // The content is handed to fetch as it is, which is what sends it with its length; and nothing but the key is
+  // The content is handed to fetch as a Blob, which is what sends it with its length; and nothing but the key is
   // added to the request
-  assert.deepEqual(sent[0]?.init, {
-    method: 'PUT',
-    headers: { authorization: 'Bearer pm_test' },
-    body: content,
-    redirect: 'manual'
-  });
-  assert.equal(sent[0]?.init.body, content);
-  assert.equal(sent[1]?.init.body, 'text');
+  assert.deepEqual(
+    { ...sent[0]?.init, body: undefined },
+    { method: 'PUT', headers: { authorization: 'Bearer pm_test' }, body: undefined, redirect: 'manual' }
+  );
+  assert.deepEqual(await bytesSent(sent[0]?.init), content);
+  assert.deepEqual(await bytesSent(sent[1]?.init), new TextEncoder().encode('text'));
+});
+
+test('content is handed to fetch in pieces of 64 KB, whatever it came as: none is the whole of a large upload', async () => {
+  const { drive, sent } = setup(async () => json(200, { file: { id: FILE } }));
+  // Two pieces and a part of a third. The text is of characters that are two bytes each: a piece is so many bytes
+  const bytes = new Uint8Array(150_000).map((_, at) => at % 251);
+  const text = 'é'.repeat(75_000);
+
+  for (const content of [bytes, text, new Blob([bytes])]) {
+    await drive.uploadFile({ spaceId: SPACE, parentId: null, name: 'large.bin', content });
+  }
+
+  const expected = [Buffer.from(bytes), Buffer.from(text), Buffer.from(bytes)];
+  for (const [at, { init }] of sent.entries()) {
+    assert.ok(init.body instanceof Blob);
+    const pieces: Uint8Array[] = [];
+    for await (const piece of init.body.stream()) pieces.push(piece);
+
+    assert.deepEqual(
+      pieces.map((piece) => piece.length),
+      [64 * 1024, 64 * 1024, 150_000 - 2 * 64 * 1024]
+    );
+    assert.deepEqual(Buffer.concat(pieces), expected[at]);
+  }
 });
 
 test('uploadFileVersion is a PUT that names the file and the version being replaced', async () => {
@@ -319,7 +347,7 @@ test('uploadFileVersion is a PUT that names the file and the version being repla
     query: { spaceId: SPACE, fileId: FILE, baseVersionId: VERSION }
   });
   assert.equal(sent[0]?.init.method, 'PUT');
-  assert.equal(sent[0]?.init.body, content);
+  assert.deepEqual(await bytesSent(sent[0]?.init), new TextEncoder().encode('# hello, again'));
 });
 
 test('downloadFile is a GET, and answers with the version that was sent and its bytes, read one of three ways', async () => {
@@ -342,19 +370,19 @@ test('downloadFile is a GET, and answers with the version that was sent and its 
         origin: SERVER,
         pathname: '/api/content',
         query: { spaceId: SPACE, fileId: FILE },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined, redirect: 'manual' }
+        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
       },
       {
         origin: SERVER,
         pathname: '/api/content',
         query: { spaceId: SPACE, fileId: FILE, versionId: VERSION },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined, redirect: 'manual' }
+        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
       },
       {
         origin: SERVER,
         pathname: '/api/content',
         query: { spaceId: SPACE, fileId: FILE },
-        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, body: undefined, redirect: 'manual' }
+        init: { method: 'GET', headers: { authorization: 'Bearer pm_test' }, redirect: 'manual' }
       }
     ]
   );

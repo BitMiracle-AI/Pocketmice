@@ -188,8 +188,7 @@ try {
   the person does, like making a key or deleting for good, is not there.
 - The content of files has three methods: `uploadFile`, `uploadFileVersion` and `downloadFile`. Content is text,
   bytes or a `Blob`, and not a stream: the server takes no upload without a length. A file on disk goes up as the
-  `Blob` that Node's `openAsBlob` gives for it, not as its bytes read into memory: content that is in memory is
-  sent in one piece, which Node's `fetch` gives five minutes, so a large upload over a slow line is cut off.
+  `Blob` that Node's `openAsBlob` gives for it, so that it is not read into memory whole.
 - A method that fails throws a `PocketmiceError`, and nothing else. Decide what to do by its `code`, which is the
   error code the server answered with, or one of three the SDK arrives at itself: `UNREACHABLE` when the server
   was not reached, `BAD_RESPONSE` when what came back is not what was agreed, `UNEXPECTED` when sending the request
