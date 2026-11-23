@@ -262,6 +262,12 @@ curl -X POST http://localhost:11210/api/getServerInfo -H 'content-type: applicat
 Before committing, `pnpm check` must pass: formatting, lint, the structure checks and the type check. `pnpm check:all`
 adds every test.
 
+## Contributing and security
+
+Issues are welcome. Pull requests from outside the maintaining team are not taken:
+[CONTRIBUTING.md](CONTRIBUTING.md) says why, and what to do in their place. A security problem is reported in
+private, as [SECURITY.md](SECURITY.md) says.
+
 ## License
 
 [Apache-2.0](LICENSE)
