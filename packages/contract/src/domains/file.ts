@@ -17,7 +17,7 @@ import { operation } from '../operation.ts';
 // The operations take ids. A path, like /Reports/2026/summary.md, is the names from the top of the space down to the
 // file. It is not stored: it is worked out when asked for, so every file in an answer has its path, and
 // getFileByPath turns a path into the file. Renaming or moving a folder changes the path of everything in it.
-// In one folder a name is used once.
+// In one folder a name is used once. Folders nest FOLDER_DEPTH_MAX deep and no deeper.
 //
 // 2. Content. A file has content, a folder has none. Every write to a file is a new version, and the versions
 // before it stay: nothing a person or an agent writes destroys what was there. The version a file points at is its
@@ -79,6 +79,16 @@ export const fileName = z
   .string()
   .trim()
   .refine(isFileName, `A name has 1 to ${FILE_NAME_MAX_LENGTH} characters, none of them /, and is not . or ..`);
+
+/**
+ * How deep folders nest at most. A folder directly in the space is 1 deep, a folder in it 2, and no folder is deeper
+ * than this; a file can be in any of them. Making a folder that would be deeper is refused, and so is moving a
+ * folder to where it, or a folder inside it, would be.
+ * Nothing real comes near it. It is there because where a file is, is read from the folders it is in, up to the top
+ * of the space: with no limit, somebody who may write could put a file so deep that reading where it is costs more
+ * than anybody waits for, and it would be out of everybody's reach.
+ */
+export const FOLDER_DEPTH_MAX = 100;
 
 /** The description of a file has at most this many characters */
 export const FILE_DESCRIPTION_MAX_LENGTH = 1024;
@@ -256,7 +266,8 @@ export const createFolder = operation({
   name: 'createFolder',
   description:
     'Makes a folder, in the folder parentId or directly in the space when parentId is null. Answers with the ' +
-    'folder. NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there.',
+    'folder. NOT_FOUND: there is no folder parentId. CONFLICT: the name is taken there, or the folder would be ' +
+    `deeper than folders nest, which is ${FOLDER_DEPTH_MAX} deep.`,
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',
@@ -370,8 +381,8 @@ export const moveFile = operation({
   description:
     'Moves a file or a folder into the folder parentId, or to directly in the space when parentId is null. It ' +
     'keeps its name. Answers with the file as it is after the move. NOT_FOUND: there is no such file, or no ' +
-    'folder parentId. CONFLICT: its name is taken there, or the folder to move it into is the file itself or ' +
-    'inside it.',
+    'folder parentId. CONFLICT: its name is taken there, the folder to move it into is the file itself or ' +
+    `inside it, or a folder would end up deeper than folders nest, which is ${FOLDER_DEPTH_MAX} deep.`,
   kind: 'write',
   access: 'authenticated',
   belongsTo: 'space',

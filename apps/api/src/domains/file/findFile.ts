@@ -36,9 +36,10 @@ export interface Place {
 }
 
 /**
- * How many folders deep the walk goes at most. Nothing real is this deep. The limit is there so that the walk ends
- * whatever the table holds. The api never makes a loop (see moveFile.ts), but rows written past it could be in one,
- * and a file whose walk does not reach the top is not found.
+ * How many folders deep the walk goes at most. The api makes nothing nearly this deep (FOLDER_DEPTH_MAX in the
+ * contract) and never a loop (see moveFile.ts). The limit is there so that the walk ends whatever the table holds:
+ * rows written past the api could be deeper, or in a loop, and a file whose walk does not reach the top is not
+ * found.
  */
 const MAX_DEPTH = 1000;
 

@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import { createApiKey } from '@pocketmice/contract/domains/apiKey';
 import {
   createFolder,
+  FILE_CONTENT_PATH,
   FILE_DESCRIPTION_MAX_LENGTH,
+  FOLDER_DEPTH_MAX,
   getFile,
   getFileByPath,
   getFiles,
@@ -41,6 +43,27 @@ async function namesIn(person: CurrentUser, spaceId: string, parentId: string | 
   const result = await api.as(person)(getFiles, { spaceId, parentId });
   assert.ok(result.ok, `getFiles should have worked: ${JSON.stringify(result)}`);
   return result.data.files.map((file) => file.name);
+}
+
+/** Makes a chain of folders as this person, each in the one before, the first in parentId. Returns them from the top down */
+async function makeChain(person: CurrentUser, spaceId: string, parentId: string | null, name: string, length: number) {
+  const chain: Awaited<ReturnType<typeof makeFolder>>[] = [];
+  for (let at = 1; at <= length; at += 1) {
+    chain.push(await makeFolder(person, spaceId, chain.at(-1)?.id ?? parentId, `${name} ${at}`));
+  }
+  return chain;
+}
+
+/** Uploads a file of a few bytes into a folder as this person, which must work, and returns its id */
+async function uploadInto(person: CurrentUser, spaceId: string, parentId: string, name: string) {
+  const uploaded = await api.send(person, `${FILE_CONTENT_PATH}?${new URLSearchParams({ spaceId, parentId, name })}`, {
+    method: 'PUT',
+    headers: { 'content-length': '5' },
+    body: 'notes'
+  });
+  assert.equal(uploaded.status, 200, `the upload should have worked: ${await uploaded.clone().text()}`);
+  const { file } = (await uploaded.json()) as { file: { id: string } };
+  return file.id;
 }
 
 /** The path of a file as this person sees it now, or the error code */
@@ -402,6 +425,67 @@ test('of two moves that would put two folders into each other, sent together, on
     assert.ok(moved?.ok);
     assert.equal(await pathOf(ada, spaceId, moved.data.file.id), moved.data.file.path);
   }
+});
+
+test('folders nest so deep and no deeper: the last one is made and holds a file, a folder in it is refused', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  const deepest = (await makeChain(ada, spaceId, null, 'Level', FOLDER_DEPTH_MAX)).at(-1);
+  assert.ok(deepest);
+  assert.equal(deepest.path.split('/').length - 1, FOLDER_DEPTH_MAX);
+
+  const deeper = await api.as(ada)(createFolder, { spaceId, parentId: deepest.id, name: 'One more' });
+  assert.equal(!deeper.ok && deeper.code, 'CONFLICT');
+  const moved = await makeFolder(ada, spaceId, null, 'From the top');
+  const into = await api.as(ada)(moveFile, { spaceId, fileId: moved.id, parentId: deepest.id });
+  assert.equal(!into.ok && into.code, 'CONFLICT');
+  assert.deepEqual(await namesIn(ada, spaceId, deepest.id), []);
+
+  // What is limited is how deep folders nest. A file is in a folder, whichever it is: uploaded there, or moved
+  const fileId = await uploadInto(ada, spaceId, deepest.id, 'notes.md');
+  const out = await api.as(ada)(moveFile, { spaceId, fileId, parentId: null });
+  assert.ok(out.ok);
+  const back = await api.as(ada)(moveFile, { spaceId, fileId, parentId: deepest.id });
+  assert.ok(back.ok, `moving a file into the deepest folder should have worked: ${JSON.stringify(back)}`);
+  assert.equal(back.data.file.path, `${deepest.path}/notes.md`);
+});
+
+test('a folder is moved with the folders in it: the deepest of them counts, also one that is in the trash', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  const half = FOLDER_DEPTH_MAX / 2;
+  const under = await makeChain(ada, spaceId, null, 'Under', half + 1);
+  const tall = await makeChain(ada, spaceId, null, 'Tall', half);
+  const [top, bottom] = [tall.at(0), tall.at(-1)];
+  const [fits, tooDeep] = [under.at(half - 1), under.at(half)];
+  assert.ok(top && bottom && fits && tooDeep);
+
+  // One folder too deep for the last of the folders inside it, though the folder that is moved would be fine
+  const refused = await api.as(ada)(moveFile, { spaceId, fileId: top.id, parentId: tooDeep.id });
+  assert.equal(!refused.ok && refused.code, 'CONFLICT');
+  assert.equal(await pathOf(ada, spaceId, top.id), top.path);
+
+  // The deepest is in the trash: it still counts, since restoring it puts it back where it was
+  const trashed = await api.as(ada)(trashFile, { spaceId, fileId: bottom.id });
+  assert.ok(trashed.ok);
+  const stillRefused = await api.as(ada)(moveFile, { spaceId, fileId: top.id, parentId: tooDeep.id });
+  assert.equal(!stillRefused.ok && stillRefused.code, 'CONFLICT');
+  const restored = await api.as(ada)(restoreFile, { spaceId, fileId: bottom.id });
+  assert.ok(restored.ok);
+
+  // One folder higher, the last of them is exactly as deep as folders nest. The file in it is not one level more
+  await uploadInto(ada, spaceId, bottom.id, 'notes.md');
+  const taken = await api.as(ada)(moveFile, { spaceId, fileId: top.id, parentId: fits.id });
+  assert.ok(taken.ok, `the move should have worked: ${JSON.stringify(taken)}`);
+  const deepest = await pathOf(ada, spaceId, bottom.id);
+  assert.equal(deepest.split('/').length - 1, FOLDER_DEPTH_MAX);
+
+  // And the folder that now holds them cannot be moved any deeper either: what was stacked is counted whole
+  const whole = under.at(0);
+  const elsewhere = await makeFolder(ada, spaceId, null, 'Elsewhere');
+  assert.ok(whole);
+  const stacked = await api.as(ada)(moveFile, { spaceId, fileId: whole.id, parentId: elsewhere.id });
+  assert.equal(!stacked.ok && stacked.code, 'CONFLICT');
 });
 
 test('folders in a loop, which only writing to the database past the api can make, are not found, and asking ends', async () => {
