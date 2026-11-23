@@ -6,12 +6,15 @@ import { space, storageLimit } from './space.ts';
 
 // Invites: how someone becomes a member of a space they did not make.
 // The owner of a space makes an invite, which says what role it gives and what storage limit (see space.ts), and
-// hands its link to the people they want in. Whoever is signed in and has the link can join, as many people as have it, until the invite expires or the
-// owner deletes it. Nothing is emailed, and nobody is put into a space without doing something themselves.
+// hands its link to the people they want in. Whoever is signed in and has the link can join, as many people as
+// have it, until the invite expires or the owner deletes it. Nothing is emailed, and nobody is put into a space
+// without doing something themselves.
 // The link carries the id of the invite, and the id is all it takes to join: an invite's id is a secret between
 // the owner and the people the link was given to.
 // A link that still works lets in whoever has it, someone the owner has since removed included. An owner who wants
 // a person kept out deletes the invites that person may have.
+// The same goes for what the owner has set for a member since: a member who leaves and joins again with a link
+// that still works has the role and the storage limit the link gives, and not the ones the owner had given them.
 
 /** An invite works for this many days after it was made */
 export const INVITE_LIFETIME_DAYS = 7;

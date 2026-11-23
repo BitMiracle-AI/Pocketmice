@@ -131,8 +131,8 @@ export const fileVersions = pgTable(
      * so the two cannot come apart: the foreign key below has the database see to it.
      * It is here for one question: how many bytes a space holds, and how many of them one person wrote. With it
      * that is answered from one index (the last one below), and takes as long as the space is large. Without it
-     * every file of the space is looked up in turn, which took nine times as long when it was measured (a million
-     * versions: 33 ms, against 312), or the whole table is read, which grows with every other space.
+     * every file of the space is looked up in turn, which took nine times as long when it was measured, or the
+     * whole table is read, which grows with every other space.
      */
     spaceId: uuid('space_id').notNull(),
     /** How many bytes the content is */

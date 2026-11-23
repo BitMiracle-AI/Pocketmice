@@ -27,6 +27,10 @@ import { grantableRole, spaceRole } from '../spaceRole.ts';
 //   put in it: they ask the owner, who makes room or raises the limit.
 // - A limit is set by the owner, signed in themselves, and by no API key. A limit holds agents too, and an agent
 //   that could raise it would not be held by it.
+// - A limit holds one space, and not the server. Whoever may make a space makes one that has no limit, an agent
+//   with a key that writes included (createSpace): how much a person, or the server in all, holds is not limited.
+// - The limit of a member is theirs for as long as they are a member. One who leaves and joins again has the
+//   limit of the invite they join with (see invite.ts).
 
 /** The name of a space has at most this many characters */
 export const SPACE_NAME_MAX_LENGTH = 50;
@@ -148,7 +152,8 @@ export const getMembers = operation({
     'hold in the space (storageSize: every version they wrote, themselves or through an API key of theirs, the ' +
     'versions before the current one and what is in the trash included) and the most they may hold ' +
     '(storageLimit, null when the owner has set no limit for them). An upload that would take a member past ' +
-    'their limit is refused with MEMBER_STORAGE_LIMIT_EXCEEDED.',
+    'their limit is refused with MEMBER_STORAGE_LIMIT_EXCEEDED. What they hold need not add up to what ' +
+    'getSpaceSize answers: what someone wrote who is no longer a member stays in the space, and is not listed.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',
@@ -176,9 +181,9 @@ export const updateMemberStorageLimit = operation({
   name: 'updateMemberStorageLimit',
   description:
     'Sets the most a member may hold in a space, in bytes; null takes the limit away. Answers with the member ' +
-    'as they are after the change. The member may be the owner: the limit then holds the agents that write ' +
-    "with the owner's API keys. A limit under what the member holds already is taken as it is. NOT_FOUND: the " +
-    'space has no such member.',
+    'as they are after the change. The member may be the owner: the limit then holds the owner, and the ' +
+    "agents that write with the owner's API keys. A limit under what the member holds already is taken as it " +
+    'is. NOT_FOUND: the space has no such member.',
   kind: 'write',
   access: 'session',
   belongsTo: 'space',
