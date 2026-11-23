@@ -21,6 +21,7 @@ export interface FileStorage {
    * included.
    * MissingObject when there is nothing under key. That is known before the stream is handed over: a stream that
    * was handed over has bytes to give.
+   * Whoever takes the stream reads it to its end or destroys it: until then it holds a file, or a connection, open.
    */
   get: (key: string, range?: ByteRange) => Promise<Readable>;
   /** Stores under to a copy of the object under from. MissingObject when there is nothing under from */

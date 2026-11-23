@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
-import { Readable } from 'node:stream';
+import { Readable, Writable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
+import { pipeline } from 'node:stream/promises';
 import { test } from 'node:test';
 import { createApiKey, deleteApiKey } from '@pocketmice/contract/domains/apiKey';
 import {
@@ -22,6 +23,7 @@ import { files, fileVersions } from '@pocketmice/db/schema/file';
 import { spaceMembers } from '@pocketmice/db/schema/space';
 import { eq } from 'drizzle-orm';
 import { ApiError, type CurrentUser } from '../../http/operation.ts';
+import type { FileStorage } from '../../storage/fileStorage.ts';
 import { NOBODY, useTestApi } from '../testing.ts';
 import { rangeOf } from './fileContent.ts';
 import { addVersionRow, createFileRow, storeContent } from './writeContent.ts';
@@ -169,6 +171,43 @@ test('a download is always a file to save, under its name, and says which versio
   assert.equal(await response.text(), page);
 });
 
+// Regression: the app hands a HEAD to the function that answers a GET, and drops the body of what it returns. The
+// download fetched the bytes all the same, and the stream nobody read stayed open: with the folder storage, Node
+// ended the whole process when it came across the file left open
+test('a HEAD of the content is answered as a GET would be, without the bytes, and does not fetch them', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  const file = await upload(ada, { spaceId, name: 'report.md' }, 'twelve bytes');
+  const address = `${FILE_CONTENT_PATH}?${new URLSearchParams({ spaceId, fileId: file.id })}`;
+  // The storage the api was built on, with its get counted for the length of this test
+  const { storage } = api;
+  const { get: fetch } = storage;
+  let fetched = 0;
+  storage.get = (...asked) => {
+    fetched += 1;
+    return fetch(...asked);
+  };
+
+  try {
+    const whole = await api.send(ada, address, { method: 'HEAD' });
+    const part = await api.send(ada, address, { method: 'HEAD', headers: { range: 'bytes=0-5' } });
+
+    assert.deepEqual(
+      [whole.status, whole.headers.get('content-length'), whole.headers.get('etag'), await whole.text()],
+      [200, '12', `"${file.version.id}"`, '']
+    );
+    assert.deepEqual(
+      [part.status, part.headers.get('content-length'), part.headers.get('content-range'), await part.text()],
+      [206, '6', 'bytes 0-5/12', '']
+    );
+    assert.equal(fetched, 0);
+    assert.equal(await (await get(ada, { spaceId, fileId: file.id })).text(), 'twelve bytes');
+    assert.equal(fetched, 1);
+  } finally {
+    storage.get = fetch;
+  }
+});
+
 test('writing over a file adds a version in place of the one named; the versions before it stay and can be downloaded', async () => {
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
@@ -234,7 +273,7 @@ test('of two writes over the same version sent at the same moment, exactly one i
 });
 
 /** Stores this content the way an upload does, ready to become a version */
-const stored = (content: string) => storeContent(api.storage, Readable.from([Buffer.from(content)]));
+const stored = (content: string) => storeContent(api.storage, new Blob([content]).stream());
 
 /** What became of several writes that ran at the same moment: 'taken', or the error code each was refused with */
 async function outcomes(writes: Promise<unknown>[]) {
@@ -394,6 +433,28 @@ test('one range of the content is answered as that range; a range with nothing i
     assert.equal(whole.status, 200, range);
     assert.equal((await whole.arrayBuffer()).byteLength, 10_000, range);
   }
+});
+
+test('a download that goes on from an earlier one gets a range only of the version it began with', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  const first = await upload(ada, { spaceId, name: 'data.bin' }, 'first version');
+  const query = { spaceId, fileId: first.id };
+  const began = await get(ada, query, { range: 'bytes=0-4' });
+  const etag = began.headers.get('etag') ?? '';
+  assert.equal(await began.text(), 'first');
+
+  // Still the same version: the rest of it
+  const rest = await get(ada, query, { range: 'bytes=5-', 'if-range': etag });
+  assert.deepEqual([rest.status, await rest.text()], [206, ' version']);
+
+  // Somebody wrote in between. The rest of the new version would be glued onto the beginning of the old one, so
+  // the whole of the new one is sent
+  const written = await put(ada, { ...query, baseVersionId: first.version.id }, 'second version, longer');
+  assert.equal(written.status, 200);
+  const whole = await get(ada, query, { range: 'bytes=5-', 'if-range': etag });
+  assert.deepEqual([whole.status, await whole.text()], [200, 'second version, longer']);
+  assert.notEqual(whole.headers.get('etag'), etag);
 });
 
 test('rangeOf reads the three ways a range is written, against the size of the content', () => {
@@ -594,6 +655,71 @@ test('restoreFileVersion is refused over a version the caller has not seen, and 
   assert.equal(same.ok && same.data.file.version?.id, second.version.id);
   assert.equal(await storedObjects(), before);
   assert.equal((await api.db.select().from(fileVersions).where(eq(fileVersions.fileId, first.id))).length, 2);
+});
+
+// Regression: storing ran as two pipes side by side that shared a stream. A storage that failed before it read
+// anything left the first pipe waiting for ever, so the upload never answered; and one that failed half way tore
+// down the caller's stream with it, which was then read as the caller going away: the server's own failure was
+// answered as INVALID_INPUT, and reported nowhere. The time limit is there so that the first fails, not hangs
+test('a storage that fails is the server failing, before its first byte or half way: never an upload that broke off', {
+  timeout: 10_000
+}, async () => {
+  const full = Object.assign(new Error('no space left on device'), { code: 'ENOSPC' });
+  // More than any stream holds on its own, so the bytes only move if the storage takes them
+  const body = () => new Blob([randomBytes(4_000_000)]).stream();
+  const refusesAtOnce: FileStorage = {
+    ...api.storage,
+    put: async () => {
+      throw full;
+    }
+  };
+  const failsHalfWay: FileStorage = {
+    ...api.storage,
+    put: async (_key, bytes) => {
+      let taken = 0;
+      const sink = new Writable({
+        write(chunk: Buffer, _encoding, done) {
+          taken += chunk.length;
+          done(taken > 1_000_000 ? full : null);
+        }
+      });
+      await pipeline(bytes, sink);
+    }
+  };
+
+  await assert.rejects(storeContent(refusesAtOnce, body()), (error) => error === full);
+  await assert.rejects(storeContent(failsHalfWay, body()), (error) => error === full);
+});
+
+// Regression: every failure of the step that writes the rows removed the bytes again. A failure that does not say
+// whether the rows were written (the connection to the database lost just as it answered) then took the content
+// away from under a version that exists
+test('when the rows are written and the database is not heard to say so, the upload fails and the version keeps its bytes', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  const file = await upload(ada, { spaceId, name: 'notes.md' }, 'one');
+  // The database the api was built on: for the length of this test a transaction does its work, and then fails
+  const { db } = api;
+  const transaction = db.transaction.bind(db);
+  db.transaction = (async (...run: Parameters<typeof transaction>) => {
+    await transaction(...run);
+    throw new Error('the connection to the database was lost');
+  }) as typeof db.transaction;
+
+  try {
+    const response = await put(ada, { spaceId, fileId: file.id, baseVersionId: file.version.id }, 'two');
+
+    assert.deepEqual(await failure(response), [500, 'INTERNAL']);
+    assert.deepEqual(
+      api.takeReported().map(({ error }) => (error as Error).message),
+      ['the connection to the database was lost']
+    );
+  } finally {
+    db.transaction = transaction;
+  }
+  // The version is there, and so is its content
+  const response = await get(ada, { spaceId, fileId: file.id });
+  assert.deepEqual([response.status, await response.text()], [200, 'two']);
 });
 
 test('renaming and moving a file leave its content alone, and it is found again by its new path', async () => {

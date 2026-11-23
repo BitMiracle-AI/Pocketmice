@@ -169,7 +169,10 @@ const nextCursor = z.string().nullable();
  * MAX_FILE_BYTES; the query says what it is (newFileQuery or newVersionQuery). The answer is the file, as getFile
  * answers.
  * GET downloads. The query says which file (contentQuery), and the answer is its bytes, always as a download and
- * never as a page to show. One range of it can be asked for with a Range header.
+ * never as a page to show. Its etag is the id of the version that was sent. One range of it can be asked for with
+ * a Range header; sent with If-Range and that etag, the range is answered only while the file still has that
+ * version, and otherwise the whole content is. A HEAD is answered as the GET would be, without the bytes: how
+ * large the content is, and which version it is.
  */
 export const FILE_CONTENT_PATH = '/api/content';
 

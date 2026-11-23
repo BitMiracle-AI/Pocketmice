@@ -6,7 +6,7 @@ import { and, eq } from 'drizzle-orm';
 import { ApiError, implement } from '../../http/operation.ts';
 import type { FileStorage } from '../../storage/fileStorage.ts';
 import { liveFile, toFile } from './findFile.ts';
-import { addVersionRow, assertCanReplace, removeContent } from './writeContent.ts';
+import { addVersionRow, assertCanReplace, discardIfRefused } from './writeContent.ts';
 
 interface Deps {
   db: Db;
@@ -29,12 +29,9 @@ export function restoreFileVersion({ db, storage, reportError }: Deps) {
       // be removed without asking what else uses its bytes
       const stored = { versionId: randomUUID(), size: old.size, sha256: old.sha256 };
       await storage.copy(old.id, stored.versionId);
-      try {
-        await addVersionRow(db, input, stored, { userId: user.id, apiKeyId });
-      } catch (error) {
-        await removeContent(storage, [stored.versionId], reportError);
-        throw error;
-      }
+      await discardIfRefused(storage, stored, reportError, () =>
+        addVersionRow(db, input, stored, { userId: user.id, apiKeyId })
+      );
     }
 
     const found = await liveFile(db, input.spaceId, input.fileId);

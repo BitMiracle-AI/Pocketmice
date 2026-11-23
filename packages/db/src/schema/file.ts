@@ -87,6 +87,11 @@ export const files = pgTable(
     uniqueIndex('files_folder_name_idx')
       .on(table.parentId, table.name)
       .where(sql`${table.parentId} is not null and ${table.deletedAt} is null`),
+    // "What is in this folder", asked of every row, in the trash or not: the two indexes above leave the trash
+    // out and cannot answer it. Deleting for good asks it, and so does the database for every row that goes, to
+    // see that nothing still points at it. Without this index each of those reads the whole table: emptying a
+    // trash of 60,000 files took 29 seconds, just short of the limit on a statement, and takes one with it
+    index('files_parent_idx').on(table.parentId),
     // "What was put in the trash in this space, the latest first"
     index('files_trash_idx').on(table.spaceId, table.deletedAt).where(sql`${table.deletedAt} is not null`),
     // A file has content and a folder has none

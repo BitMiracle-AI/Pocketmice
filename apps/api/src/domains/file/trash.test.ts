@@ -275,7 +275,15 @@ test('a cursor that getTrashedFiles did not give out is INVALID_INPUT', async ()
   const ada = await api.addPerson('Ada');
   const spaceId = await makeSpace(ada);
 
-  for (const cursor of ['', 'abc', '2026-03-01T10:00:00.000Z', `2026-03-01T10:00:00.000Z_${NOBODY}x`]) {
+  for (const cursor of [
+    '',
+    'abc',
+    '2026-03-01T10:00:00.000Z',
+    `2026-03-01T10:00:00.000Z_${NOBODY}x`,
+    // Shaped like a cursor, with a time that is none: it used to reach the database, which refused it as INTERNAL
+    `2026-13-45T99:99:99.999Z_${NOBODY}`,
+    `2026-02-30T10:00:00.000Z_${NOBODY}`
+  ]) {
     const result = await api.as(ada)(getTrashedFiles, { spaceId, cursor });
     assert.equal(!result.ok && result.code, 'INVALID_INPUT', `"${cursor}"`);
   }

@@ -1,5 +1,6 @@
-import { constants, createWriteStream } from 'node:fs';
-import { copyFile, mkdir, open, rm } from 'node:fs/promises';
+import { once } from 'node:events';
+import { constants, createReadStream, createWriteStream } from 'node:fs';
+import { copyFile, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { assertKey, type FileStorage, MissingObject } from './fileStorage.ts';
@@ -41,14 +42,14 @@ export function createFolderStorage(dir: string): FileStorage {
     },
 
     async get(key, range) {
-      const path = pathOf(key);
+      const stream = createReadStream(pathOf(key), range);
       try {
-        // Opened before the stream is made, so that a missing file is known now and not half way into a response
-        const file = await open(path, 'r');
-        return file.createReadStream(range);
+        // Waited for until the file is open, so that a missing file is known now and not half way into a response
+        await once(stream, 'open');
       } catch (error) {
         throw isCode(error, 'ENOENT') ? new MissingObject(key) : error;
       }
+      return stream;
     },
 
     async copy(from, to) {

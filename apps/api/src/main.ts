@@ -30,6 +30,12 @@ const app = createApp({
 // HTTP server
 const server = createAdaptorServer({ fetch: app.fetch }) as Server;
 
+// A request may take as long as its bytes take to arrive. Node by itself gives a whole request five minutes and
+// then answers 408, which cuts off the upload of a large file over a slow line: 100 MB at 2 Mbit/s takes seven.
+// The headers of a request keep their own limit of a minute. How long a connection may stay silent is for the
+// reverse proxy to limit: it is the one that talks to the outside
+server.requestTimeout = 0;
+
 // Listens on this machine only: requests from outside come in through a reverse proxy. The proxy must set
 // x-forwarded-for to the address each request came from: the limit on sign-in attempts counts by it (see rateLimit
 // in domains/auth/auth.ts).

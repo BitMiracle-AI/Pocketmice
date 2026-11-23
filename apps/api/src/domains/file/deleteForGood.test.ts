@@ -237,6 +237,24 @@ test('deleteSpace deletes the space for good: its files and their bytes, its mem
   assert.equal(await hasBytes(kept.version?.id ?? ''), true);
 });
 
+test('deleteSpace deletes every file of the space, also ones that no path leads to any more', async () => {
+  const ada = await api.addPerson('Ada');
+  const spaceId = await makeSpace(ada);
+  const outer = await makeFolder(ada, spaceId, null, 'Outer');
+  const inner = await makeFolder(ada, spaceId, null, 'Inner');
+  const file = await write(ada, spaceId, { parentId: inner.id, name: 'notes.md' }, 'the content');
+  // Two folders, each in the other: what two moves at the same moment can leave behind (see moveFile.ts). Nothing
+  // finds them from the top of the space
+  await api.db.update(files).set({ parentId: inner.id }).where(eq(files.id, outer.id));
+  await api.db.update(files).set({ parentId: outer.id }).where(eq(files.id, inner.id));
+
+  assert.deepEqual(await api.as(ada)(deleteSpace, { spaceId }), { ok: true, data: {} });
+
+  assert.deepEqual(await api.db.select().from(files).where(eq(files.spaceId, spaceId)), []);
+  assert.deepEqual(await api.db.select().from(spaces).where(eq(spaces.id, spaceId)), []);
+  assert.equal(await hasBytes(file.version?.id ?? ''), false);
+});
+
 test('what cannot be undone is for the owner, signed in themselves: not an editor, and not a key, not even a key of the owner', async () => {
   const ada = await api.addPerson('Ada');
   const grace = await api.addPerson('Grace');

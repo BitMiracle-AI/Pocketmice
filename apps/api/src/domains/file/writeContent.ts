@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { type Readable, Transform } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { Readable } from 'node:stream';
 import type { Db } from '@pocketmice/db';
 import { files, fileVersions } from '@pocketmice/db/schema/file';
 import { and, eq, isNull, sql } from 'drizzle-orm';
@@ -16,9 +15,10 @@ import { unlessNameTaken } from './nameTaken.ts';
 // 1. The bytes are stored, under the id the version will have. No row points at them yet.
 // 2. One short transaction writes the row of the version and points the file at it. Whether the write is still
 //    allowed (the name is free, the version to replace is still the current one) is decided here, by the database.
-// 3. If the transaction fails, the bytes stored in step 1 are removed again.
-// A process that dies between 1 and 2 leaves bytes that no row points at. That is known, and left as it is: they
-// take up room and nothing else, and nothing ever reads them.
+// 3. If the write is refused in step 2, the bytes stored in step 1 are removed again (see discardIfRefused).
+// A process that dies between 1 and 2, or a step 2 that fails without saying whether it was done, leaves bytes that
+// no row points at. That is known, and left as it is: they take up room and nothing else, and nothing ever reads
+// them.
 
 /** Who is writing: the person, and the API key the request came with when an agent writes for them */
 export interface Writer {
@@ -50,34 +50,44 @@ export interface NewVersion {
 }
 
 /**
- * Stores what the stream gives as the bytes of a new version, measuring them on the way: nothing is kept in
- * memory, however large the content is.
- * INVALID_INPUT when the stream broke off: the caller's connection went away before all of it arrived.
+ * Stores the body of a request as the bytes of a new version, measuring them on the way: nothing is kept in memory,
+ * however large the content is. No body at all is content of no bytes.
+ * INVALID_INPUT when the body broke off: the caller's connection went away before all of it arrived. Any other
+ * failure is the storage's, and is thrown on as it is.
  */
-export async function storeContent(storage: FileStorage, bytes: Readable): Promise<Stored> {
+export async function storeContent(storage: FileStorage, body: ReadableStream<Uint8Array> | null): Promise<Stored> {
   const versionId = randomUUID();
   const hash = createHash('sha256');
-  let measured = 0;
-  const measure = new Transform({
-    transform(chunk: Buffer, _encoding, done) {
-      hash.update(chunk);
-      measured += chunk.length;
-      done(null, chunk);
-    }
-  });
+  let size = 0;
   let brokeOff = false;
-  bytes.once('error', () => {
-    brokeOff = true;
-  });
+  // What the storage reads: the caller's bytes, measured as it takes them. It is one chain and the storage pulls
+  // it, so nothing is read from the caller that the storage did not ask for, and a storage that fails ends it.
+  // (Its failure may reach here only once the read from the caller that is under way has ended: with their next
+  // bytes, or when their connection goes.)
+  async function* measured() {
+    const reader = body?.getReader();
+    if (!reader) return;
+    for (;;) {
+      // The one step that fails when the caller goes away, which is how that is told from the storage failing
+      const { done, value } = await reader.read().catch((error: unknown) => {
+        brokeOff = true;
+        throw error;
+      });
+      if (done) return;
+      hash.update(value);
+      size += value.length;
+      yield value;
+    }
+  }
 
-  // Both are waited for to the end, also when one fails: when this returns, the storage is done with the key,
-  // whichever way it went
-  const [fed, put] = await Promise.allSettled([pipeline(bytes, measure), storage.put(versionId, measure)]);
-  if (brokeOff) throw new ApiError('INVALID_INPUT', 'The upload broke off before all of it arrived.');
-  if (put.status === 'rejected') throw put.reason;
-  if (fed.status === 'rejected') throw fed.reason;
+  try {
+    await storage.put(versionId, Readable.from(measured(), { objectMode: false }));
+  } catch (error) {
+    if (brokeOff) throw new ApiError('INVALID_INPUT', 'The upload broke off before all of it arrived.');
+    throw error;
+  }
 
-  return { versionId, size: measured, sha256: hash.digest('hex') };
+  return { versionId, size, sha256: hash.digest('hex') };
 }
 
 /**
@@ -94,6 +104,27 @@ export async function removeContent(
     await storage.delete(versionIds);
   } catch (error) {
     reportError(error, 'removeContent');
+  }
+}
+
+/**
+ * Runs the step that writes the rows for bytes that are stored (createFileRow, addVersionRow).
+ * When the step is refused, the bytes are removed again: no row points at them, and none will.
+ * When it fails any other way, they stay. A lost connection, or a statement that ran out of time, does not say
+ * whether the rows were written: bytes left behind without a row take up room, while bytes removed from under a
+ * row would be a version that has lost its content.
+ */
+export async function discardIfRefused<Result>(
+  storage: FileStorage,
+  stored: Stored,
+  reportError: (error: unknown, where: string) => void,
+  write: () => Promise<Result>
+): Promise<Result> {
+  try {
+    return await write();
+  } catch (error) {
+    if (error instanceof ApiError) await removeContent(storage, [stored.versionId], reportError);
+    throw error;
   }
 }
 

@@ -1,5 +1,4 @@
 import { Readable } from 'node:stream';
-import type { ReadableStream as WebStream } from 'node:stream/web';
 import {
   contentQuery,
   FILE_CONTENT_PATH,
@@ -30,7 +29,7 @@ import {
   assertCanCreate,
   assertCanReplace,
   createFileRow,
-  removeContent,
+  discardIfRefused,
   type Stored,
   storeContent,
   type Writer
@@ -150,17 +149,11 @@ async function upload(c: Context, deps: FileContentDeps): Promise<Response> {
   await write.check();
 
   // A request that says its body has no bytes may come without a body at all: an empty file
-  const body = c.req.raw.body as WebStream | null;
-  const stored = await storeContent(deps.storage, body ? Readable.fromWeb(body) : Readable.from([]));
+  const stored = await storeContent(deps.storage, c.req.raw.body);
 
-  let fileId: string;
-  try {
-    fileId = await write.commit(stored, { userId: user.id, apiKeyId: caller.apiKeyId });
-  } catch (error) {
-    // No row points at the bytes, and none will: they go again
-    await removeContent(deps.storage, [stored.versionId], deps.reportError);
-    throw error;
-  }
+  const fileId = await discardIfRefused(deps.storage, stored, deps.reportError, () =>
+    write.commit(stored, { userId: user.id, apiKeyId: caller.apiKeyId })
+  );
 
   const found = await liveFile(deps.db, write.spaceId, fileId);
   return c.json({ file: toFile(found.row, pathOfNames(found.names), found.version) }, 200);
@@ -205,18 +198,23 @@ async function download(c: Context, deps: FileContentDeps): Promise<Response> {
     ({ id: versionId, size } = version);
   }
 
+  const etag = `"${versionId}"`;
   const headers: Record<string, string> = {
     'content-type': 'application/octet-stream',
     // The name is written the way that holds any character (RFC 5987): a name may be in any script
     'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(found.row.name)}`,
     'x-content-type-options': 'nosniff',
     'accept-ranges': 'bytes',
-    etag: `"${versionId}"`,
+    etag,
     // Who may read it is asked on every request, so no cache in between keeps it for someone else
     'cache-control': 'private, no-cache'
   };
 
-  const range = rangeOf(c.req.header('range'), size);
+  // A caller that goes on with a download it began earlier says which version it has the beginning of (If-Range).
+  // When that is not the version being sent, a range of this one would be glued onto the other: the whole content
+  // is sent instead
+  const began = c.req.header('if-range');
+  const range = began === undefined || began === etag ? rangeOf(c.req.header('range'), size) : null;
   if (range === 'none') {
     // The one answer here that is not an error code of ours: it is HTTP's own answer to a Range header
     return c.json(
@@ -225,17 +223,21 @@ async function download(c: Context, deps: FileContentDeps): Promise<Response> {
       { 'content-range': `bytes */${size}` }
     );
   }
+  const status = range ? 206 : 200;
+  if (range) {
+    headers['content-length'] = String(range.end - range.start + 1);
+    headers['content-range'] = `bytes ${range.start}-${range.end}/${size}`;
+  } else {
+    headers['content-length'] = String(size);
+  }
+
+  // A HEAD asks for what a GET would be answered with, without the bytes, and the app hands it to this same
+  // function. The bytes are not fetched for it: a stream that is fetched has to be read to its end or closed, and
+  // the body of an answer to a HEAD is neither
+  if (c.req.method === 'HEAD') return c.body(null, status, headers);
 
   // A version that has a row has its bytes. If the storage has none, the server has lost them: that is thrown on
   // as it is, and answered as an internal error
   const bytes = await deps.storage.get(versionId, range ?? undefined);
-  const stream = Readable.toWeb(bytes) as ReadableStream;
-  if (range) {
-    return c.body(stream, 206, {
-      ...headers,
-      'content-length': String(range.end - range.start + 1),
-      'content-range': `bytes ${range.start}-${range.end}/${size}`
-    });
-  }
-  return c.body(stream, 200, { ...headers, 'content-length': String(size) });
+  return c.body(Readable.toWeb(bytes) as ReadableStream, status, headers);
 }

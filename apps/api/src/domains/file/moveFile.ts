@@ -14,7 +14,8 @@ export function moveFile({ db }: { db: Db }) {
     // A folder moved into itself, or into a folder inside it, would be in a loop that hangs from nothing: it and
     // everything in it could no longer be reached from the top of the space.
     // Known, and left as it is: two people who at the same moment move two folders into each other both pass this
-    // check, and the loop is made. A file in such a loop is not found by anything (see MAX_DEPTH in findFile.ts)
+    // check, and the loop is made. A file in such a loop is not found by anything (see MAX_DEPTH in findFile.ts);
+    // deleting the space still removes it
     if (place.lineage.includes(found.row.id)) {
       throw new ApiError('CONFLICT', 'A folder cannot be moved into itself, nor into a folder inside it.');
     }

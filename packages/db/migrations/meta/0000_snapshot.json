@@ -1,5 +1,5 @@
 {
-  "id": "eac92dbc-dd2b-46cd-989e-c9c4b3133753",
+  "id": "50836586-2a31-474b-af09-0871b1292e0f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -707,6 +707,21 @@
           ],
           "isUnique": true,
           "where": "\"files\".\"parent_id\" is not null and \"files\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "files_parent_idx": {
+          "name": "files_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}

@@ -140,6 +140,7 @@ CREATE INDEX "verifications_identifier_idx" ON "verifications" USING btree ("ide
 CREATE INDEX "file_versions_history_idx" ON "file_versions" USING btree ("file_id","created_at","id");--> statement-breakpoint
 CREATE UNIQUE INDEX "files_top_name_idx" ON "files" USING btree ("space_id","name") WHERE "files"."parent_id" is null and "files"."deleted_at" is null;--> statement-breakpoint
 CREATE UNIQUE INDEX "files_folder_name_idx" ON "files" USING btree ("parent_id","name") WHERE "files"."parent_id" is not null and "files"."deleted_at" is null;--> statement-breakpoint
+CREATE INDEX "files_parent_idx" ON "files" USING btree ("parent_id");--> statement-breakpoint
 CREATE INDEX "files_trash_idx" ON "files" USING btree ("space_id","deleted_at") WHERE "files"."deleted_at" is not null;--> statement-breakpoint
 CREATE INDEX "space_invites_space_id_idx" ON "space_invites" USING btree ("space_id");--> statement-breakpoint
 CREATE INDEX "space_members_user_id_idx" ON "space_members" USING btree ("user_id");--> statement-breakpoint

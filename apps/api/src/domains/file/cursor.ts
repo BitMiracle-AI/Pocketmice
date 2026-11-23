@@ -26,9 +26,17 @@ export function writeTimeCursor(time: Date, id: string): string {
  */
 export function readTimeCursor(cursor: string | undefined): TimeCursor | null {
   if (cursor === undefined) return null;
-  const parts = CURSOR.exec(cursor);
-  if (parts?.[1] === undefined || parts[2] === undefined) {
+  const [, time, id] = CURSOR.exec(cursor) ?? [];
+  // Shaped like a time is not yet a time: the 45th of the 13th month is not one. Only what writeTimeCursor writes
+  // is read back
+  const moment = new Date(time ?? '');
+  if (
+    time === undefined ||
+    id === undefined ||
+    Number.isNaN(moment.getTime()) ||
+    writeTimeCursor(moment, id) !== cursor
+  ) {
     throw new ApiError('INVALID_INPUT', 'cursor: Pass the nextCursor of the page before, as it was.');
   }
-  return { time: parts[1], id: parts[2] };
+  return { time, id };
 }
