@@ -26,3 +26,12 @@ export function AloneHeading({ title, children }: { title: string; children?: Re
     </>
   );
 }
+
+/** The quiet line under what the page is for: a way to another page, or who is signed in */
+export function AloneFoot({ children }: { children: ReactNode }) {
+  return <p className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">{children}</p>;
+}
+
+/** How a link or a button inside that line looks: the words alone, underlined when pointed at */
+export const ALONE_LINK =
+  'rounded-sm font-medium text-foreground underline-offset-4 outline-none hover:underline focus-visible:underline disabled:opacity-50';

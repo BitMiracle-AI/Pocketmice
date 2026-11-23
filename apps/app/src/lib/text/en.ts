@@ -49,6 +49,5 @@ export const en = {
   tryAgain: 'Try again',
   notFoundTitle: 'Page not found',
   notFoundDescription: 'There is nothing at this address.',
-  toHome: 'Go to your files',
-  serverReached: (version: string) => `Connected to the server, version ${version}.`
+  toHome: 'Go to your files'
 };

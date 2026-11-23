@@ -29,8 +29,10 @@ function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
   return (
     <ToastPrimitive.Viewport
       data-slot="toast-viewport"
+      // In the middle of the bottom edge at every width. shadcn puts it in the right corner on a wide screen: that
+      // corner is where the uploads in progress are shown
       className={cn(
-        'pointer-events-none fixed inset-x-4 bottom-4 z-50 mx-auto w-auto max-w-sm outline-none sm:right-4 sm:left-auto sm:mx-0 sm:w-full',
+        'pointer-events-none fixed inset-x-4 bottom-4 z-50 mx-auto w-auto max-w-sm outline-none',
         className
       )}
       {...props}

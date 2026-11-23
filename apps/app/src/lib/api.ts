@@ -1,4 +1,6 @@
-import { type ClientErrorCode, createApiClient } from '@pocketmice/client/api';
+import { type ApiClientConfig, type ClientErrorCode, createApiClient, type Result } from '@pocketmice/client/api';
+import { createAuthClient } from '@pocketmice/client/auth';
+import { getProfile } from '@pocketmice/contract/domains/profile';
 import type { UniversalErrorCode } from '@pocketmice/contract/errors';
 import type { CodeOf, InputOf, Operation, OutputOf } from '@pocketmice/contract/operation';
 import { QueryClient, queryOptions } from '@tanstack/react-query';
@@ -11,6 +13,8 @@ import { commonText } from '@/lib/text';
 // - A read goes through the cache (readQuery). A write is called (call) and answers with a result that says whether
 //   it worked; whoever wrote then marks the reads it changed as stale, and the cache asks for them again.
 // - A page that changes something shows it when the api has answered, not before: nothing on a page is a guess.
+// - Who is signed in is what the api says (currentUserQuery). The browser holds the cookie and the page cannot
+//   read it: nothing in the page remembers that someone signed in.
 
 /** How long an answer counts as fresh. Within it the cache hands out what it has; after it, it asks the api again
  * the next time the answer is used, or when the person comes back to the tab */
@@ -20,17 +24,37 @@ const FRESH_FOR_MS = 60_000;
 export type CommonFailureCode = UniversalErrorCode | ClientErrorCode;
 
 /**
- * Calls an operation: the answer is the output when it worked, and an error code when it did not. It never throws.
- * There is one client in the app, and this is it.
- * Who is calling is said by the sign-in cookie, which the browser adds. The api is at another origin than the
- * pages, so every request has to say that the cookie goes along: left unsaid, the browser does not send it.
+ * How every request to the api is sent. Who is calling is said by the sign-in cookie, which the browser adds. The
+ * api is at another origin than the pages, so every request has to say that the cookie goes along: left unsaid,
+ * the browser does not send it, and does not keep the one a sign-in sets.
  */
-export const call = createApiClient({
+const config: ApiClientConfig = {
   baseUrl: import.meta.env.VITE_API_URL,
   fetch: (url, init) => fetch(url, { ...init, credentials: 'include' }),
   // What was thrown stays in the console, for whoever looks into it. The page says a sentence of its own
   reportError: (error, name) => console.error(`Calling ${name} failed:`, error)
-});
+};
+
+/** The one client of the app. It is not exported: a page calls an operation through call or readQuery */
+const api = createApiClient(config);
+
+/** Signing in and out: the requests to the addresses that are not operations (see @pocketmice/client/auth) */
+export const auth = createAuthClient(config);
+
+/**
+ * Calls an operation: the answer is the output when it worked, and an error code when it did not. It never throws.
+ * Every call of an operation goes through here.
+ */
+export async function call<Op extends Operation>(operation: Op, input: InputOf<Op>): Promise<Result<Op>> {
+  const result = await api(operation, input);
+  // Any call that is answered "not signed in" makes what the cache holds about who is signed in untrue. It is
+  // marked stale and not asked again at once: the page stays as it is, with what the person was typing, and says
+  // that they are signed out. The next page they go to asks the api, and takes them to the sign-in page.
+  if (!result.ok && result.code === 'UNAUTHENTICATED') {
+    void queryClient.invalidateQueries({ queryKey: currentUserQuery.queryKey, refetchType: 'none' });
+  }
+  return result;
+}
 
 /**
  * A read that failed, as the cache hands it on: the cache wants a function that throws. code is what the page goes
@@ -69,6 +93,13 @@ export function readQuery<Op extends Operation<'read'>>(operation: Op, input: In
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: FRESH_FOR_MS, retry: false } }
 });
+
+/**
+ * Who is signed in: the profile of the person the cookie belongs to. The pages for signed-in people are let in by
+ * it (routes/_app.tsx) and read it with useCurrentUser. It is kept while the page is open, also when nothing on
+ * the page is using it at the moment.
+ */
+export const currentUserQuery = queryOptions({ ...readQuery(getProfile, {}), gcTime: Number.POSITIVE_INFINITY });
 
 /**
  * What to tell a person about a call that failed with code. own has a sentence for each code the operation lists
