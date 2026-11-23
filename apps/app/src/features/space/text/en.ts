@@ -60,6 +60,5 @@ export const en = {
   deletedSpace: (name: string) => `Deleted “${name}”`,
 
   unknownTitle: 'No such space',
-  unknownDescription: 'There is no space at this address, or you are not a member of it.',
-  toHome: 'Go to your spaces'
+  unknownDescription: 'There is no space at this address, or you are not a member of it.'
 };

@@ -29,6 +29,5 @@ export const en = {
   joined: (name: string) => `You joined “${name}”`,
   otherAccount: 'Use another account',
   deadTitle: 'This invite link does not work',
-  deadDescription: 'It has expired, or the owner of the space deleted it. Ask them for a new one.',
-  toHome: 'Go to your spaces'
+  deadDescription: 'It has expired, or the owner of the space deleted it. Ask them for a new one.'
 };

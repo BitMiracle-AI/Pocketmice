@@ -54,6 +54,5 @@ export const zhHans: typeof en = {
   deletedSpace: (name) => `已删除「${name}」`,
 
   unknownTitle: '没有这个空间',
-  unknownDescription: '这个地址上没有空间，或者你不是它的成员。',
-  toHome: '去我的空间'
+  unknownDescription: '这个地址上没有空间，或者你不是它的成员。'
 };

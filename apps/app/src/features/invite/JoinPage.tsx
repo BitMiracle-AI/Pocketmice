@@ -1,8 +1,8 @@
 import { id } from '@pocketmice/contract/id';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { ALONE_LINK, Alone, AloneFoot, AloneHeading } from '@/components/Alone';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { ALONE_LINK, Alone, AloneFoot, AloneHeading, AloneWayHome } from '@/components/Alone';
+import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { signOutAndReturn } from '@/features/auth/signOut';
@@ -44,9 +44,7 @@ export function JoinPage({ inviteId }: { inviteId: string }) {
     return (
       <Alone>
         <AloneHeading title={inviteText.deadTitle}>{inviteText.deadDescription}</AloneHeading>
-        <Link to="/" className={buttonVariants({ variant: 'outline', className: 'mt-8' })}>
-          {inviteText.toHome}
-        </Link>
+        <AloneWayHome />
       </Alone>
     );
   }

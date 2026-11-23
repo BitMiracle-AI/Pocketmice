@@ -1,4 +1,7 @@
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { buttonVariants } from '@/components/ui/button';
+import { commonText } from '@/lib/text';
 
 // A page that stands alone, with no sidebar: signing in, the start, an address with nothing at it, a page that
 // failed to load.
@@ -38,6 +41,15 @@ export function AloneHeading({ title, children }: { title: string; children?: Re
       <h1 className="font-heading text-xl font-medium tracking-tight">{title}</h1>
       {children && <p className="mt-2 text-sm text-pretty text-muted-foreground">{children}</p>}
     </>
+  );
+}
+
+/** The way on from a page that has nothing to show: to the start, where the person's spaces are */
+export function AloneWayHome() {
+  return (
+    <Link to="/" className={buttonVariants({ variant: 'outline', className: 'mt-8' })}>
+      {commonText.toHome}
+    </Link>
   );
 }
 
