@@ -3,6 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { copyText } from '@/lib/clipboard';
 import { commonText } from '@/lib/text';
 
 /** How long the button says "copied", in milliseconds */
@@ -10,19 +11,14 @@ const COPIED_FOR_MS = 1500;
 
 /**
  * A button that copies text: a key, a link. label says what it copies, for whoever cannot see its icon.
- * The browser may keep the clipboard from the page (a page that is not served securely, a permission that was
- * refused): onFailed is called then, for the page to show the text and say it has to be copied by hand.
+ * onFailed is called when the browser keeps the clipboard from the page, for the page to show the text and say it
+ * has to be copied by hand.
  */
 export function CopyButton({ text, label, onFailed }: { text: string; label: string; onFailed: () => void }) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      onFailed();
-      return;
-    }
+    if (!(await copyText(text))) return onFailed();
     setCopied(true);
     window.setTimeout(() => setCopied(false), COPIED_FOR_MS);
   };

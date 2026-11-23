@@ -25,6 +25,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, 
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { spaceText } from '@/features/space/text';
+import { copyText } from '@/lib/clipboard';
 import { formatDate } from '@/lib/format';
 import { type Invite, inviteLink, invitesQuery, makeInvite, removeInvite } from './invites';
 import { inviteText } from './text';
@@ -59,9 +60,9 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
       title: inviteText.created,
       actionProps: {
         children: inviteText.copyLink,
-        onClick: () => {
+        onClick: async () => {
           toast.close(said);
-          navigator.clipboard.writeText(link).catch(copyFailed);
+          if (!(await copyText(link))) copyFailed();
         }
       }
     });
