@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not do what it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: >
+        What you did, what you expected, and what happened in its place. The exact request and the exact answer
+        (the status and the error body) say more than a description. Take your API key out of what you paste.
+      placeholder: |
+        1. ...
+        2. ...
+        Expected: ...
+        Got: ...
+    validations:
+      required: true
+  - type: textarea
+    id: server
+    attributes:
+      label: The server
+      description: Which server it happened on, and how that server is run.
+      placeholder: |
+        Commit, or the version getServerInfo answers with: ...
+        Run: from source (pnpm dev) | the container image
+        Files are kept in: a folder | an S3 service (which one)
+        People sign in with: a password | a code by mail
+        Called through: HTTP | the TypeScript SDK | the MCP server | the skill
+        Reverse proxy, if there is one: nginx | Traefik | ...
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What the server printed (if it printed anything)
+      description: >
+        The output of the api from around the time it happened. Take out any API key, the session secret and the
+        address of the database if they are in it.
+      render: text
+    validations:
+      required: false

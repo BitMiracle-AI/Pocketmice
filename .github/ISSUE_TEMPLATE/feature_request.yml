@@ -1,0 +1,20 @@
+name: Feature request
+description: Something you need and do not find, or an objection to how something works
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What are you, or your agent, trying to do that Pocketmice makes hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would have it do
+      description: >
+        If you have a shape in mind. The README says what is planned and what is not there yet.
+    validations:
+      required: false
