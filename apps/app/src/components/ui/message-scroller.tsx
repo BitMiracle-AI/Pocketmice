@@ -63,7 +63,11 @@ function MessageScrollerItem({
     <MessageScrollerPrimitive.Item
       data-slot="message-scroller-item"
       scrollAnchor={scrollAnchor}
-      className={cn('min-w-0 shrink-0 [contain-intrinsic-size:auto_10rem] [content-visibility:auto]', className)}
+      // shadcn leaves an item that is out of view without layout (content-visibility: auto), at a height it makes
+      // up until the item comes into view. A page that opens at a message in the middle then lands somewhere else:
+      // a conversation with forty unread messages opened 937px past the first of them. The items are laid out
+      // here: a page holds a couple of hundred messages at most
+      className={cn('min-w-0 shrink-0', className)}
       {...props}
     />
   );

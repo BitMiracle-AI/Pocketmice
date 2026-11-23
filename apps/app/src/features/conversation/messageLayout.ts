@@ -30,6 +30,18 @@ export function unreadCount(conversation: Pick<Conversation, 'lastMessageNumber'
   return Math.max(0, conversation.lastMessageNumber - conversation.lastReadNumber);
 }
 
+/**
+ * The number of the first message of a conversation that the person has not read, or null when there is none:
+ * they have read all of it, or are no member of it. A page asks this once, when it opens the conversation: that
+ * message is where a line says what is new, and where the page opens when the unread do not fit above its end.
+ * What arrives while the person looks on is no part of it.
+ */
+export function firstUnreadNumber(
+  conversation: Pick<Conversation, 'lastMessageNumber' | 'lastReadNumber'>
+): number | null {
+  return unreadCount(conversation) > 0 ? (conversation.lastReadNumber ?? 0) + 1 : null;
+}
+
 /** Messages of one sender that follow each other within this long are shown as one run, in milliseconds */
 export const RUN_GAP_MS = 5 * 60_000;
 
@@ -59,26 +71,25 @@ function localDay(time: string): string {
 }
 
 /**
- * Lays out messages, given in the order they were sent. readUpTo is how far the person had read when they opened
- * the conversation (null: they are no member of it, and nothing is marked as unread). dayOf says which day a time
- * is on, for a test to say.
+ * Lays out messages, given in the order they were sent. firstUnread is the number of the first message the person
+ * had not read when they opened the conversation (firstUnreadNumber), or null. dayOf says which day a time is on,
+ * for a test to say.
  */
 export function layOut(
   messages: readonly Message[],
-  readUpTo: number | null,
+  firstUnread: number | null,
   dayOf: (time: string) => string = localDay
 ): StreamItem[] {
   return messages.map((message, index) => {
     const before = messages[index - 1];
     const newDay = !before || dayOf(before.createdAt) !== dayOf(message.createdAt);
-    // Only where something read comes before it: a conversation that is all unread needs no line
-    const firstUnread = readUpTo !== null && readUpTo > 0 && message.number === readUpTo + 1;
+    const unread = message.number === firstUnread;
     const head =
       newDay ||
-      firstUnread ||
+      unread ||
       !before ||
       senderOf(before) !== senderOf(message) ||
       Date.parse(message.createdAt) - Date.parse(before.createdAt) > RUN_GAP_MS;
-    return { message, newDay, firstUnread, head };
+    return { message, newDay, firstUnread: unread, head };
   });
 }

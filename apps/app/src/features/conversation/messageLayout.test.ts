@@ -2,7 +2,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Message } from './conversations.ts';
-import { earlierStart, layOut, RUN_GAP_MS, unreadCount, WINDOW_STEP, windowStart } from './messageLayout.ts';
+import {
+  earlierStart,
+  firstUnreadNumber,
+  layOut,
+  RUN_GAP_MS,
+  unreadCount,
+  WINDOW_STEP,
+  windowStart
+} from './messageLayout.ts';
 
 test('a page opens a conversation with its latest messages, from a multiple of the step on', () => {
   assert.equal(WINDOW_STEP, 50);
@@ -39,6 +47,16 @@ test('what is unread is what was sent after the message the person read last; th
   assert.equal(unreadCount({ lastMessageNumber: 12, lastReadNumber: null }), 0);
 });
 
+test('the first unread message is the one after the last that was read, when there is one', () => {
+  assert.equal(firstUnreadNumber({ lastMessageNumber: 12, lastReadNumber: 9 }), 10);
+  // Nothing read yet: the first message there is
+  assert.equal(firstUnreadNumber({ lastMessageNumber: 12, lastReadNumber: 0 }), 1);
+  // Everything read: the message that arrives next is not it, for a page that asked when it opened
+  assert.equal(firstUnreadNumber({ lastMessageNumber: 12, lastReadNumber: 12 }), null);
+  assert.equal(firstUnreadNumber({ lastMessageNumber: 0, lastReadNumber: 0 }), null);
+  assert.equal(firstUnreadNumber({ lastMessageNumber: 12, lastReadNumber: null }), null);
+});
+
 const START = Date.parse('2026-11-23T09:00:00Z');
 const GRACE = { id: 'u-grace', name: 'Grace' };
 const LINUS = { id: 'u-linus', name: 'Linus' };
@@ -62,8 +80,8 @@ function message(number: number, minutes: number, user = GRACE, apiKey: Message[
 const utcDay = (time: string) => time.slice(0, 10);
 
 /** What a layout comes to, in short: the number of each message, * for a head, after what stands above it */
-function short(messages: Message[], readUpTo: number | null): string {
-  return layOut(messages, readUpTo, utcDay)
+function short(messages: Message[], firstUnread: number | null): string {
+  return layOut(messages, firstUnread, utcDay)
     .flatMap((item) => [
       ...(item.newDay ? ['day'] : []),
       ...(item.firstUnread ? ['unread'] : []),
@@ -114,17 +132,16 @@ test('a new day is marked above its first message, which begins a run', () => {
   assert.equal(short([message(1, 0), message(2, 1), message(3, day), message(4, day + 1)], null), 'day 1* 2 day 3* 4');
 });
 
-test('a line is put above the first message the person had not read, where something read comes before it', () => {
+test('a line is put above the first message the person had not read, which begins a run', () => {
   const messages = [message(1, 0), message(2, 1), message(3, 2), message(4, 3)];
 
-  assert.equal(short(messages, 2), 'day 1* 2 unread 3* 4');
-  // Everything read, and a conversation they are no member of: no line
-  assert.equal(short(messages, 4), 'day 1* 2 3 4');
+  assert.equal(short(messages, 3), 'day 1* 2 unread 3* 4');
+  assert.equal(short(messages, 1), 'day unread 1* 2 3 4');
+  // Nothing unread
   assert.equal(short(messages, null), 'day 1* 2 3 4');
-  // Nothing read: the whole conversation is new, and a line above it would say nothing
-  assert.equal(short(messages, 0), 'day 1* 2 3 4');
-  // The first unread message is earlier than what the window holds: no line
-  assert.equal(short(messages.slice(2), 1), 'day 3* 4');
+  // The first unread message is not among the ones the page holds: earlier than them, or not sent yet
+  assert.equal(short(messages.slice(2), 2), 'day 3* 4');
+  assert.equal(short(messages, 5), 'day 1* 2 3 4');
   // On a new day the day comes first
-  assert.equal(short([message(1, 0), message(2, 24 * 60)], 1), 'day 1* day unread 2*');
+  assert.equal(short([message(1, 0), message(2, 24 * 60)], 2), 'day 1* day unread 2*');
 });

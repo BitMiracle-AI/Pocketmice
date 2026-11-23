@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,8 @@ import {
   MessageScrollerButton,
   MessageScrollerContent,
   MessageScrollerItem,
-  MessageScrollerViewport
+  MessageScrollerViewport,
+  useMessageScroller
 } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
@@ -29,26 +30,30 @@ import { MessageRow } from './MessageRow';
 import { layOut } from './messageLayout';
 import { conversationText } from './text';
 
+/** How much of what was read is left in view above the line of what is new, where a conversation opens there, in pixels */
+const READ_IN_VIEW_PX = 64;
+
 /**
  * The messages of a conversation, the latest at the bottom. The page begins there and stays there while the person
  * is there: a message that arrives is shown under the others. Someone who is further up is left where they are,
  * with a button that takes them down: someone who has scrolled up, and someone who opened a conversation with
  * more unread messages than fit, which begins at the first of those.
  * messages are the ones the page holds; earlier is there when the conversation has more before them, and shows
- * them. readUpTo is how far the person had read when they opened the conversation: a line marks what is new.
+ * them. firstUnread is the number of the first message the person had not read when they opened the conversation,
+ * or null: a line marks what is new from there.
  * It sits inside the provider of the scroller, which the page shares with the field a message is written in.
  */
 export function MessageStream({
   conversation,
   members,
   messages,
-  readUpTo,
+  firstUnread,
   earlier
 }: {
   conversation: Conversation;
   members: readonly ConversationMember[];
   messages: readonly Message[];
-  readUpTo: number | null;
+  firstUnread: number | null;
   earlier: { busy: boolean; show: () => void } | undefined;
 }) {
   const space = useCurrentSpace();
@@ -56,9 +61,23 @@ export function MessageStream({
   // The message the person is asked about deleting
   const [asking, setAsking] = useState<Message | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const items = useMemo(() => layOut(messages, readUpTo), [messages, readUpTo]);
+  const items = useMemo(() => layOut(messages, firstUnread), [messages, firstUnread]);
 
   const viewport = useRef<HTMLDivElement>(null);
+  const { scrollToMessage } = useMessageScroller();
+  // Where the page opens. Left alone, the scroller puts it at its end. When what the person has not read is more
+  // than fits above the end, it opens at the first message of that instead, with a little of what was read above
+  // it. Once: firstUnread is what it was when the conversation was opened, and the scroller hands out the same
+  // function every time
+  useLayoutEffect(() => {
+    const scrolled = viewport.current;
+    const first = firstUnread !== null && scrolled?.querySelector(`[data-message-id="${firstUnread}"]`);
+    if (!scrolled || !first) return;
+    const before = first.getBoundingClientRect().top - scrolled.getBoundingClientRect().top + scrolled.scrollTop;
+    if (scrolled.scrollHeight - before > scrolled.clientHeight) {
+      scrollToMessage(String(firstUnread), { align: 'start', scrollMargin: READ_IN_VIEW_PX });
+    }
+  }, [firstUnread, scrollToMessage]);
   useReadMark(space.id, conversation, messages.at(-1)?.number ?? 0, viewport);
 
   const nameOf = (userId: string) =>
@@ -92,8 +111,7 @@ export function MessageStream({
             </p>
           )}
           {items.map(({ message, newDay, firstUnread, head }) => (
-            // The first message the person has not read is where the page opens, when the end is further than fits
-            <MessageScrollerItem key={message.number} messageId={String(message.number)} scrollAnchor={firstUnread}>
+            <MessageScrollerItem key={message.number} messageId={String(message.number)}>
               {newDay && (
                 <Marker variant="separator" className="pt-4 text-xs">
                   <MarkerContent>{formatDay(message.createdAt)}</MarkerContent>

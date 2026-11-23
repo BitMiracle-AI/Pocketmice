@@ -50,7 +50,7 @@ import {
   removeConversation
 } from './conversations';
 import { MessageStream } from './MessageStream';
-import { earlierStart, windowStart } from './messageLayout';
+import { earlierStart, firstUnreadNumber, windowStart } from './messageLayout';
 import { RenameConversationDialog } from './RenameConversationDialog';
 import { conversationText } from './text';
 
@@ -90,8 +90,9 @@ function OpenConversation({
   const navigate = useNavigate();
   // The messages the page shows are the ones after this number: it moves back when earlier ones are asked for
   const [after, setAfter] = useState(() => windowStart(conversation.lastMessageNumber));
-  // How far the person had read when they opened the conversation: where the line of what is new stays
-  const [readWhenOpened] = useState(conversation.lastReadNumber);
+  // The first message the person had not read when they opened the conversation: where the line of what is new
+  // stays, whatever they read and whatever arrives from then on
+  const [firstUnread] = useState(() => firstUnreadNumber(conversation));
   const [renaming, setRenaming] = useState(false);
   const [showingMembers, setShowingMembers] = useState(false);
   const [asking, setAsking] = useState<Asking>(null);
@@ -143,9 +144,7 @@ function OpenConversation({
   };
 
   return (
-    // The page opens at the end of the conversation, or, when what the person has not read is more than fits, at
-    // the first message of it (the one the stream marks as the place to open at)
-    <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
+    <MessageScrollerProvider autoScroll>
       <header className="flex h-12 shrink-0 items-center gap-1 px-3">
         {/* Where the list has no room next to the conversation, this is the way back to it */}
         <Link
@@ -233,7 +232,7 @@ function OpenConversation({
           conversation={conversation}
           members={members}
           messages={held.data}
-          readUpTo={readWhenOpened}
+          firstUnread={firstUnread}
           earlier={
             // The first message the page holds says whether there are earlier ones. What it holds may still be the
             // messages it had, while the earlier ones asked for are on their way
