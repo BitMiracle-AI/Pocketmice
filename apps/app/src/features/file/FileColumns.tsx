@@ -171,6 +171,12 @@ function Row({
   onAct?: (file: DriveFile, what: FileAction) => void;
 }) {
   const space = useCurrentSpace();
+  const item = useRef<HTMLLIElement>(null);
+  // The row that is picked, or is on the way to it, is in sight: an address is opened from anywhere (a link in a
+  // conversation, what a search found, a page loaded anew), and its row may be far down its folder
+  useEffect(() => {
+    if (active) intoSight(item.current);
+  }, [active]);
   const isFolder = file.kind === 'folder';
   const button = (
     <SidebarMenuButton render={<FilesLink spaceId={space.id} fileId={file.id} />} isActive={active} title={file.name}>
@@ -179,10 +185,10 @@ function Row({
       {isFolder && <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-auto text-muted-foreground" />}
     </SidebarMenuButton>
   );
-  if (isFolder && !onAct) return <SidebarMenuItem>{button}</SidebarMenuItem>;
+  if (isFolder && !onAct) return <SidebarMenuItem ref={item}>{button}</SidebarMenuItem>;
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem ref={item}>
       <ContextMenu>
         <ContextMenuTrigger render={button} />
         <ContextMenuContent className="min-w-44">
@@ -206,4 +212,17 @@ function Row({
       </ContextMenu>
     </SidebarMenuItem>
   );
+}
+
+/**
+ * Scrolls the column a row is in just far enough for the row to be seen. The column alone: the columns stay where
+ * they are side by side, which is the business of whoever lays them out.
+ */
+function intoSight(row: HTMLElement | null): void {
+  const column = row?.closest('[data-slot=scroll-area-viewport]');
+  if (!row || !column) return;
+  const { top, bottom } = row.getBoundingClientRect();
+  const frame = column.getBoundingClientRect();
+  if (top < frame.top) column.scrollTop -= frame.top - top;
+  else if (bottom > frame.bottom) column.scrollTop += bottom - frame.bottom;
 }
