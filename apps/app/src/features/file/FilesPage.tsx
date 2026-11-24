@@ -23,7 +23,7 @@ import { FileResults } from './FileResults';
 import { FileSearchField } from './FileSearchField';
 import { FilesLink, useGoToFiles } from './FilesLink';
 import { FilesTrail } from './FilesTrail';
-import { foldersAbove, foldersToFind } from './fileOrder';
+import { foldersAbove, foldersToFind, isWithin } from './fileOrder';
 import type { DriveFile } from './files';
 import { NewFolderDialog } from './NewFolderDialog';
 import { fileText } from './text';
@@ -102,7 +102,7 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
   // Once what is picked, or a folder it is in, is in the trash, the page has nothing to show for its address: it
   // goes to the folder that one was in, or back to all that was found
   const actions = useFileActions(space.id, async (file) => {
-    if (picked === null || (picked.id !== file.id && !picked.path.startsWith(`${file.path}/`))) return;
+    if (picked === null || !isWithin(picked.path, file.path)) return;
     await goTo(searching ? null : file.parentId, words);
   });
   const onAct = canEdit ? actions.pick : undefined;

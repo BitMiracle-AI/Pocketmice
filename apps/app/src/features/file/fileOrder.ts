@@ -41,3 +41,11 @@ export function placeOf(path: string): string | null {
   const above = (namesOfPath(path) ?? []).slice(0, -1);
   return above.length > 0 ? above.join(' / ') : null;
 }
+
+/**
+ * Whether something at path is the thing at the path within, or is inside it, however deep. A folder whose name
+ * begins with the name of another is not inside it: /Reports 2026 is not in /Reports.
+ */
+export function isWithin(path: string, within: string): boolean {
+  return path === within || path.startsWith(`${within}/`);
+}

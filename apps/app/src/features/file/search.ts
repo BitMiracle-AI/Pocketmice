@@ -9,7 +9,7 @@ import { readPages } from '@/lib/api';
  * The files and folders of a space that have every word of words in their name or their description, the latest
  * changed first, a page at a time.
  */
-export function matchesQuery(spaceId: string, words: string) {
+function matchesQuery(spaceId: string, words: string) {
   return readPages(getMatchingFiles, { spaceId, folderId: null, query: words });
 }
 

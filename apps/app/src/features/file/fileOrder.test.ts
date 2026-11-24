@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { getFile } from '@pocketmice/contract/domains/file';
 import type { OutputOf } from '@pocketmice/contract/operation';
-import { foldersAbove, foldersToFind, inOrder, placeOf } from './fileOrder.ts';
+import { foldersAbove, foldersToFind, inOrder, isWithin, placeOf } from './fileOrder.ts';
 
 type DriveFile = OutputOf<typeof getFile>['file'];
 
@@ -62,6 +62,16 @@ test('where something is, is the names of the folders above it; directly in the 
   assert.equal(placeOf('/Reports/2026/summary.md'), 'Reports / 2026');
   assert.equal(placeOf('/Reports/2026'), 'Reports');
   assert.equal(placeOf('/summary.md'), null);
+});
+
+test('something is within a folder when it is that folder, or is inside it however deep', () => {
+  assert.equal(isWithin('/Reports', '/Reports'), true);
+  assert.equal(isWithin('/Reports/2026/plan.txt', '/Reports'), true);
+  assert.equal(isWithin('/Reports/2026/plan.txt', '/Reports/2026'), true);
+  // A name that begins with the name of another folder is not inside that folder
+  assert.equal(isWithin('/Reports 2026', '/Reports'), false);
+  assert.equal(isWithin('/Reports', '/Reports/2026'), false);
+  assert.equal(isWithin('/Other/Reports', '/Reports'), false);
 });
 
 test('the folders to ask for are the ones above, but for the one right above', () => {
