@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageBar } from '@/features/shell/PageBar';
+import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { uploadFiles } from '@/features/upload/uploads';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -170,6 +171,8 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
           </>
         }
       >
+        {/* What the page is, for whoever goes by its headings: the bar shows the way down in its place */}
+        <h1 className="sr-only">{shellText.files}</h1>
         {/* On a phone one folder is shown at a time, and this is the way up from it */}
         {picked?.kind === 'folder' && !searching && (
           <Button

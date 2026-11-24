@@ -24,7 +24,17 @@ export function FilesLink({
   words = '',
   ...rest
 }: { spaceId: string; fileId: string | null; words?: string } & Omit<ComponentProps<'a'>, 'href'>) {
-  return <Link to={FILES} params={paramsOf(spaceId, fileId)} search={searchOf(words)} {...rest} />;
+  return (
+    <Link
+      to={FILES}
+      params={paramsOf(spaceId, fileId)}
+      search={searchOf(words)}
+      // The link says it leads to the page being shown (aria-current) only when it leads to this very address:
+      // the files of the space are the beginning of every address under them, and are not each of those pages
+      activeOptions={{ exact: true }}
+      {...rest}
+    />
+  );
 }
 
 /**
