@@ -9,6 +9,7 @@ export const en = {
   settings: 'Settings',
   account: 'Account',
   apiKeys: 'API keys',
+  connect: 'Connect an agent',
   backToFiles: 'Back to files',
   allSpaces: 'All spaces',
   userMenu: 'Your account',

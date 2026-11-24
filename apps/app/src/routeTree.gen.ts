@@ -17,6 +17,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppJoinInviteIdRouteImport } from './routes/_app/join/$inviteId'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsAccountRouteImport } from './routes/_app/settings/account'
+import { Route as AppSettingsConnectRouteImport } from './routes/_app/settings/connect'
 import { Route as AppSettingsKeysRouteImport } from './routes/_app/settings/keys'
 import { Route as AppSpacesSpaceIdRouteImport } from './routes/_app/spaces/$spaceId'
 import { Route as AppSpacesSpaceIdIndexRouteImport } from './routes/_app/spaces/$spaceId/index'
@@ -65,6 +66,11 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
 const AppSettingsAccountRoute = AppSettingsAccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsConnectRoute = AppSettingsConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
   getParentRoute: () => AppSettingsRoute,
 } as any)
 const AppSettingsKeysRoute = AppSettingsKeysRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRouteWithChildren
   '/join/$inviteId': typeof AppJoinInviteIdRoute
   '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/connect': typeof AppSettingsConnectRoute
   '/settings/keys': typeof AppSettingsKeysRoute
   '/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/settings/': typeof AppSettingsIndexRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/join/$inviteId': typeof AppJoinInviteIdRoute
   '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/connect': typeof AppSettingsConnectRoute
   '/settings/keys': typeof AppSettingsKeysRoute
   '/settings': typeof AppSettingsIndexRoute
   '/spaces/$spaceId/members': typeof AppSpacesSpaceIdMembersRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/join/$inviteId': typeof AppJoinInviteIdRoute
   '/_app/settings/account': typeof AppSettingsAccountRoute
+  '/_app/settings/connect': typeof AppSettingsConnectRoute
   '/_app/settings/keys': typeof AppSettingsKeysRoute
   '/_app/spaces/$spaceId': typeof AppSpacesSpaceIdRouteWithChildren
   '/_app/settings/': typeof AppSettingsIndexRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/join/$inviteId'
     | '/settings/account'
+    | '/settings/connect'
     | '/settings/keys'
     | '/spaces/$spaceId'
     | '/settings/'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/'
     | '/join/$inviteId'
     | '/settings/account'
+    | '/settings/connect'
     | '/settings/keys'
     | '/settings'
     | '/spaces/$spaceId/members'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/join/$inviteId'
     | '/_app/settings/account'
+    | '/_app/settings/connect'
     | '/_app/settings/keys'
     | '/_app/spaces/$spaceId'
     | '/_app/settings/'
@@ -301,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsAccountRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/_app/settings/connect': {
+      id: '/_app/settings/connect'
+      path: '/connect'
+      fullPath: '/settings/connect'
+      preLoaderRoute: typeof AppSettingsConnectRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/_app/settings/keys': {
       id: '/_app/settings/keys'
       path: '/keys'
@@ -376,12 +395,14 @@ declare module '@tanstack/react-router' {
 
 interface AppSettingsRouteChildren {
   AppSettingsAccountRoute: typeof AppSettingsAccountRoute
+  AppSettingsConnectRoute: typeof AppSettingsConnectRoute
   AppSettingsKeysRoute: typeof AppSettingsKeysRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsAccountRoute: AppSettingsAccountRoute,
+  AppSettingsConnectRoute: AppSettingsConnectRoute,
   AppSettingsKeysRoute: AppSettingsKeysRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
 }

@@ -33,8 +33,11 @@ Two environment variables:
 - `POCKETMICE_URL`: the address of the server, like `https://api.example.com`, with no slash at the end.
 - `POCKETMICE_API_KEY`: the key, which starts with `pm_`.
 
-If either is missing, ask the user for it. The key is a credential: do not print it, and do not write it into a
-file.
+If either is missing, ask the user for it. The user may hand you both in a message and ask you to keep them (the
+web app writes that message for them, under "Connect an agent"): then set them where your host gives environment
+variables to every session, in its own settings or in the profile of the shell it starts, so that the user is not
+asked again. The key is a credential: do not print it, and do not write it anywhere else, least of all into a file
+of a project or of the drive.
 
 Every operation is a `POST` to `/api/<name>` with a JSON body, even when the body is `{}`, and the key as a bearer
 token:

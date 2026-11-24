@@ -16,9 +16,10 @@ hand back what they make.
 > you are in, each with its members and invite links, the files of a space (folders, upload, download, renaming,
 > moving, looking for a file by words, the trash, the versions of a file), its conversations, shown as they are
 > said, renaming and deleting a space, how much a space and each member holds and the limits its owner sets, the
-> name you go by, and API keys. For a program there is the [TypeScript SDK](#typescript-sdk), which is in this
-> repository and not on npm yet, and for an agent the [MCP server](#mcp-server) or the [skill](#agent-skill) that
-> teaches it the API. Nothing here is ready for production.
+> name you go by, API keys, and how to connect an agent. For a program there is the
+> [TypeScript SDK](#typescript-sdk), which is in this repository and not on npm yet, and for an agent the
+> [MCP server](#mcp-server) or the [skill](#agent-skill) that teaches it the API. Nothing here is ready for
+> production.
 
 ## What is planned
 
@@ -354,6 +355,10 @@ npx skills add BitMiracle-AI/Pocketmice
 It teaches the agent to find, download, upload and write over files with curl, to organise folders, to read the
 versions of a file and bring one back, and what an API key cannot do. The agent is given two environment variables:
 `POCKETMICE_URL`, the address of the server, and `POCKETMICE_API_KEY`, a key made by the person it works for.
+
+In the web app, "Connect an agent" writes the message a person sends their agent to give it all three: where the
+skill is, the address of the server, and one of their keys. The message asks the agent to keep the two variables
+for its later sessions, and the skill says where: with the environment variables its host gives every session.
 
 The skill lists every operation an API key may call, and `pnpm check` fails when that list and `packages/contract`
 disagree.

@@ -1,4 +1,4 @@
-import { ArrowLeft01Icon, Key01Icon, Settings01Icon, UserCircleIcon } from '@hugeicons/core-free-icons';
+import { ArrowLeft01Icon, Key01Icon, Robot01Icon, Settings01Icon, UserCircleIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -40,6 +40,12 @@ export function SettingsShell({ backTo, children }: { backTo: string | undefined
             icon={Key01Icon}
             label={shellText.apiKeys}
             active={matches({ to: '/settings/keys' }) !== false}
+          />
+          <NavRow
+            link={<Link to="/settings/connect" search={{ space: backTo }} />}
+            icon={Robot01Icon}
+            label={shellText.connect}
+            active={matches({ to: '/settings/connect' }) !== false}
           />
         </>
       }

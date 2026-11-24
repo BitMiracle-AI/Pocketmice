@@ -8,6 +8,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
@@ -25,7 +26,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,9 +46,10 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
+import { connectText } from '@/features/connect/text';
 import { PageBar } from '@/features/shell/PageBar';
 import { formatDate } from '@/lib/format';
-import { type ApiKey, apiKeysQuery, removeApiKey } from './apiKeys';
+import { type ApiKey, apiKeysQuery, hiddenKey, removeApiKey } from './apiKeys';
 import { NewKeyDialog } from './NewKeyDialog';
 import { apiKeyText } from './text';
 
@@ -115,6 +125,17 @@ export function KeysPage() {
               </ItemGroup>
             )}
           </CardContent>
+          {/* What a key is made for: the page that says how an agent gets one. It keeps the way back the address has */}
+          <CardFooter>
+            <Button
+              variant="link"
+              className="px-0"
+              nativeButton={false}
+              render={<Link to="/settings/connect" search={true} />}
+            >
+              {connectText.title}
+            </Button>
+          </CardFooter>
         </Card>
       </Page>
 
@@ -151,8 +172,6 @@ function KeyRow({
   onShow: (on: boolean) => void;
   onRemove: () => void;
 }) {
-  const masked = `${apiKey.key.slice(0, 3)}${'•'.repeat(12)}${apiKey.key.slice(-4)}`;
-
   return (
     <Item variant="outline" size="sm">
       <ItemMedia>
@@ -164,7 +183,9 @@ function KeyRow({
           <Badge variant="secondary">{apiKeyText.permissions[apiKey.permission]}</Badge>
         </ItemTitle>
         <ItemDescription className="line-clamp-1 flex items-baseline gap-2.5">
-          <code className={cn('truncate font-mono', shown && 'text-foreground')}>{shown ? apiKey.key : masked}</code>
+          <code className={cn('truncate font-mono', shown && 'text-foreground')}>
+            {shown ? apiKey.key : hiddenKey(apiKey.key)}
+          </code>
           <span className="shrink-0">{apiKeyText.created(formatDate(apiKey.createdAt))}</span>
         </ItemDescription>
       </ItemContent>

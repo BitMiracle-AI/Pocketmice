@@ -18,6 +18,11 @@ export type ApiKey = OutputOf<typeof getApiKeys>['apiKeys'][number];
 /** The person's keys that work, the oldest first */
 export const apiKeysQuery = readQuery(getApiKeys, {});
 
+/** A key as it is written while it is not shown: by its first and last characters, which tell it from the others */
+export function hiddenKey(key: string): string {
+  return `${key.slice(0, 3)}${'•'.repeat(12)}${key.slice(-4)}`;
+}
+
 /** Makes a key. Answers with it, which is in the list from then on; or with the sentence that says why not */
 export async function makeApiKey(
   name: string,
