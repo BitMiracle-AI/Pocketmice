@@ -121,6 +121,8 @@ export const zhHans: typeof en = {
   previewOpen: '放大预览',
   previewPdf: '放大后在这里阅读',
   previewNotPdf: '这个文件不是 PDF',
+  previewMedia: '放大后在这里播放',
+  previewNotPlayable: '这个文件在这里播放不了',
   previewDocument: '文档',
   previewTable: '表格',
   previewSource: '原文'

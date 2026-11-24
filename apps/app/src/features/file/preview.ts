@@ -1,8 +1,11 @@
-// What the page shows of a file without the person downloading it: the start of a text, a picture, or a PDF. Which
-// of them, and whether at all, is told by the end of the name and by the size, with nothing of the browser in it.
+// What the page shows of a file without the person downloading it: the start of a text, a picture, a PDF, or a
+// video or a sound. Which of them, and whether at all, is told by the end of the name and by the size, with
+// nothing of the browser in it.
 // The bytes of a file are always handed out as a download and never as a page (see getFileDownloadUrl in the
 // contract): the page fetches them and draws them itself, a text as text and a picture as a picture, so nothing a
-// file holds is ever run. A PDF is handed to the reader the browser has for one.
+// file holds is ever run. A PDF is handed to the reader the browser has for one. A video or a sound is played by
+// the player the browser has, which fetches it from the storage itself, a part at a time: the page never holds
+// it, so there is no size it is too large at.
 
 /** How much of a text is shown, in bytes: its start. More than that is for a download */
 export const TEXT_PREVIEW_BYTES = 64 * 1024;
@@ -33,6 +36,24 @@ const IMAGE_TYPES: Record<string, string> = {
   bmp: 'image/bmp',
   ico: 'image/x-icon',
   svg: SVG_TYPE
+};
+
+/**
+ * What a browser plays, by the end of its name: as a video or as a sound, and the type the name stands for. The
+ * player is told the type, since the storage hands every object out as bytes of no particular kind.
+ * Each of these was played in Chrome, Firefox and WebKit from an address of the storage. What a browser plays of
+ * what is inside (how the pictures and the sound are packed) is its own: one it cannot play says so.
+ */
+const MEDIA: Record<string, { as: 'video' | 'audio'; type: string }> = {
+  mp4: { as: 'video', type: 'video/mp4' },
+  m4v: { as: 'video', type: 'video/mp4' },
+  mov: { as: 'video', type: 'video/quicktime' },
+  webm: { as: 'video', type: 'video/webm' },
+  mp3: { as: 'audio', type: 'audio/mpeg' },
+  m4a: { as: 'audio', type: 'audio/mp4' },
+  wav: { as: 'audio', type: 'audio/wav' },
+  ogg: { as: 'audio', type: 'audio/ogg' },
+  flac: { as: 'audio', type: 'audio/flac' }
 };
 
 /** What is written to be read as text */
@@ -99,8 +120,9 @@ export function isPdf(bytes: ArrayBuffer): boolean {
 }
 
 /**
- * How a file is shown: the first bytes of it as text, all of it as a picture of the type type, as a PDF, or not at
- * all, and then why: it is empty, it is too large to hold, or it is of a kind the page does not draw.
+ * How a file is shown: the first bytes of it as text, all of it as a picture of the type type, as a PDF, played as
+ * a video or a sound of the type type, or not at all, and then why: it is empty, it is too large to hold, or it
+ * is of a kind the page does not draw.
  * A picture that is scripted can carry a script (an SVG). Drawn as a picture it runs nothing; but the address it
  * is drawn from can be opened in a tab of its own, and an address of the page's own (blob:) would run the script
  * there as the person signed in. So it is drawn from a data: address, which belongs to no site.
@@ -109,6 +131,7 @@ export type Preview =
   | { kind: 'text'; bytes: number; cut: boolean }
   | { kind: 'image'; type: string; scripted: boolean }
   | { kind: 'pdf' }
+  | { kind: 'media'; as: 'video' | 'audio'; type: string }
   | { kind: 'none'; why: 'empty' | 'large' | 'kind' };
 
 /** How a file called name that is size bytes is shown: by what follows its last dot, whatever its case */
@@ -117,8 +140,10 @@ export function previewOf(name: string, size: number): Preview {
   const type = IMAGE_TYPES[extension];
   const text = TEXT_EXTENSIONS.has(extension);
   const pdf = extension === 'pdf';
-  if (!type && !text && !pdf) return { kind: 'none', why: 'kind' };
+  const media = MEDIA[extension];
+  if (!type && !text && !pdf && !media) return { kind: 'none', why: 'kind' };
   if (size === 0) return { kind: 'none', why: 'empty' };
+  if (media) return { kind: 'media', ...media };
   if (pdf) return size > PDF_PREVIEW_MAX_BYTES ? { kind: 'none', why: 'large' } : { kind: 'pdf' };
   if (type) {
     const scripted = type === SVG_TYPE;

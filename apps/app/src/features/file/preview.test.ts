@@ -67,6 +67,16 @@ test('a PDF is shown by the reader the browser has, unless it is too large to ho
   assert.deepEqual(previewOf('scan.pdf', PDF_PREVIEW_MAX_BYTES + 1), { kind: 'none', why: 'large' });
 });
 
+test('a video or a sound is played, as the type its name says, however large it is', () => {
+  assert.deepEqual(previewOf('talk.MP4', 900 * 1024 * 1024), { kind: 'media', as: 'video', type: 'video/mp4' });
+  assert.deepEqual(previewOf('clip.mov', 2048), { kind: 'media', as: 'video', type: 'video/quicktime' });
+  assert.deepEqual(previewOf('memo.m4a', 2048), { kind: 'media', as: 'audio', type: 'audio/mp4' });
+  assert.deepEqual(previewOf('song.mp3', 2048), { kind: 'media', as: 'audio', type: 'audio/mpeg' });
+  assert.deepEqual(previewOf('song.mp3', 0), { kind: 'none', why: 'empty' });
+  // What no browser plays is not handed to a player
+  assert.deepEqual(previewOf('film.mkv', 2048), { kind: 'none', why: 'kind' });
+});
+
 test('what is handed to the reader of PDFs begins the way a PDF does', () => {
   assert.equal(isPdf(new TextEncoder().encode('%PDF-1.7\n%âãÏÓ').buffer), true);
   // A page of HTML under the name of a PDF, and bytes too few to say

@@ -139,6 +139,10 @@ export const en = {
   /** In the small box of a PDF, which is read only once it is opened large */
   previewPdf: 'Enlarge it to read it here',
   previewNotPdf: 'This file is not a PDF',
+  /** In the small box of a video or a sound, which is played only once it is opened large */
+  previewMedia: 'Enlarge it to play it here',
+  /** In place of a player that could not play the file: the browser does not know what is in it, or lost it */
+  previewNotPlayable: 'This file cannot be played here',
   /** The ways a text is shown large: one written in Markdown as a document, one that is a table as a table, and
    * either as it is written */
   previewDocument: 'Document',

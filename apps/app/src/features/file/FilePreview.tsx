@@ -1,10 +1,10 @@
 import { ArrowExpand01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { failureOfThrown } from '@pocketmice/client/api';
-import { getFileDownloadUrl } from '@pocketmice/contract/domains/file';
+import { DOWNLOAD_URL_SECONDS, getFileDownloadUrl } from '@pocketmice/contract/domains/file';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
-import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react';
+import { lazy, type ReactNode, Suspense, type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { Rows } from '@/components/Rows';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
@@ -30,16 +30,29 @@ import {
 import { rowsOf } from './rows';
 import { fileText } from './text';
 
-// What a file holds, shown where the file is picked: the start of a text, a picture, or a PDF (preview.ts says
-// which). It is shown twice: small, in a box beside what else is known of the file, and large, in a dialog.
-// The box is kept cheap: a text is plain there, and a PDF is not fetched for it at all. Large, a text is coloured
-// as the language its name says, one written in Markdown is laid out as the document it is, one that is a table
-// (a CSV) as a table, and a PDF is read in the reader the browser has.
-// The page asks the api where the bytes are (getFileDownloadUrl), fetches them there, from the storage, and draws
-// them itself.
+// What a file holds, shown where the file is picked: the start of a text, a picture, a PDF, or a video or a sound
+// (preview.ts says which). It is shown twice: small, in a box beside what else is known of the file, and large,
+// in a dialog.
+// The box is kept cheap: a text is plain there, and nothing is fetched for it of a PDF, a video or a sound. Large,
+// a text is coloured as the language its name says, one written in Markdown is laid out as the document it is,
+// one that is a table (a CSV) as a table, a PDF is read in the reader the browser has, and a video or a sound is
+// played by the player it has.
+// The page asks the api where the bytes are (getFileDownloadUrl), and they are fetched there, from the storage:
+// by the page, for what it draws itself, and by the player, a part at a time, for what is played.
 
 /** How long the bytes of a preview nobody is looking at are kept, in milliseconds */
 const KEPT_FOR_MS = 60_000;
+
+/**
+ * Asks the api where the bytes of one version of a file are. Whether the person may read the file is settled
+ * here, by the api. The address it answers with is asked for each time something is to be fetched from it, and
+ * is kept no longer than that takes: it works for a few minutes.
+ */
+async function addressOf(spaceId: string, fileId: string, versionId: string): Promise<string> {
+  const asked = await call(getFileDownloadUrl, { spaceId, fileId, versionId });
+  if (!asked.ok) throw new ApiFailure<'NOT_FOUND'>(asked.code, asked.message);
+  return asked.data.url;
+}
 
 /**
  * The bytes of one version of a file: its first bytes, or all of it when bytes is null.
@@ -53,15 +66,11 @@ function contentQuery(spaceId: string, fileId: string, versionId: string, bytes:
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: KEPT_FOR_MS,
     queryFn: async ({ signal }) => {
-      // Whether the person may read the file is settled here, by the api. The address it answers with is asked
-      // for each time the bytes are fetched and is not kept: it works for a few minutes
-      const asked = await call(getFileDownloadUrl, { spaceId, fileId, versionId });
-      if (!asked.ok) throw new ApiFailure<'NOT_FOUND'>(asked.code, asked.message);
-
+      const address = await addressOf(spaceId, fileId, versionId);
       let response: Response;
       try {
         // The address is the storage's, and holding it is all the storage asks: nothing of the person goes along
-        response = await fetch(asked.data.url, {
+        response = await fetch(address, {
           headers: bytes === null ? undefined : { range: `bytes=0-${bytes - 1}` },
           signal
         });
@@ -78,6 +87,30 @@ function contentQuery(spaceId: string, fileId: string, versionId: string, bytes:
     }
   });
 }
+
+/**
+ * Where a player plays one version of a file from: the address, and when the page asked for it, on the clock of
+ * the page. It is kept only while a player shows it: an address works for a few minutes, so the one of an
+ * earlier look at the file is of no use to the next.
+ */
+function playedFromQuery(spaceId: string, fileId: string, versionId: string) {
+  return queryOptions<{ url: string; askedAt: number }, ApiFailure<'NOT_FOUND'>>({
+    queryKey: ['filePlayedFrom', versionId],
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
+    queryFn: async () => {
+      // Read before asking: the address is then never older than the page takes it to be
+      const askedAt = performance.now();
+      return { url: await addressOf(spaceId, fileId, versionId), askedAt };
+    }
+  });
+}
+
+/**
+ * Whether an address asked for at askedAt is past its time, or close to it. The last tenth of its time is not
+ * counted on: the clocks of the api, which signs an address, and of the storage, which reads it, need not agree.
+ */
+const isSpent = (askedAt: number) => performance.now() - askedAt >= DOWNLOAD_URL_SECONDS * 1000 * 0.9;
 
 // What colours code and lays a document out is fetched when a text is first shown large, and not with the page:
 // it is several times the size of everything else the pane of a file needs.
@@ -104,10 +137,10 @@ export function FilePreview({ file }: { file: DriveFile }) {
           </Quiet>
         ) : (
           <>
-            {preview.kind === 'pdf' ? (
+            {preview.kind === 'pdf' || preview.kind === 'media' ? (
               <Quiet>
                 <FileIcon name={file.name} className="size-10" />
-                {fileText.previewPdf}
+                {preview.kind === 'pdf' ? fileText.previewPdf : fileText.previewMedia}
               </Quiet>
             ) : (
               <Small file={file} versionId={version.id} preview={preview} className="size-full" />
@@ -155,8 +188,34 @@ function Quiet({ children }: { children: ReactNode }) {
   );
 }
 
+/** A box of the size className gives that says the content is on its way */
+function Waiting({ className }: { className: string }) {
+  return (
+    <div className={className}>
+      <Quiet>
+        <Spinner />
+      </Quiet>
+    </div>
+  );
+}
+
+/** A box of the size className gives that says, in place of the content of the file, why it is not shown */
+function Failed({ file, className, children }: { file: DriveFile; className: string; children: ReactNode }) {
+  return (
+    <div className={className}>
+      <Quiet>
+        <FileIcon name={file.name} className="size-10" />
+        <span role="alert">{children}</span>
+      </Quiet>
+    </div>
+  );
+}
+
 /** What can be shown of a file: every way of showing one but none */
 type Shown = Exclude<Preview, { kind: 'none' }>;
+
+/** What the page draws from bytes it fetches itself: every way of showing a file but playing it */
+type Drawn = Exclude<Shown, { kind: 'media' }>;
 
 /**
  * The bytes a preview is drawn from, in a box of the size className gives: while they are on their way the box
@@ -171,36 +230,25 @@ function Fetched({
 }: {
   file: DriveFile;
   versionId: string;
-  preview: Shown;
+  preview: Drawn;
   className: string;
   draw: (bytes: ArrayBuffer) => ReactNode;
 }) {
   const space = useCurrentSpace();
   const content = useQuery(contentQuery(space.id, file.id, versionId, preview.kind === 'text' ? preview.bytes : null));
 
-  if (content.isPending) {
-    return (
-      <div className={className}>
-        <Quiet>
-          <Spinner />
-        </Quiet>
-      </div>
-    );
-  }
+  if (content.isPending) return <Waiting className={className} />;
   if (content.isError) {
     return (
-      <div className={className}>
-        <Quiet>
-          <FileIcon name={file.name} className="size-10" />
-          <span role="alert">{thrownText(content.error)}</span>
-        </Quiet>
-      </div>
+      <Failed file={file} className={className}>
+        {thrownText(content.error)}
+      </Failed>
     );
   }
   return draw(content.data);
 }
 
-/** The content in the small box: a text as it is, a picture. A PDF is not fetched for the box */
+/** The content in the small box: a text as it is, a picture. Nothing else is fetched for the box */
 function Small({
   file,
   versionId,
@@ -209,7 +257,7 @@ function Small({
 }: {
   file: DriveFile;
   versionId: string;
-  preview: Exclude<Shown, { kind: 'pdf' }>;
+  preview: Exclude<Drawn, { kind: 'pdf' }>;
   className: string;
 }) {
   return (
@@ -239,7 +287,7 @@ function Small({
 /**
  * The content shown large. A text written in Markdown is laid out as the document it is, and one that is a table
  * as a table, each with its text as it is written one tab away; any other text is coloured as the language its
- * name says. A picture and a PDF are on a ground of their own.
+ * name says. A picture, a PDF and what is played are on a ground of their own.
  */
 function Large({
   file,
@@ -252,6 +300,10 @@ function Large({
   preview: Shown;
   className: string;
 }) {
+  // Another version is another thing to play: the player begins anew for it
+  if (preview.kind === 'media') {
+    return <Player key={versionId} file={file} versionId={versionId} preview={preview} className={className} />;
+  }
   return (
     <Fetched
       file={file}
@@ -274,13 +326,7 @@ function Large({
           );
         }
         const text = textOf(bytes, preview.cut);
-        const waiting = (
-          <div className={className}>
-            <Quiet>
-              <Spinner />
-            </Quiet>
-          </div>
-        );
+        const waiting = <Waiting className={className} />;
         const separator = separatorOf(file.name);
         if (separator !== null) {
           return (
@@ -355,15 +401,136 @@ function Pdf({ bytes, file, className }: { bytes: ArrayBuffer; file: DriveFile; 
 
   if (!pdf) {
     return (
-      <div className={className}>
-        <Quiet>
-          <FileIcon name={file.name} className="size-10" />
-          <span role="alert">{fileText.previewNotPdf}</span>
-        </Quiet>
-      </div>
+      <Failed file={file} className={className}>
+        {fileText.previewNotPdf}
+      </Failed>
     );
   }
   return address && <iframe src={address} title={file.name} className={cn('border-0', className)} />;
+}
+
+/**
+ * A video or a sound, played by the player the browser has. The player fetches from the storage itself, at the
+ * address the api answered with, a part at a time as the playing needs it: the page holds nothing of the file.
+ * - The player is given the address twice, first with the type the name of the file stands for and then with
+ *   none. The storage says of every object that it is bytes of no particular kind. A browser that goes by the
+ *   type (Safari's, for some kinds) takes the first; one that does not know the type by that name (Chrome, of a
+ *   .mov) passes it over, and tells what it has from the bytes of the second.
+ * - An address works for a few minutes, and playing may take longer. Fetching from one whose time is up, a player
+ *   gives up (Chrome), gives up and then tries what it was given once more (Firefox), or waits without end
+ *   (Safari's). So when the player gives up, or has run out of what to play, and its address is past its time,
+ *   the api is asked for another, and the playing goes on from where it was. A player that gives up while its
+ *   address still works could not play the file.
+ */
+function Player({
+  file,
+  versionId,
+  preview,
+  className
+}: {
+  file: DriveFile;
+  versionId: string;
+  preview: Extract<Preview, { kind: 'media' }>;
+  className: string;
+}) {
+  const space = useCurrentSpace();
+  const from = useQuery(playedFromQuery(space.id, file.id, versionId));
+  const player = useRef<HTMLMediaElement | null>(null);
+  /** Where the playing was, and whether it was going, when another address was asked for: taken up once it is here */
+  const left = useRef<{ at: number; playing: boolean } | null>(null);
+  const [unplayable, setUnplayable] = useState(false);
+  const playedFrom = from.data;
+
+  // A player reads where to fetch from when it is made, and again only when told to
+  useEffect(() => {
+    if (playedFrom && left.current) player.current?.load();
+  }, [playedFrom]);
+
+  if (from.isPending) return <Waiting className={className} />;
+  if (from.isError) {
+    return (
+      <Failed file={file} className={className}>
+        {thrownText(from.error)}
+      </Failed>
+    );
+  }
+  if (unplayable) {
+    return (
+      <Failed file={file} className={className}>
+        {fileText.previewNotPlayable}
+      </Failed>
+    );
+  }
+
+  /** Asks for another address when the one in use is past its time, and says whether it did */
+  const askAgain = (): boolean => {
+    const element = player.current;
+    if (!element || !isSpent(from.data.askedAt)) return false;
+    // A player may say that it waits and then that it gave up: the place is the one of the first time, since by
+    // the second the playing may have been set back to its start
+    left.current ??= { at: element.currentTime, playing: !element.paused };
+    void from.refetch({ cancelRefetch: false });
+    return true;
+  };
+  /** The player gave up: on what it was playing, or on finding something it can play in what it was given */
+  const gaveUp = () => {
+    if (!askAgain()) setUnplayable(true);
+  };
+  const playing = {
+    ref: (element: HTMLMediaElement | null) => {
+      player.current = element;
+    },
+    controls: true,
+    preload: 'metadata',
+    onWaiting: () => {
+      askAgain();
+    },
+    // What one of its sources says is handed to the player too, and is not the player giving up: the first
+    // source is passed over by a browser that does not know its type by name
+    onError: (event: SyntheticEvent<HTMLMediaElement>) => {
+      if (event.target === event.currentTarget) gaveUp();
+    },
+    onLoadedMetadata: () => {
+      const element = player.current;
+      const place = left.current;
+      if (!element || !place) return;
+      left.current = null;
+      element.currentTime = place.at;
+      // A browser may refuse to start what the person did not start themselves: the player then stands at the
+      // place, and they start it
+      if (place.playing) element.play().catch(() => undefined);
+    }
+  } as const;
+  const sources = (
+    <>
+      <source src={from.data.url} type={preview.type} />
+      {/* The last source says so when the player could play neither */}
+      <source src={from.data.url} onError={gaveUp} />
+    </>
+  );
+
+  if (preview.as === 'audio') {
+    return (
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center gap-6 rounded-xl bg-muted p-6 text-muted-foreground',
+          className
+        )}
+      >
+        <FileIcon name={file.name} className="size-10" />
+        <audio {...playing} className="w-full max-w-xl">
+          {sources}
+        </audio>
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-hidden rounded-xl bg-muted">
+      <video {...playing} playsInline className={cn('bg-black', className)}>
+        {sources}
+      </video>
+    </div>
+  );
 }
 
 /**
