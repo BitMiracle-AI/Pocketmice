@@ -7,7 +7,7 @@ import {
 import { type FormEvent, useRef, useState } from 'react';
 import { CardPage } from '@/components/CardPage';
 import { Button } from '@/components/ui/button';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Spinner } from '@/components/ui/spinner';
@@ -154,7 +154,7 @@ function CodeStep({
     >
       <FieldGroup>
         <Field data-invalid={problem !== null || undefined}>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex justify-center">
             <InputOTP
               ref={input}
               autoFocus
@@ -178,9 +178,20 @@ function CodeStep({
                 ))}
               </InputOTPGroup>
             </InputOTP>
-            {busy === 'checking' && <Spinner />}
           </div>
-          {problem !== null && <FieldError className="text-center">{problem}</FieldError>}
+          {/* That the code is being checked is said under the boxes, where what is wrong with it is said: beside
+              them it would push them out of the middle. The line has its room when it says nothing, so the card
+              does not jump when it speaks */}
+          <div className="flex min-h-5 items-center justify-center">
+            {busy === 'checking' ? (
+              <FieldDescription className="flex items-center gap-2">
+                <Spinner />
+                {authText.checkingCode}
+              </FieldDescription>
+            ) : (
+              problem !== null && <FieldError className="text-center">{problem}</FieldError>
+            )}
+          </div>
         </Field>
         <Field orientation="horizontal" className="justify-center">
           <Button variant="link" size="sm" disabled={busy !== null} onClick={sendAnother}>
