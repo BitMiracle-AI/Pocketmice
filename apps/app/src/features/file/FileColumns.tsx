@@ -93,9 +93,12 @@ function Column({
   onAct?: (file: DriveFile, what: FileAction) => void;
 }) {
   const space = useCurrentSpace();
-  const inside = useQuery({ ...folderQuery(space.id, folder.id ?? null), enabled: folder.id !== undefined });
+  const known = folder.id !== undefined;
+  const inside = useQuery({ ...folderQuery(space.id, folder.id ?? null), enabled: known });
   const uploads = useUploads();
-  const files = inside.data;
+  // A folder that is not known yet has nothing to show. The query is not asked then, but it still stands at the
+  // place of the space itself, and would hand out what the cache holds there
+  const files = known ? inside.data : undefined;
   // What is on its way into this folder and has no row yet: a new version of a file goes up under its row
   const arriving = files
     ? uploads.filter(
@@ -113,7 +116,7 @@ function Column({
       {files === undefined ? (
         <Empty>
           <EmptyHeader>
-            {inside.isError ? (
+            {known && inside.isError ? (
               <EmptyDescription role="alert">{thrownText(inside.error)}</EmptyDescription>
             ) : (
               <Spinner />

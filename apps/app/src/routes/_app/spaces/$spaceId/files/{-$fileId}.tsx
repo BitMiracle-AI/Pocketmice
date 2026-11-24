@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { FileGonePage } from '@/features/file/FileGonePage';
 import { FilesPage } from '@/features/file/FilesPage';
-import { loadFiles } from '@/features/file/loadFiles';
+import { loadPicked } from '@/features/file/files';
 import { wordsOf } from '@/features/file/searchWords';
 import { PageError } from '@/features/shell/PageError';
 
@@ -11,7 +11,7 @@ import { PageError } from '@/features/shell/PageError';
 // for are in the address too (?q=…).
 export const Route = createFileRoute('/_app/spaces/$spaceId/files/{-$fileId}')({
   validateSearch: (search: Record<string, unknown>): { q?: string } => ({ q: wordsOf(search.q) }),
-  loader: ({ params }) => loadFiles(params.spaceId, params.fileId ?? null),
+  loader: ({ params }) => (params.fileId === undefined ? undefined : loadPicked(params.spaceId, params.fileId)),
   component: SpaceFiles,
   notFoundComponent: FileGonePage,
   errorComponent: PageError

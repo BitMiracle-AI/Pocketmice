@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { getFile } from '@pocketmice/contract/domains/file';
 import type { OutputOf } from '@pocketmice/contract/operation';
-import { foldersAbove, inOrder, placeOf } from './fileOrder.ts';
+import { foldersAbove, foldersToFind, inOrder, placeOf } from './fileOrder.ts';
 
 type DriveFile = OutputOf<typeof getFile>['file'];
 
@@ -62,4 +62,13 @@ test('where something is, is the names of the folders above it; directly in the 
   assert.equal(placeOf('/Reports/2026/summary.md'), 'Reports / 2026');
   assert.equal(placeOf('/Reports/2026'), 'Reports');
   assert.equal(placeOf('/summary.md'), null);
+});
+
+test('the folders to ask for are the ones above, but for the one right above', () => {
+  assert.deepEqual(foldersToFind('/a.txt'), []);
+  assert.deepEqual(foldersToFind('/Reports/a.txt'), []);
+  assert.deepEqual(foldersToFind('/Reports/2026/Q4/a.txt'), [
+    { name: 'Reports', path: '/Reports' },
+    { name: '2026', path: '/Reports/2026' }
+  ]);
 });

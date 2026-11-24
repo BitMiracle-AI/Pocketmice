@@ -22,7 +22,7 @@ import { FileResults } from './FileResults';
 import { FileSearchField } from './FileSearchField';
 import { FilesLink, useGoToFiles } from './FilesLink';
 import { FilesTrail } from './FilesTrail';
-import { foldersAbove } from './fileOrder';
+import { foldersAbove, foldersToFind } from './fileOrder';
 import type { DriveFile } from './files';
 import { NewFolderDialog } from './NewFolderDialog';
 import { fileText } from './text';
@@ -59,14 +59,16 @@ export function FilesPage({ fileId, words }: { fileId: string | null; words: str
  * when it is a folder.
  * The names come from the path of what is picked, which is there at once. The address of the folder right above
  * is in the file itself; the ones further up are asked for by their paths, and are not known until the answers
- * are there (the route has asked before the page is shown, so that is after something changed in the space).
+ * are there (the route has asked before the page is shown, so that is after something changed in the space):
+ * their columns wait until then.
  */
 function useOpenFolders(picked: DriveFile | null): OpenFolder[] {
   const space = useCurrentSpace();
   const above = picked ? foldersAbove(picked.path) : [];
-  const further = above.slice(0, -1);
   const found = useQueries({
-    queries: further.map(({ path }) => readQuery(getFileByPath, { spaceId: space.id, path }))
+    queries: (picked ? foldersToFind(picked.path) : []).map(({ path }) =>
+      readQuery(getFileByPath, { spaceId: space.id, path })
+    )
   });
   return [
     { key: '/', id: null, name: space.name },

@@ -2,18 +2,21 @@ import {
   createFolder,
   fileDescription,
   fileName,
-  type getFile,
+  getFile,
+  getFileByPath,
   getFiles,
   moveFile,
   updateFile
 } from '@pocketmice/contract/domains/file';
+import { id } from '@pocketmice/contract/id';
 import type { OutputOf } from '@pocketmice/contract/operation';
 import { PAGE_SIZE_MAX } from '@pocketmice/contract/paging';
 import { queryOptions } from '@tanstack/react-query';
-import { ApiFailure, call, failureText, spaceChanged } from '@/lib/api';
+import { notFound } from '@tanstack/react-router';
+import { ApiFailure, call, failureText, queryClient, readQuery, spaceChanged } from '@/lib/api';
 import { language } from '@/lib/language/language';
 import { languageTag } from '@/lib/language/languages';
-import { inOrder } from './fileOrder';
+import { foldersToFind, inOrder } from './fileOrder';
 import { fileText } from './text';
 
 // What is in a space: a tree of files and folders. The page of the files shows it a folder at a time, down to what
@@ -25,6 +28,33 @@ import { fileText } from './text';
 
 /** A file or a folder, as the api answers one */
 export type DriveFile = OutputOf<typeof getFile>['file'];
+
+/**
+ * What the page of the files needs before it is shown: the file or the folder its address says is picked, and
+ * which folders are above it. That is what the page is laid out by; each column, and the pane, then asks for what
+ * it shows and says so while it waits. So a pick shows after one answer or two, and not after one for every step
+ * of the way down.
+ * The api names a file by its id and its path: the folder right above is in the file itself, and the ones further
+ * up are asked for by their paths (the page reads the same answers, see FilesPage).
+ * The file is asked for again when what the cache holds of it was marked stale: a path from before a folder above
+ * it was renamed leads nowhere.
+ * fileId is the one in the address, which anyone can write: what is no id, and an id the space has nothing for,
+ * is "not found", and the route says so in place of the page.
+ */
+export async function loadPicked(spaceId: string, fileId: string): Promise<void> {
+  if (!id.safeParse(fileId).success) throw notFound();
+  try {
+    const { file } = await queryClient.fetchQuery(readQuery(getFile, { spaceId, fileId }));
+    await Promise.all(
+      foldersToFind(file.path).map(({ path }) =>
+        queryClient.ensureQueryData(readQuery(getFileByPath, { spaceId, path }))
+      )
+    );
+  } catch (error) {
+    if (error instanceof ApiFailure && error.code === 'NOT_FOUND') throw notFound();
+    throw error;
+  }
+}
 
 /**
  * Everything that is directly in a folder (parentId null: directly in the space), in the order the page shows it.

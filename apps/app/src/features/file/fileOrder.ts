@@ -26,6 +26,14 @@ export function foldersAbove(path: string): { name: string; path: string }[] {
 }
 
 /**
+ * The folders above something that have to be asked for by their paths before the page knows which they are: all
+ * of them but the one right above it, which the file itself names (parentId).
+ */
+export function foldersToFind(path: string): { name: string; path: string }[] {
+  return foldersAbove(path).slice(0, -1);
+}
+
+/**
  * The folder something is in, by the names from the top of the space down to it: Reports / 2026. Null when it is
  * directly in the space.
  */
