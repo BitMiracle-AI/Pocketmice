@@ -114,17 +114,9 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
     if (detailing === picked.id) setDetailing(null);
     else void goTo(searching ? null : picked.parentId, words);
   };
-
-  const showInFolder = searching && picked !== null && (
-    <Button
-      variant="outline"
-      size="sm"
-      nativeButton={false}
-      render={<FilesLink spaceId={space.id} fileId={picked.id} />}
-    >
-      {fileText.showInFolder}
-    </Button>
-  );
+  // A file shown next to what a search found is away from where it is: the pane has the way there. (A folder
+  // that is still picked then is the one the search began in.)
+  const locate = searching && picked?.kind === 'file';
 
   return (
     <>
@@ -207,7 +199,7 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
           <FileColumns open={open} picked={picked} onAct={onAct} />
         )}
         <aside aria-label={fileText.details} className="hidden w-80 shrink-0 flex-col border-l md:flex xl:w-96">
-          <FileInspector file={picked} onAct={onAct} extra={showInFolder} />
+          <FileInspector file={picked} onAct={onAct} locate={locate} />
         </aside>
       </div>
 
@@ -218,7 +210,7 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
               <DrawerTitle>{shown?.name}</DrawerTitle>
               <DrawerDescription>{fileText.details}</DrawerDescription>
             </DrawerHeader>
-            <FileInspector file={shown} onAct={onAct} extra={showInFolder} />
+            <FileInspector file={shown} onAct={onAct} locate={locate} />
           </DrawerContent>
         </Drawer>
       )}

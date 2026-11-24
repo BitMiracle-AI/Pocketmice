@@ -21,12 +21,14 @@ import { membersQuery } from '@/features/space/members';
 import { spaceHolds, spaceSizeQuery } from '@/features/space/spaces';
 import { shareOf } from '@/features/space/storageLimit';
 import { spaceText } from '@/features/space/text';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { thrownText } from '@/lib/api';
 import { formatMoment, formatSize, formatWhen } from '@/lib/format';
 import { downloadFile } from './download';
 import type { FileAction } from './FileDialogs';
 import { FileIcon } from './FileIcon';
 import { FilePreview } from './FilePreview';
+import { FilesLink } from './FilesLink';
 import { placeOf } from './fileOrder';
 import { type DriveFile, folderQuery } from './files';
 import { fileText } from './text';
@@ -41,30 +43,46 @@ import { WrittenBy } from './WrittenBy';
 
 /**
  * The pane. file is what was picked, or null for the space itself. onAct is told what an editor picked to do to
- * it; left out, those buttons are not there. extra is what the place adds to the buttons: next to what a search
- * found, the way to where the file is.
+ * it; left out, those buttons are not there. locate is for a place that shows it away from where it is (next to
+ * what a search found, next to a conversation): the pane then has the way to it among the files.
  */
 export function FileInspector({
   file,
   onAct,
-  extra
+  locate = false
 }: {
   file: DriveFile | null;
   onAct?: (file: DriveFile, what: FileAction) => void;
-  extra?: ReactNode;
+  locate?: boolean;
 }) {
   return (
-    <ScrollArea className="min-h-0 flex-1">
+    // The pane of another file is another pane: it begins at its top, with nothing of the one before in it
+    <ScrollArea key={file?.id} className="min-h-0 flex-1">
       <div className="flex flex-col gap-6 p-6">
         {file === null ? (
           <SpaceDetails />
         ) : file.kind === 'folder' ? (
-          <FolderDetails folder={file} onAct={onAct} extra={extra} />
+          <FolderDetails folder={file} onAct={onAct} locate={locate} />
         ) : (
-          <FileDetails file={file} onAct={onAct} extra={extra} />
+          <FileDetails file={file} onAct={onAct} locate={locate} />
         )}
       </div>
     </ScrollArea>
+  );
+}
+
+/**
+ * The way to where a file or a folder is among the files. On a phone a picked file is shown over its folder, so
+ * there the folder itself is what shows where the file is.
+ */
+function Locate({ file }: { file: DriveFile }) {
+  const space = useCurrentSpace();
+  const isMobile = useIsMobile();
+  const fileId = isMobile && file.kind === 'file' ? file.parentId : file.id;
+  return (
+    <Button variant="outline" size="sm" nativeButton={false} render={<FilesLink spaceId={space.id} fileId={fileId} />}>
+      {fileText.showInFolder}
+    </Button>
   );
 }
 
@@ -143,11 +161,11 @@ function When({ time }: { time: string }) {
 function FileDetails({
   file,
   onAct,
-  extra
+  locate
 }: {
   file: DriveFile;
   onAct?: (file: DriveFile, what: FileAction) => void;
-  extra?: ReactNode;
+  locate: boolean;
 }) {
   const space = useCurrentSpace();
   return (
@@ -160,7 +178,7 @@ function FileDetails({
           <HugeiconsIcon icon={Download04Icon} strokeWidth={2} data-icon="inline-start" />
           {fileText.downloadFile}
         </Button>
-        {extra}
+        {locate && <Locate file={file} />}
         {onAct && <EditButtons file={file} onAct={onAct} />}
       </div>
 
@@ -300,11 +318,11 @@ function Holds({ folderId }: { folderId: string | null }) {
 function FolderDetails({
   folder,
   onAct,
-  extra
+  locate
 }: {
   folder: DriveFile;
   onAct?: (file: DriveFile, what: FileAction) => void;
-  extra?: ReactNode;
+  locate: boolean;
 }) {
   return (
     <>
@@ -313,9 +331,9 @@ function FolderDetails({
         <Heading file={folder} onDescribe={onAct && (() => onAct(folder, 'describe'))} />
       </div>
 
-      {(onAct || extra) && (
+      {(onAct || locate) && (
         <div className="flex flex-wrap gap-2">
-          {extra}
+          {locate && <Locate file={folder} />}
           {onAct && <EditButtons file={folder} onAct={onAct} />}
         </div>
       )}

@@ -2,12 +2,9 @@ import { FileSearchIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { getFile } from '@pocketmice/contract/domains/file';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { FileInspector } from '@/features/file/FileInspector';
-import { FilesLink } from '@/features/file/FilesLink';
-import { fileText } from '@/features/file/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { readQuery, thrownText } from '@/lib/api';
 import { conversationText } from './text';
@@ -45,19 +42,5 @@ export function ConversationFilePane({ fileId }: { fileId: string }) {
       </Empty>
     );
   }
-  return (
-    <FileInspector
-      file={found.data.file}
-      extra={
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={<FilesLink spaceId={space.id} fileId={found.data.file.id} />}
-        >
-          {fileText.showInFolder}
-        </Button>
-      }
-    />
-  );
+  return <FileInspector file={found.data.file} locate />;
 }
