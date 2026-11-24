@@ -19,8 +19,9 @@ export type Mouse = {
   act: Act;
   /** When the act ends by itself, on the clock the happenings are timed by; null: it lasts until something happens */
   until: number | null;
-  /** Which of the places it is at */
+  /** Which of the places it is at, and the one it comes up at next: it moves while it is out of sight */
   spot: number;
+  goes: number;
   /** Whether a password is being typed */
   shy: boolean;
   /** How many presses in a row it has had, and when the last was */
@@ -28,7 +29,15 @@ export type Mouse = {
   pressedAt: number;
 };
 
-export const START: Mouse = { act: 'idle', until: null, spot: HOME, shy: false, streak: 0, pressedAt: -Infinity };
+export const START: Mouse = {
+  act: 'idle',
+  until: null,
+  spot: HOME,
+  goes: HOME,
+  shy: false,
+  streak: 0,
+  pressedAt: -Infinity
+};
 
 /** How long each act lasts, in ms */
 export const LASTS = { away: 520, peeking: 460, dizzy: 2600, no: 520, happy: 1000, startled: 450 };
@@ -61,14 +70,17 @@ export function live(mouse: Mouse, happening: Happening, now: number): Mouse {
       // It is not there to be pressed, or too far gone to notice
       if (mouse.act === 'away' || mouse.act === 'dizzy') return mouse;
       const others = SPOTS.map((_, spot) => spot).filter((spot) => spot !== mouse.spot);
-      const spot = others[Math.min(others.length - 1, Math.floor(happening.chance * others.length))] ?? mouse.spot;
+      const goes = others[Math.min(others.length - 1, Math.floor(happening.chance * others.length))] ?? mouse.spot;
       const streak = now - mouse.pressedAt <= ROW_WITHIN ? mouse.streak + 1 : 1;
-      return { ...during('away'), spot, streak, pressedAt: now };
+      return { ...during('away'), goes, streak, pressedAt: now };
     }
     case 'time':
       if (mouse.until === null) return mouse;
       if (mouse.act !== 'away') return { ...mouse, act: 'idle', until: null };
-      return mouse.streak >= DIZZY_AT ? { ...during('dizzy'), streak: 0 } : during('peeking');
+      // Out of sight, it has gone along the edge
+      return mouse.streak >= DIZZY_AT
+        ? { ...during('dizzy'), spot: mouse.goes, streak: 0 }
+        : { ...during('peeking'), spot: mouse.goes };
     case 'secret':
       return mouse.shy === happening.on ? mouse : { ...mouse, shy: happening.on };
     case 'refused':

@@ -15,12 +15,14 @@ test('pressed, it drops out of sight, looks over the edge somewhere else, and is
   assert.equal(away.act, 'away');
   assert.equal(postureOf(away), 'ducked');
   assert.equal(away.until, 1000 + LASTS.away);
-  assert.notEqual(away.spot, START.spot);
+  // It drops where it is, and moves only once it is out of sight
+  assert.equal(away.spot, START.spot);
+  assert.notEqual(away.goes, START.spot);
 
   const peeking = live(away, { is: 'time' }, away.until ?? 0);
   assert.equal(peeking.act, 'peeking');
   assert.equal(postureOf(peeking), 'peek');
-  assert.equal(peeking.spot, away.spot);
+  assert.equal(peeking.spot, away.goes);
 
   const back = live(peeking, { is: 'time' }, peeking.until ?? 0);
   assert.deepEqual([back.act, back.until, postureOf(back)], ['idle', null, 'up']);
@@ -30,7 +32,7 @@ test('whatever the chance, it comes up at one of the other places', () => {
   for (let spot = 0; spot < SPOTS.length; spot++) {
     const seen = new Set<number>();
     for (const chance of [0, 0.2, 0.34, 0.5, 0.67, 0.9, 0.999999]) {
-      const next = live({ ...START, spot }, { is: 'pressed', chance }, 0).spot;
+      const next = live({ ...START, spot, goes: spot }, { is: 'pressed', chance }, 0).goes;
       assert.ok(next >= 0 && next < SPOTS.length && next !== spot, `from ${spot} with ${chance}: ${next}`);
       seen.add(next);
     }
@@ -53,6 +55,7 @@ test('pressed five times in a row it comes up dizzy, and a press is lost on it u
   const away = live(mouse, { is: 'pressed', chance: 0 }, now);
   const dizzy = live(away, { is: 'time' }, away.until ?? 0);
   assert.equal(dizzy.act, 'dizzy');
+  assert.equal(dizzy.spot, away.goes);
   assert.equal(postureOf(dizzy), 'up');
   assert.equal(live(dizzy, { is: 'pressed', chance: 0 }, (dizzy.until ?? 0) - 1), dizzy);
 
