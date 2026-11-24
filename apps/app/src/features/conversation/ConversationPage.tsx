@@ -4,16 +4,6 @@ import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-qu
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { PersonAvatar } from '@/components/PersonAvatar';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from '@/components/ui/alert-dialog';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -38,14 +28,10 @@ import {
   type Conversation,
   type ConversationMember,
   conversationQuery,
-  conversationsChanged,
-  exitConversation,
-  messagesQuery,
-  removeConversation
+  messagesQuery
 } from './conversations';
 import { MessageStream } from './MessageStream';
 import { earlierStart, firstUnreadNumber, windowStart } from './messageLayout';
-import { RenameConversationDialog } from './RenameConversationDialog';
 import { conversationText } from './text';
 
 // The page of one conversation: what was said, and the field to say something in; and beside it, when the
@@ -102,9 +88,6 @@ export function ConversationPage({
   );
 }
 
-/** What the person is being asked about: leaving the conversation, or deleting it */
-type Asking = 'leave' | 'delete' | null;
-
 function OpenConversation({
   conversation,
   members,
@@ -129,22 +112,17 @@ function OpenConversation({
   // The first message the person had not read when they opened the conversation: where the line of what is new
   // stays, whatever they read and whatever arrives from then on
   const [firstUnread] = useState(() => firstUnreadNumber(conversation));
-  const [renaming, setRenaming] = useState(false);
-  const [asking, setAsking] = useState<Asking>(null);
   const [room, beside] = useIsWide<HTMLDivElement>(PANE_BESIDE_PX);
   // What the pane last showed, for the moment it takes to go
   const shownPane = useLastGiven(pane);
   const shownFile = useLastGiven(fileId);
   const [joining, setJoining] = useState(false);
-  const asked = useLastGiven(asking);
   // While earlier messages are on their way, the ones there are stay
   const held = useQuery({ ...messagesQuery(space.id, conversation.id, after), placeholderData: keepPreviousData });
 
-  const isOwner = space.role === 'owner';
   // The owner of the space reads a conversation they are no member of, and says nothing in it
   const isMember = conversation.lastReadNumber !== null;
 
-  const toList = () => navigate({ to: '/spaces/$spaceId/conversations', params: { spaceId: space.id }, replace: true });
   /** Shows the conversation with what the conversation is beside it, or with nothing beside it */
   const show = (about: boolean) =>
     navigate({
@@ -152,30 +130,6 @@ function OpenConversation({
       params: { spaceId: space.id, conversationId: conversation.id },
       search: { about: about ? true : undefined }
     });
-
-  const confirm = async () => {
-    if (!asking || going) return;
-    onGoing(true);
-    const problem =
-      asking === 'leave'
-        ? await exitConversation(space.id, conversation.id)
-        : await removeConversation(space.id, conversation.id);
-    if (problem !== null) {
-      onGoing(false);
-      setAsking(null);
-      return toast.add({ type: 'error', title: problem });
-    }
-    // The owner of the space who leaves still reads the conversation, and stays on its page. Anyone else, and
-    // whoever deleted it, goes to the list; the page leaves the conversation before the cache hears that it is gone
-    if (asking === 'delete' || !isOwner) await toList();
-    conversationsChanged(space.id, conversation.id);
-    toast.add({
-      title:
-        asking === 'leave' ? conversationText.left(conversation.title) : conversationText.deleted(conversation.title)
-    });
-    onGoing(false);
-    setAsking(null);
-  };
 
   const join = async () => {
     if (joining) return;
@@ -199,12 +153,7 @@ function OpenConversation({
       {shownPane === 'file' && shownFile !== null ? (
         <ConversationFilePane fileId={shownFile} />
       ) : (
-        <ConversationAbout
-          conversation={conversation}
-          members={members}
-          onRename={() => setRenaming(true)}
-          onAsk={setAsking}
-        />
+        <ConversationAbout conversation={conversation} members={members} going={going} onGoing={onGoing} />
       )}
     </>
   );
@@ -329,38 +278,6 @@ function OpenConversation({
           </DrawerContent>
         </Drawer>
       )}
-
-      <RenameConversationDialog
-        spaceId={space.id}
-        conversation={conversation}
-        open={renaming}
-        onOpenChange={setRenaming}
-      />
-      <AlertDialog open={asking !== null} onOpenChange={(open) => !open && !going && setAsking(null)}>
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="break-words">
-              {asked === 'leave'
-                ? conversationText.leaveTitle(conversation.title)
-                : conversationText.deleteTitle(conversation.title)}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {asked === 'delete'
-                ? conversationText.deleteDescription
-                : isOwner
-                  ? conversationText.leaveDescriptionOwner
-                  : conversationText.leaveDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={going}>{conversationText.cancel}</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={going} onClick={confirm}>
-              {going && <Spinner data-icon="inline-start" />}
-              {asked === 'leave' ? conversationText.leave : conversationText.delete}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
