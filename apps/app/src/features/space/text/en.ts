@@ -74,7 +74,7 @@ export const en = {
   limitInvalid: 'Type an amount like 10 or 1.5, or leave it empty for no limit.',
   limitSaved: 'Storage limit saved',
   storageLimitItem: 'Storage limit…',
-  changeLimit: (name: string) => `Change the storage limit of ${name}`,
+  moreFor: (name: string) => `More for ${name}`,
   memberLimitTitle: (name: string) => `Storage limit of ${name}`,
   memberHoldsNow: (name: string, size: string) => `${name} holds ${size} in this space now.`,
   memberLimitHint:

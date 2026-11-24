@@ -64,7 +64,7 @@ export const zhHans: typeof en = {
   limitInvalid: '请填一个数，比如 10 或 1.5；留空就是不限。',
   limitSaved: '存储上限已保存',
   storageLimitItem: '存储上限…',
-  changeLimit: (name) => `修改 ${name} 的存储上限`,
+  moreFor: (name) => `对 ${name} 的更多操作`,
   memberLimitTitle: (name) => `${name} 的存储上限`,
   memberHoldsNow: (name, size) => `${name} 现在在这个空间里占用 ${size}。`,
   memberLimitHint:

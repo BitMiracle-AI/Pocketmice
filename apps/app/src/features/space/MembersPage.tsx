@@ -184,7 +184,7 @@ export function MembersPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label={spaceText.changeLimit(member.name)}
+                              aria-label={spaceText.moreFor(member.name)}
                               disabled={changing !== null}
                             />
                           }
