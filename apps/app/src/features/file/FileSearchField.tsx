@@ -11,9 +11,10 @@ import { fileText } from './text';
 
 // The field files are looked for in, in the bar of the files. What is looked for is in the address (?q=…), and
 // nowhere else: the page shows what the address says, so a step back shows what was found before.
-// The field writes what is typed into the address once the typing has paused, or at once on Enter, without a new
-// step in the history for every letter. While an input method is putting a word together (pinyin on its way to
-// 预算), what the field holds is not yet what the person is looking for, and nothing is written.
+// The field writes what is typed into the address once the typing has paused, or at once on Enter. The words that
+// begin a search are a step in the history, so a step back leads to where the search began; the letters after
+// them are not a step each. While an input method is putting a word together (pinyin on its way to 预算), what
+// the field holds is not yet what the person is looking for, and nothing is written.
 
 /** How long the typing has to pause before what was typed is looked for, in milliseconds */
 const PAUSE_MS = 250;
@@ -44,8 +45,9 @@ export function FileSearchField({
   const write = useCallback(
     (next: string) => {
       if (next === written.current) return;
+      const begins = written.current === '';
       written.current = next;
-      void goTo(pickedId, next, true);
+      void goTo(pickedId, next, !begins);
     },
     [goTo, pickedId]
   );
