@@ -9,13 +9,16 @@ import { findConversationAccess } from './domains/conversation/findConversationA
 import { fileContentTools } from './domains/file/fileContentTools.ts';
 import { domainImplementations } from './domains/implementations.ts';
 import { findMembership } from './domains/space/findMembership.ts';
-import { hostFromEnv, portFromEnv } from './env.ts';
+import { hostFromEnv, millisecondsFromEnv, portFromEnv } from './env.ts';
 import { logInternalError } from './http/errorLog.ts';
 import { auth, db, mail, storage, webOrigins } from './instances.ts';
 
 // The ports of this project start at 11210, one for each unit that listens. A port that is taken is an error and
 // the process exits: it never picks another one.
 const port = portFromEnv('PORT', 11210);
+
+// The delay for debugging. Not set as a rule, which is 0: see .env.example
+const slowdownMs = millisecondsFromEnv('SLOWDOWN_MS');
 
 /** Fires when the process is told to stop (see the end of this file) */
 const stopping = new AbortController();
@@ -38,7 +41,8 @@ const app = createApp({
   identifyCaller: identifyCaller(db, identifyBySession(auth)),
   spaceMembership: (spaceId, userId) => findMembership(db, spaceId, userId),
   conversationAccess: (spaceId, conversationId, userId) => findConversationAccess(db, spaceId, conversationId, userId),
-  reportError: logInternalError
+  reportError: logInternalError,
+  slowdownMs
 });
 
 // createAdaptorServer is typed as possibly an HTTP/2 server; given no HTTP/2 options, what it builds is a plain
@@ -85,6 +89,9 @@ server.listen({ port, host }, () => {
     console.log('people sign in with a code, which is PRINTED HERE and not sent (MAIL_TO_CONSOLE): for development');
   } else {
     console.log('people sign in with a code sent to their email address');
+  }
+  if (slowdownMs > 0) {
+    console.warn(`SLOWDOWN_MS is set: every request waits ${slowdownMs} ms before it is handled. For debugging only.`);
   }
 });
 

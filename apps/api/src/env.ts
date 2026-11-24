@@ -43,6 +43,20 @@ export function portFromEnv(name: string, fallback: number): number {
 }
 
 /**
+ * Reads an optional number of milliseconds: 0 when it is not set. Set to anything but a whole number from 0 up,
+ * written in digits alone, is an error.
+ */
+export function millisecondsFromEnv(name: string): number {
+  const value = process.env[name];
+  if (!value) return 0;
+
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`Environment variable ${name} must be a whole number of milliseconds, 0 or more, got "${value}".`);
+  }
+  return Number(value);
+}
+
+/**
  * Reads the optional address to listen on: fallback when it is not set. It is not checked here: listening on an
  * address this machine does not have fails when the server starts, and the process exits with that error.
  */

@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { hostFromEnv, mailFromEnv, portFromEnv, requireEnv, requireOrigins, storageFromEnv } from './env.ts';
+import {
+  hostFromEnv,
+  mailFromEnv,
+  millisecondsFromEnv,
+  portFromEnv,
+  requireEnv,
+  requireOrigins,
+  storageFromEnv
+} from './env.ts';
 
 test('a variable that must be set and is missing or empty is an error that names it', () => {
   delete process.env.TEST_REQUIRED;
@@ -45,6 +53,32 @@ test('a port set to something that is not a port number is an error', () => {
     process.env.TEST_PORT = wrong;
 
     assert.throws(() => portFromEnv('TEST_PORT', 11210), /TEST_PORT.*port number/, `"${wrong}" should fail`);
+  }
+});
+
+test('milliseconds that are not set, or are empty, are 0; set, they are the number', () => {
+  delete process.env.TEST_MS;
+  assert.equal(millisecondsFromEnv('TEST_MS'), 0);
+
+  process.env.TEST_MS = '';
+  assert.equal(millisecondsFromEnv('TEST_MS'), 0);
+
+  process.env.TEST_MS = '0';
+  assert.equal(millisecondsFromEnv('TEST_MS'), 0);
+
+  process.env.TEST_MS = '500';
+  assert.equal(millisecondsFromEnv('TEST_MS'), 500);
+});
+
+test('milliseconds set to a negative number, a fraction or something that is no number are an error', () => {
+  for (const wrong of ['abc', '-1', '0.5', '500ms', '1e3', ' 500']) {
+    process.env.TEST_MS = wrong;
+
+    assert.throws(
+      () => millisecondsFromEnv('TEST_MS'),
+      /TEST_MS.*whole number of milliseconds/,
+      `"${wrong}" should fail`
+    );
   }
 });
 

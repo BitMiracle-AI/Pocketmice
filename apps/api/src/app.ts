@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from 'node:timers/promises';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AUTH_ROUTES } from './domains/auth/auth.ts';
@@ -38,6 +39,12 @@ export interface AppDeps extends OperationDeps {
    * it is not mounted, and nothing listens on the database.
    */
   events?: Pick<EventsDeps, 'db' | 'stopping' | 'timings'>;
+  /**
+   * For debugging: every request waits this many milliseconds before it is handled. On one machine an answer is
+   * there at once, and what a page shows while it waits is gone before it can be looked at. Left out or 0, nothing
+   * waits. The health check and a browser's preflight never wait.
+   */
+  slowdownMs?: number;
 }
 
 /** Every route of the api. It does not listen on a port: main.ts does */
@@ -60,6 +67,18 @@ export function createApp(deps: AppDeps) {
   // Health check: 200 as long as this process answers requests. The database is not asked: when the database is in
   // trouble, starting the api again does not help. Whoever starts or supervises the process asks it.
   app.get('/api/health', (c) => c.json({ status: 'ok' }));
+
+  // The delay for debugging. Where it stands matters: a preflight is answered by the cors above and the health
+  // check by the route above, so neither comes this far and neither waits; the sign-in, the operations and the
+  // other entrances are all below, so all of them wait. A tool of the MCP entrance waits twice: it is a request
+  // itself, and does its work by sending one.
+  const slowdownMs = deps.slowdownMs ?? 0;
+  if (slowdownMs > 0) {
+    app.use(async (_c, next) => {
+      await sleep(slowdownMs);
+      await next();
+    });
+  }
 
   // Of the addresses of the sign-in library only the open ones are mounted. Any other address under /api/auth is
   // answered like any address that does not exist

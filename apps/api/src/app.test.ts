@@ -10,9 +10,10 @@ const WEB_ORIGIN = 'http://localhost:11211';
  * This file tests the parts of the app that are not operations: the health check, the addresses of the sign-in
  * library and what browsers are told about other origins. The operations are tested in http/operation.test.ts
  */
-function setup() {
+function setup(slowdownMs?: number) {
   const received: Request[] = [];
   const app = createApp({
+    slowdownMs,
     auth: {
       handler: async (request) => {
         received.push(request);
@@ -110,4 +111,47 @@ test('a preflight from a web page on the list is let through with the headers it
   assert.equal(response.headers.get('access-control-max-age'), '7200');
   // A preflight is answered here and never reaches the sign-in library
   assert.equal(received.length, 0);
+});
+
+test('with a delay set for debugging, a request waits that long before it is handled; the health check and a preflight do not', async () => {
+  const { app, received } = setup(400);
+  /** How long the request took, in milliseconds */
+  const timed = async (path: string, init?: RequestInit) => {
+    const from = performance.now();
+    const response = await app.request(path, init);
+    return { response, took: performance.now() - from };
+  };
+
+  const health = await timed('/api/health');
+  assert.equal(health.response.status, 200);
+  assert.ok(health.took < 300, `the health check took ${health.took} ms`);
+
+  const preflight = await timed('/api/auth/sign-in/email', {
+    method: 'OPTIONS',
+    headers: { origin: WEB_ORIGIN, 'access-control-request-method': 'POST' }
+  });
+  assert.equal(preflight.response.status, 204);
+  assert.ok(preflight.took < 300, `the preflight took ${preflight.took} ms`);
+
+  const signIn = await timed('/api/auth/sign-in/email', {
+    method: 'POST',
+    headers: { origin: WEB_ORIGIN },
+    body: '{}'
+  });
+  assert.equal(signIn.response.status, 201);
+  assert.equal(received.length, 1);
+  // A timer may fire a few milliseconds early by the clock read here
+  assert.ok(signIn.took >= 380, `the sign-in took ${signIn.took} ms`);
+
+  const unknown = await timed('/api/noSuchOperation', { method: 'POST', body: '{}' });
+  assert.ok(unknown.took >= 380, `an address that does not exist took ${unknown.took} ms`);
+});
+
+test('with no delay set, nothing waits', async () => {
+  const { app } = setup();
+  const from = performance.now();
+  const response = await app.request('/api/auth/sign-in/email', { method: 'POST', body: '{}' });
+
+  assert.equal(response.status, 201);
+  assert.ok(performance.now() - from < 300, 'a request with no delay set should be answered at once');
 });
