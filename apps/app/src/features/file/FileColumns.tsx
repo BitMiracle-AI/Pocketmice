@@ -181,7 +181,8 @@ function Row({
   const button = (
     <SidebarMenuButton render={<FilesLink spaceId={space.id} fileId={file.id} />} isActive={active} title={file.name}>
       <FileIcon name={file.name} folder={isFolder} />
-      <span>{file.name}</span>
+      {/* The button cuts a name to one line only where nothing follows it, and a folder's arrow does */}
+      <span className="truncate">{file.name}</span>
       {isFolder && <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-auto text-muted-foreground" />}
     </SidebarMenuButton>
   );
