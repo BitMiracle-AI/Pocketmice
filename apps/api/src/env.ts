@@ -1,3 +1,5 @@
+import type { S3Options } from './external/storage/s3Storage.ts';
+
 /** Reads an environment variable that must be set. A missing one is an error: there is no default */
 export function requireEnv(name: string): string {
   const value = process.env[name];
@@ -48,26 +50,12 @@ export function hostFromEnv(name: string, fallback: string): string {
   return process.env[name] || fallback;
 }
 
-/** Where the bytes of files are kept: a folder on this machine, or a bucket of an S3-compatible service */
-/** The bucket the bytes of files are kept in, and how it is reached */
-export interface StorageConfig {
-  bucket: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  /** The address of the service. Left out for AWS, which is found from the region */
-  endpoint?: string;
-  /** The address of the service as callers reach it, when that is another one than endpoint */
-  publicEndpoint?: string;
-  /** Whether the bucket is named in the path of the address and not in its host */
-  forcePathStyle: boolean;
-}
-
 /**
  * Reads where the bytes of files are kept: a bucket of an S3-compatible service, named by S3_BUCKET with the rest
- * of its group. There is no default: the server never guesses where people's files go.
+ * of its group, as the storage takes it (what each of them is, is said there). There is no default: the server
+ * never guesses where people's files go.
  */
-export function storageFromEnv(): StorageConfig {
+export function storageFromEnv(): S3Options {
   const pathStyle = process.env.S3_FORCE_PATH_STYLE;
   if (pathStyle && pathStyle !== 'true' && pathStyle !== 'false') {
     throw new Error(`Environment variable S3_FORCE_PATH_STYLE must be true or false, got "${pathStyle}".`);
