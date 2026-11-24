@@ -34,7 +34,8 @@ import { fileText } from './text';
 // What is picked and what is looked for are both in the address, and nowhere else: /spaces/<space>/files has
 // nothing picked, /spaces/<space>/files/<id> picks a file or a folder (one address for both, since they are the
 // same kind of thing with the same kind of id), and ?q= are the words.
-// A phone has room for one column: the folder that is open last. A file that is picked comes up over it.
+// A phone has room for one column: the folder that is open last. A file that is picked comes up over it, and so
+// does what a folder is, when it is asked for.
 
 /**
  * The page. fileId is what the address says is picked, or null when it says nothing; words is what it says is
@@ -90,7 +91,6 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
   const [naming, setNaming] = useState(false);
   // On a phone: the folder whose details were asked for, and are shown over the page while it is the one picked
   const [detailing, setDetailing] = useState<string | null>(null);
-  const shown = useLastGiven(picked);
 
   const canEdit = roleCovers(space.role, 'editor');
   const searching = words !== '';
@@ -106,9 +106,10 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
   });
   const onAct = canEdit ? actions.pick : undefined;
 
-  // On a phone what is picked comes up over the page: a file always, a folder when its details are asked for, and
-  // whatever was picked from what a search found, since nothing else there would show it
-  const over = isMobile && picked !== null && (picked.kind === 'file' || searching || detailing === picked.id);
+  // On a phone what is picked comes up over the page: a file always, a folder when its details are asked for
+  const over = isMobile && picked !== null && (picked.kind === 'file' || detailing === picked.id);
+  // What it shows stays while it goes: letting go of a file picks the folder it is in, which is not what was shown
+  const shown = useLastGiven(over ? picked : null);
   const closeOver = () => {
     if (picked === null) return;
     if (detailing === picked.id) setDetailing(null);
@@ -198,13 +199,16 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
         ) : (
           <FileColumns open={open} picked={picked} onAct={onAct} />
         )}
-        <aside aria-label={fileText.details} className="hidden w-80 shrink-0 flex-col border-l md:flex xl:w-96">
-          <FileInspector file={picked} onAct={onAct} locate={locate} />
-        </aside>
+        {/* The pane stands beside the columns where there is room for it; a phone has it come up over them */}
+        {!isMobile && (
+          <aside aria-label={fileText.details} className="flex w-80 shrink-0 flex-col border-l xl:w-96">
+            <FileInspector file={picked} onAct={onAct} locate={locate} />
+          </aside>
+        )}
       </div>
 
       {isMobile && (
-        <Drawer open={over} onOpenChange={(next) => !next && closeOver()}>
+        <Drawer open={over} onOpenChange={(next) => !next && closeOver()} showSwipeHandle>
           <DrawerContent>
             <DrawerHeader className="sr-only">
               <DrawerTitle>{shown?.name}</DrawerTitle>

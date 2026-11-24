@@ -20,7 +20,9 @@ import { fileText } from './text';
  * What the words in the address found, in place of the columns: the files and folders of the whole space that
  * have every word in their name or their description, the latest changed first. What is found is from all over
  * the space, so each says where it is: two things of one name are told apart by that.
- * Picking one shows it in the pane on the right, and the words stay: the list is still there to pick another.
+ * Picking a file shows it in the pane, and the words stay: the list is still there to pick another. A folder is a
+ * place and not a thing to look at: picking one opens it, as picking it in a column does, and a step back is
+ * what was found again.
  */
 export function FileResults({ words, pickedId }: { words: string; pickedId: string | null }) {
   const space = useCurrentSpace();
@@ -71,7 +73,7 @@ export function FileResults({ words, pickedId }: { words: string; pickedId: stri
               key={file.id}
               size="sm"
               variant={file.id === pickedId ? 'muted' : 'default'}
-              render={<FilesLink spaceId={space.id} fileId={file.id} words={words} />}
+              render={<FilesLink spaceId={space.id} fileId={file.id} words={file.kind === 'folder' ? '' : words} />}
             >
               <ItemMedia variant="icon">
                 <FileIcon name={file.name} folder={file.kind === 'folder'} />
