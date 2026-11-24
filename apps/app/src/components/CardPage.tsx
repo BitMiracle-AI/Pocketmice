@@ -1,6 +1,6 @@
+import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { Brand } from './Brand';
 import { Pocket } from './Pocket';
 
@@ -8,11 +8,13 @@ import { Pocket } from './Pocket';
 export type Pitch = { slogan: string; tagline: string };
 
 /**
- * A page that is one card, in the middle of the frame, with the name of the product in the corner. The card is
- * the pocket the mouse looks out of (Pocket). title and description say what the card is for, children is what
- * the person fills in or presses, and foot is the quiet line under the card.
+ * A page that is one card, in the middle of the frame. The card is the pocket the mouse looks out of (Pocket).
+ * title and description say what the card is for, children is what the person fills in or presses, and foot is
+ * the quiet line under the card.
  * Signing in, signing up, joining a space and making the first one are such pages. The first two are where
- * someone meets the product, and say its pitch: beside the card on a wide page, above it on a narrow one.
+ * someone meets the product, and say its pitch: beside the card on a wide page, above it on a narrow one. The
+ * other two have the name of the product in the corner, which leads to the start; a page that says the pitch has
+ * nothing there.
  */
 export function CardPage({
   title,
@@ -29,16 +31,18 @@ export function CardPage({
 }) {
   return (
     <div className="on-frame flex min-h-svh flex-col">
-      <header className="flex h-16 shrink-0 items-center px-4 lg:px-6">
-        <Brand />
-      </header>
-      {/* The room above the card is the mouse's; as much is left under it, and the bar's height more, so that
-          the card is in the middle of the page. A pitch above the card takes that room, and leaves the mouse its
-          own between the two */}
+      {!pitch && (
+        <header className="flex h-16 shrink-0 items-center px-4 lg:px-6">
+          <Brand />
+        </header>
+      )}
+      {/* The room above the card is the mouse's; as much is left under it, and under a bar the bar's height
+          more, so that the card is in the middle of the page. Between a pitch and the card under it the mouse
+          has that room too */}
       <div
         className={cn(
-          'flex flex-1 flex-col items-center justify-center gap-x-20 gap-y-28 px-6 pt-24 pb-40 lg:flex-row xl:gap-x-28',
-          pitch && 'max-lg:pt-10 max-lg:pb-24'
+          'flex flex-1 flex-col items-center justify-center gap-x-20 gap-y-28 px-6 lg:flex-row xl:gap-x-28',
+          pitch ? 'py-16 lg:py-24' : 'pt-24 pb-40'
         )}
       >
         {pitch && (
@@ -48,7 +52,9 @@ export function CardPage({
             <p className="max-w-[8.5em] font-heading text-4xl leading-[1.05] font-extrabold tracking-[-0.02em] text-balance sm:text-5xl lg:text-6xl xl:text-7xl">
               {pitch.slogan}
             </p>
-            <p className="max-w-md font-medium text-balance text-muted-foreground lg:text-xl">{pitch.tagline}</p>
+            <p className="max-w-md font-medium text-balance text-muted-foreground lg:max-w-xl lg:text-xl">
+              {pitch.tagline}
+            </p>
           </div>
         )}
         <div className="flex w-full max-w-sm shrink-0 flex-col gap-6">
