@@ -7,24 +7,6 @@
     <!-- The icon is one drawing, public/favicon.svg, at whatever size the browser wants it. There is no
          /favicon.ico: a browser that cannot draw an SVG icon shows none. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Whether the page is dark: <html> then has the class dark, which the styles go by. It is what the person
-         chose, and the system's when they chose nothing. Decided here, before anything is drawn and before our
-         code arrives: decided later, someone whose page is dark would see a white one first, every time they open
-         one. What changes after that (another choice, the system) is followed by src/lib/theme.ts. The name and
-         the rule here are copies of the ones there, and src/lib/theme.test.ts runs these lines to see that they
-         agree. -->
-    <script>
-      (() => {
-        let chosen = null;
-        try {
-          chosen = localStorage.getItem('pocketmice.theme');
-        } catch {
-          // The browser does not let the page keep anything: as if nothing was chosen
-        }
-        const dark = chosen === 'dark' || (chosen !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.classList.toggle('dark', dark);
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

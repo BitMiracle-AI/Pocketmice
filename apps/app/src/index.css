@@ -18,8 +18,12 @@
    entered with one of the three classes at the end of this file; whatever is inside is then drawn for it.
 
    Colour apart from the blue: violet is an agent (what a key wrote or said) and nothing else, red is what cannot
-   be undone, and a person or a space has one of six colours of its own. Nothing is warm but the mouse. */
+   be undone, and a person or a space has one of six colours of its own. Nothing is warm but the mouse.
 
+   The app is light, whatever the system is: there is no dark set of these colours and nothing to choose. */
+
+/* Nothing is ever given the class dark. So a class that starts with dark: does nothing, should a component copied
+   from elsewhere bring one: left to Tailwind, it would follow the system and darken that one piece. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -199,78 +203,6 @@
   --mark-flip: 100%;
 }
 
-/* ---------- The same in the dark. A ground keeps what it does not name here ---------- */
-
-.dark {
-  --sidebar: #1740a8;
-  --scrim: rgb(4 7 22 / 65%);
-  --tint-1: #2a62ee;
-  --agent: #a895ff;
-  --agent-foreground: #0c1229;
-}
-
-.dark,
-.dark .on-tile,
-.dark .on-quiet {
-  --background: #101737;
-  --foreground: #eef1fb;
-  --card: #171f47;
-  --card-foreground: #eef1fb;
-  --popover: #18204a;
-  --popover-foreground: #eef1fb;
-  --primary: #6ea4ff;
-  --primary-foreground: #0c1229;
-  --secondary: #1f2852;
-  --secondary-foreground: #eef1fb;
-  /* In the dark the quiet ground is the darker one: a card stands out of it lighter, as it does in the light */
-  --quiet: #0b1130;
-  --muted: #1b2349;
-  --muted-foreground: #a5aecb;
-  --accent: #222c5c;
-  --accent-foreground: #eef1fb;
-  --destructive: #ff7a8c;
-  --agent-soft: #2a2460;
-  --agent-soft-foreground: #c9bdff;
-  --border: #222a54;
-  --edge: #333d70;
-  --input: #2c3668;
-  --ring: #6ea4ff;
-  --sidebar-foreground: #eef1fb;
-  --sidebar-accent: #1a2450;
-  --sidebar-accent-foreground: #eef1fb;
-  --sidebar-active: #1a2450;
-  --sidebar-active-foreground: #eef1fb;
-  --sidebar-primary: #27408f;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-border: #222a54;
-  --sidebar-ring: #6ea4ff;
-}
-
-.dark .on-quiet {
-  --muted: #171f47;
-  --secondary: #171f47;
-  --border: #222a54;
-}
-
-.dark .on-frame {
-  --background: #1740a8;
-  --primary: #e9efff;
-  --primary-foreground: #15307f;
-  --secondary: #2c53b5;
-  --muted: #2c53b5;
-  --muted-foreground: #d3deff;
-  --accent: #12348c;
-  --border: #3a5fbe;
-  --edge: #3a5fbe;
-  --input: #3a5fbe;
-  --sidebar-accent: #12348c;
-  --sidebar-active: #e9efff;
-  --sidebar-active-foreground: #15307f;
-  --sidebar-primary: #e9efff;
-  --sidebar-primary-foreground: #15307f;
-  --sidebar-border: #3a5fbe;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -292,11 +224,8 @@
      affected. */
   html {
     @apply font-sans antialiased;
-    /* What the browser draws itself (a scrollbar, a date field) is light or dark as the page is */
+    /* What the browser draws itself (a scrollbar, a date field) is light as the page is, on a dark system too */
     color-scheme: light;
-  }
-  html.dark {
-    color-scheme: dark;
   }
   /* What names a page or a thing is in the display face, whatever element it is written with */
   h1,

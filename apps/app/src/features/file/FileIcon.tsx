@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 // The icon of a file, told by the end of its name, and the icon of a folder. They are drawn the way the mark of
 // the product is: blocks of one colour, with nothing around them. A folder is the folder of the mark; a file is a
 // sheet with a corner turned down, in the colour its kind is known by, with a few white strokes that say the kind
-// again for whoever does not tell colours apart. The colours are the drawings' own: the same in the dark, and
-// the only warm ones on a page besides the mouse.
+// again for whoever does not tell colours apart. The colours are the drawings' own, and the only warm ones on a
+// page besides the mouse.
 
 type Kind = 'text' | 'document' | 'sheet' | 'slides' | 'pdf' | 'image' | 'code' | 'archive' | 'audio' | 'video';
 

@@ -1,13 +1,5 @@
-import {
-  ComputerIcon,
-  Globe02Icon,
-  Logout03Icon,
-  Moon02Icon,
-  Settings01Icon,
-  Sun03Icon,
-  UnfoldMoreIcon
-} from '@hugeicons/core-free-icons';
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
+import { Globe02Icon, Logout03Icon, Settings01Icon, UnfoldMoreIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { Link } from '@tanstack/react-router';
 import { PersonAvatar } from '@/components/PersonAvatar';
 import { Button } from '@/components/ui/button';
@@ -32,10 +24,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { chooseLanguage, language } from '@/lib/language/language';
 import { LANGUAGE_NAMES, LANGUAGES, type Language } from '@/lib/language/languages';
-import { chooseTheme, THEMES, type Theme, useTheme } from '@/lib/theme';
 import { shellText } from './text';
-
-const THEME_ICONS: Record<Theme, IconSvgElement> = { system: ComputerIcon, light: Sun03Icon, dark: Moon02Icon };
 
 /** Who is signed in, the way the sidebar and the menu both write it: their avatar, their name, their address */
 function Who() {
@@ -90,7 +79,6 @@ export function UserButton() {
 
 /** What the menu holds, whichever button opens it */
 function UserMenuItems({ space }: { space: string | undefined }) {
-  const theme = useTheme();
   return (
     <>
       <DropdownMenuGroup>
@@ -104,21 +92,6 @@ function UserMenuItems({ space }: { space: string | undefined }) {
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
           {shellText.settings}
         </DropdownMenuItem>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <HugeiconsIcon icon={THEME_ICONS[theme]} strokeWidth={2} />
-            {shellText.theme}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={theme} onValueChange={(value) => chooseTheme(value as Theme)}>
-              {THEMES.map((each) => (
-                <DropdownMenuRadioItem key={each} value={each}>
-                  {shellText.themes[each]}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <HugeiconsIcon icon={Globe02Icon} strokeWidth={2} />
