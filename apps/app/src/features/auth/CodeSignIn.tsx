@@ -13,7 +13,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { auth, call, failureText } from '@/lib/api';
-import { Tagline } from './Tagline';
+import { pitch } from './pitch';
 import { authText } from './text';
 
 // Signing in on a server that sends mail: the person gives their address, is sent a code, and enters it. An
@@ -63,7 +63,7 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
   };
 
   return (
-    <CardPage title={authText.signInTitle} description={authText.codeIntro} foot={<Tagline />}>
+    <CardPage title={authText.signInTitle} description={authText.codeIntro} pitch={pitch}>
       <form onSubmit={submit} noValidate>
         <FieldGroup>
           <Field data-invalid={problem !== null || undefined}>
@@ -150,7 +150,7 @@ function CodeStep({
     <CardPage
       title={authText.codeTitle}
       description={authText.codeSent(email, SIGN_IN_CODE_LENGTH, SIGN_IN_CODE_TTL_SECONDS / 60)}
-      foot={<Tagline />}
+      pitch={pitch}
     >
       <FieldGroup>
         <Field data-invalid={problem !== null || undefined}>

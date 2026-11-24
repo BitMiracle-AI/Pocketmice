@@ -7,7 +7,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { auth, failureText } from '@/lib/api';
-import { Tagline } from './Tagline';
+import { pitch } from './pitch';
 import { authText } from './text';
 
 /**
@@ -49,7 +49,7 @@ export function PasswordSignIn({ next }: { next: string | undefined }) {
   const wrong = (field: 'email' | 'password') => (problem?.field === field ? problem.text : null);
 
   return (
-    <CardPage title={authText.signInTitle} description={authText.passwordIntro} foot={<Tagline />}>
+    <CardPage title={authText.signInTitle} description={authText.passwordIntro} pitch={pitch}>
       <form onSubmit={submit} noValidate>
         <FieldGroup>
           <Field data-invalid={wrong('email') !== null || undefined}>

@@ -13,7 +13,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { auth, failureText } from '@/lib/api';
-import { Tagline } from './Tagline';
+import { pitch } from './pitch';
 import { authText } from './text';
 
 const route = getRouteApi('/signup');
@@ -64,7 +64,7 @@ export function SignUpPage() {
   const wrong = (field: FieldName) => (problem?.field === field ? problem.text : null);
 
   return (
-    <CardPage title={authText.signUpTitle} description={authText.signUpIntro} foot={<Tagline />}>
+    <CardPage title={authText.signUpTitle} description={authText.signUpIntro} pitch={pitch}>
       <form onSubmit={submit} noValidate>
         <FieldGroup>
           <Field data-invalid={wrong('name') !== null || undefined}>

@@ -52,6 +52,11 @@ export const en = {
     CODE_NOT_SENT: 'The mail with the code could not be sent. Try again in a moment.'
   },
 
-  /** What Pocketmice is, in one line: under the card a person signs in or signs up in */
-  tagline: 'A cloud drive that people and AI agents share.'
+  /**
+   * The line Pocketmice goes by, beside the card a person signs in or signs up in. It is said in English in every
+   * language, as the name is
+   */
+  slogan: 'Human & Agent, One Team.',
+  /** What kind of thing Pocketmice is, in one line under that */
+  tagline: 'The open-source workspace for the next generation of teams.'
 };

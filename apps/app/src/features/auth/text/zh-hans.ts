@@ -46,5 +46,6 @@ export const zhHans: typeof en = {
     CODE_NOT_SENT: '验证码邮件没有发出去，请稍后再试。'
   },
 
-  tagline: '人和 AI Agent 共用的云盘。'
+  slogan: 'Human & Agent, One Team.',
+  tagline: '下一代开源人机协作办公平台'
 };
