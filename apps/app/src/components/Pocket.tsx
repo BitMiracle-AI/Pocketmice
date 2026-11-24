@@ -12,7 +12,6 @@ import {
   SPOTS,
   START
 } from '@/lib/mouseLife';
-import { playMouseSound, unlockMouseSounds } from '@/lib/mouseSounds';
 
 // The card of a page that is one card is the pocket of the product's mark: the back of the folder stands behind
 // it, the mouse looks out between the two, and its paws hold on to the edge of the card. The measures are the
@@ -28,12 +27,13 @@ import { playMouseSound, unlockMouseSounds } from '@/lib/mouseSounds';
 // - it looks at the pointer, and at what is typed while a field of the card is typed into;
 // - it does not look at a password: while one is typed it sinks until only its ears and forehead show;
 // - when what was entered is refused, it shakes its head;
-// - pressed, it squeaks and drops out of sight, and comes up at another place along the edge. Pressed five times
-//   in a row, it comes up dizzy;
+// - pressed, it drops out of sight, and comes up at another place along the edge. Pressed five times in a row,
+//   it comes up dizzy;
 // - stroked with the pointer, it shuts its eyes and its ears go;
 // - left alone for long, it falls asleep, and starts awake when the person moves.
-// None of it where the system asks for less motion: there the mouse is the drawing it is in the mark, and is
-// silent. It is decoration either way: it says nothing a person needs to know, and nothing is done by pressing it.
+// It makes no sound. None of it where the system asks for less motion: there the mouse is the drawing it is in
+// the mark. It is decoration either way: it says nothing a person needs to know, and nothing is done by pressing
+// it.
 
 /** How wide the face is drawn, in pixels, and one unit of the mark at that size */
 const FACE = 112;
@@ -146,13 +146,6 @@ export function Pocket({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [mouse.until]);
 
-  // What can be heard of it. All of it follows a press, which is what lets the page sound
-  useEffect(() => {
-    if (mouse.act === 'away') playMouseSound('squeak');
-    else if (mouse.act === 'peeking') playMouseSound('pop');
-    else if (mouse.act === 'dizzy') playMouseSound('dizzy');
-  }, [mouse.act]);
-
   useEffect(() => {
     kept.climbed = true;
     const root = pocket.current;
@@ -241,7 +234,6 @@ export function Pocket({ children }: { children: ReactNode }) {
     // The drawing is hidden from a screen reader and is no button: there is nothing here to do with keys
     const onPress = (event: MouseEvent) => {
       if (!(event.target instanceof Element) || !event.target.closest('[data-mouse]')) return;
-      unlockMouseSounds();
       tell({ is: 'pressed', chance: Math.random(), at: clock() });
     };
 
