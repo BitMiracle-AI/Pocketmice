@@ -3,6 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { roleCovers } from '@pocketmice/contract/spaceRole';
 import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Mouse } from '@/components/Mouse';
 import { Page } from '@/components/Page';
 import {
   AlertDialog,
@@ -15,6 +16,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -102,8 +104,8 @@ export function TrashPage() {
       {files.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
+            <EmptyMedia>
+              <Mouse />
             </EmptyMedia>
             <EmptyTitle>{fileText.trashEmptyTitle}</EmptyTitle>
             <EmptyDescription>{fileText.trashEmptyHint}</EmptyDescription>
@@ -112,7 +114,7 @@ export function TrashPage() {
       ) : (
         <Page wide>
           <p className="text-sm text-muted-foreground">{fileText.trashHints[space.role]}</p>
-          <div className="overflow-hidden rounded-xl border">
+          <Card className="px-3 py-2">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -128,7 +130,7 @@ export function TrashPage() {
                   <TableRow key={file.id}>
                     <TableCell className="max-w-0 w-full">
                       <div className="flex items-center gap-3">
-                        <FileIcon name={file.name} folder={file.kind === 'folder'} className="size-4" />
+                        <FileIcon name={file.name} folder={file.kind === 'folder'} />
                         <span className="truncate font-medium" title={file.name}>
                           {file.name}
                         </span>
@@ -147,7 +149,7 @@ export function TrashPage() {
                       <TableCell>
                         <div className="flex justify-end gap-2">
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             aria-label={fileText.restore(file.name)}
                             disabled={busy.has(file.id)}
@@ -174,10 +176,10 @@ export function TrashPage() {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
           {trash.hasNextPage && (
             <div className="flex justify-center">
-              <Button variant="outline" disabled={trash.isFetchingNextPage} onClick={() => trash.fetchNextPage()}>
+              <Button variant="secondary" disabled={trash.isFetchingNextPage} onClick={() => trash.fetchNextPage()}>
                 {trash.isFetchingNextPage && <Spinner data-icon="inline-start" />}
                 {fileText.showMore}
               </Button>

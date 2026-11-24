@@ -27,7 +27,7 @@ export function PageError({ error, title = shellText.files }: ErrorComponentProp
           <EmptyDescription role="alert">{thrownText(error)}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" onClick={() => router.invalidate()}>
+          <Button variant="secondary" onClick={() => router.invalidate()}>
             {commonText.tryAgain}
           </Button>
         </EmptyContent>

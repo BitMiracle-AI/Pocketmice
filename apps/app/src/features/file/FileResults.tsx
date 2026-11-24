@@ -40,7 +40,7 @@ export function FileResults({ words, pickedId }: { words: string; pickedId: stri
           <EmptyDescription role="alert">{thrownText(found.error)}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" onClick={() => found.refetch()}>
+          <Button variant="secondary" onClick={() => found.refetch()}>
             {commonText.tryAgain}
           </Button>
         </EmptyContent>
@@ -93,7 +93,7 @@ export function FileResults({ words, pickedId }: { words: string; pickedId: stri
         </ItemGroup>
         {found.hasNextPage && (
           <div className="flex justify-center">
-            <Button variant="outline" disabled={found.isFetchingNextPage} onClick={() => found.fetchNextPage()}>
+            <Button variant="secondary" disabled={found.isFetchingNextPage} onClick={() => found.fetchNextPage()}>
               {found.isFetchingNextPage && <Spinner data-icon="inline-start" />}
               {fileText.showMore}
             </Button>

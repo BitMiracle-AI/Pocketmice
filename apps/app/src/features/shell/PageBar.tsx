@@ -13,7 +13,7 @@ export function PageBar({ title, children, actions }: { title?: string; children
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 data-vertical:h-4 data-vertical:self-auto" />
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        {title !== undefined && <h1 className="truncate text-base font-medium">{title}</h1>}
+        {title !== undefined && <h1 className="truncate text-lg font-semibold">{title}</h1>}
         {children}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

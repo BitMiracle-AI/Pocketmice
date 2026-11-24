@@ -24,7 +24,7 @@ export function ConversationGonePage() {
       {/* Where the list is next to this, it is the way on; where it is not, this is */}
       <EmptyContent className="@3xl:hidden">
         <Button
-          variant="outline"
+          variant="secondary"
           nativeButton={false}
           render={
             <Link to="/spaces/$spaceId/conversations" params={{ spaceId: space.id }} activeOptions={{ exact: true }} />

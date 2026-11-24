@@ -32,7 +32,7 @@ export function NewSpaceDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           </DialogHeader>
           <SpaceNameField id="new-space-name" name={form.name} problem={form.problem} onChange={form.setName} />
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>{spaceText.cancel}</DialogClose>
+            <DialogClose render={<Button type="button" variant="secondary" />}>{spaceText.cancel}</DialogClose>
             <Button type="submit" disabled={form.busy}>
               {form.busy && <Spinner data-icon="inline-start" />}
               {spaceText.create}

@@ -42,10 +42,10 @@ function Who() {
   const user = useCurrentUser();
   return (
     <>
-      <PersonAvatar name={user.name} />
+      <PersonAvatar id={user.id} name={user.name} />
       <div className="grid flex-1 text-left text-sm leading-tight">
-        <span className="truncate font-medium">{user.name}</span>
-        <span className="truncate text-xs">{user.email}</span>
+        <span className="truncate font-semibold">{user.name}</span>
+        <span className="truncate text-xs text-muted-foreground">{user.email}</span>
       </div>
     </>
   );
@@ -79,7 +79,7 @@ export function UserButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={shellText.userMenu} />}>
-        <PersonAvatar name={user.name} />
+        <PersonAvatar id={user.id} name={user.name} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
         <UserMenuItems space={undefined} />

@@ -51,7 +51,7 @@ function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) 
       <Shell
         space={spaceId}
         // Which space this is: another one is gone to from the start, where all of them are
-        mark={<SpaceMark name={space.name} />}
+        mark={<SpaceMark id={space.id} name={space.name} />}
         title={space.name}
         subtitle={spaceText.roles[space.role]}
         home={<Link to="/spaces/$spaceId" params={{ spaceId }} />}

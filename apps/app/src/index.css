@@ -1,17 +1,36 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/figtree";
+@import "@fontsource-variable/gabarito";
+
+/* How the app looks is said here and in components/ui, and nowhere else: a page writes its layout only.
+
+   The look is the favicon's: blocks of one colour, large corners, nothing drawn around a block and no shadow under
+   it. What lies over what is said by colour. There are three grounds:
+   - the frame: the blue of the folder. The sidebar is on it, and so are the pages one passes through on the way to
+     a space (signing in, the spaces);
+   - the tile: the white piece the frame holds, where the work is. Menus and dialogs are tiles too;
+   - the quiet ground: a pale blue, for what stands beside the work (the pane of what is picked) and for a page of
+     cards.
+   The names a component is coloured by (--background, --primary, --muted…) mean the same on every ground and have
+   the ground's own values: a button of the main colour is blue on the tile and white on the frame. A ground is
+   entered with one of the three classes at the end of this file; whatever is inside is then drawn for it.
+
+   Colour apart from the blue: violet is an agent (what a key wrote or said) and nothing else, red is what cannot
+   be undone, and a person or a space has one of six colours of its own. Nothing is warm but the mouse. */
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: "Inter Variable", sans-serif;
+  --font-heading: var(--font-display);
+  --font-sans: var(--font-body);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-sidebar-active: var(--sidebar-active);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -24,7 +43,17 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-edge: var(--edge);
+  --color-scrim: var(--scrim);
   --color-destructive: var(--destructive);
+  --color-agent-soft-foreground: var(--agent-soft-foreground);
+  --color-agent-soft: var(--agent-soft);
+  --color-agent-foreground: var(--agent-foreground);
+  --color-agent: var(--agent);
+  /* A person or a space by its colour: the colour is the ground and the letters are white, or the other way
+     round on the frame (--mark-flip). --tint is one of the six, set by whoever draws the mark. */
+  --color-tint: color-mix(in srgb, var(--mark-paper) var(--mark-flip), var(--tint));
+  --color-tint-foreground: color-mix(in srgb, var(--tint) var(--mark-flip), var(--mark-paper));
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -48,84 +77,219 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.488 0.243 264.376);
-  --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.546 0.245 262.881);
-  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+/* No shadow anywhere: the utilities that would draw one draw nothing, so a component that still names one is as
+   flat as the rest. */
+@theme {
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000;
+  --shadow-xl: 0 0 #0000;
+  --shadow-2xl: 0 0 #0000;
 }
 
+:root {
+  /* A card and the tile have corners of 28px (4xl), a menu 24 (3xl), a block inside a card 20 (2xl). What is
+     pressed (a button, a row, a field) is round at both ends. */
+  --radius: 0.6875rem;
+  /* Figtree for what is read, Gabarito for what names a page or a thing. Neither has Chinese: see the end. */
+  --font-body: "Figtree Variable", system-ui, sans-serif;
+  --font-display: "Gabarito Variable", system-ui, sans-serif;
+
+  /* The frame is the same blue wherever it is looked at from */
+  --sidebar: #1a56f0;
+  /* What dims the page under a dialog */
+  --scrim: rgb(22 36 86 / 45%);
+  /* The six colours a person or a space is given (lib/tint.ts says which) */
+  --tint-1: #1a56f0;
+  --tint-2: #0a7f70;
+  --tint-3: #a43c9e;
+  --tint-4: #0b79b8;
+  --tint-5: #4353b8;
+  --tint-6: #2b8650;
+  --mark-paper: #ffffff;
+  --agent: #6f52f2;
+  --agent-foreground: #ffffff;
+  --chart-1: #9cc0ff;
+  --chart-2: #4f8bff;
+  --chart-3: #2b6af5;
+  --chart-4: #1a56f0;
+  --chart-5: #1746c8;
+}
+
+/* ---------- The tile: white, with the navy of the mouse's eyes where a page would have black ---------- */
+
+:root,
+.on-tile,
+.on-quiet {
+  --background: #ffffff;
+  --foreground: #162456;
+  --card: #ffffff;
+  --card-foreground: #162456;
+  --popover: #ffffff;
+  --popover-foreground: #162456;
+  --primary: #1a56f0;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2fb;
+  --secondary-foreground: #162456;
+  --quiet: #f3f6fd;
+  --muted: #f3f6fd;
+  --muted-foreground: #56618a;
+  --accent: #eef3ff;
+  --accent-foreground: #162456;
+  --destructive: #b81c36;
+  --agent-soft: #ece8ff;
+  --agent-soft-foreground: #4a2fd0;
+  /* A line between two parts of a tile; the edge of a tile that lies on another, since nothing has a shadow */
+  --border: #e6ebf5;
+  --edge: #d3dbee;
+  --input: #dfe5f3;
+  --ring: #1a56f0;
+  /* A row of a list: under the pointer and on the way to what is picked (accent, active), and what is picked */
+  --sidebar-foreground: #162456;
+  --sidebar-accent: #eef3ff;
+  --sidebar-accent-foreground: #162456;
+  --sidebar-active: #eef3ff;
+  --sidebar-active-foreground: #162456;
+  --sidebar-primary: #d9e5ff;
+  --sidebar-primary-foreground: #162456;
+  --sidebar-border: #e6ebf5;
+  --sidebar-ring: #1a56f0;
+  /* A person or a space is their colour with white letters */
+  --mark-flip: 0%;
+}
+
+/* ---------- The quiet ground: what is quiet on the tile would not show on it, so on it that is white ---------- */
+
+.on-quiet {
+  --muted: #ffffff;
+  --secondary: #ffffff;
+  --border: #dde4f3;
+}
+
+/* ---------- The frame: white on blue, and white is what is pressed ---------- */
+
+.on-frame {
+  --background: #1a56f0;
+  --foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #1746c8;
+  --secondary: #3167f2;
+  --secondary-foreground: #ffffff;
+  --muted: #3167f2;
+  --muted-foreground: #dfe8ff;
+  --accent: #1549d6;
+  --accent-foreground: #ffffff;
+  --destructive: #ffe6ea;
+  --border: #4c7bf3;
+  --edge: #4c7bf3;
+  --input: #4c7bf3;
+  --ring: #ffffff;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #1549d6;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-active: #ffffff;
+  --sidebar-active-foreground: #1746c8;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #1746c8;
+  --sidebar-border: #4c7bf3;
+  --sidebar-ring: #ffffff;
+  /* A person or a space is turned inside out: white, with letters of their colour. Blue would not show on blue */
+  --mark-flip: 100%;
+}
+
+/* ---------- The same in the dark. A ground keeps what it does not name here ---------- */
+
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.424 0.199 265.638);
-  --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.623 0.214 259.815);
-  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: #1740a8;
+  --scrim: rgb(4 7 22 / 65%);
+  --tint-1: #2a62ee;
+  --agent: #a895ff;
+  --agent-foreground: #0c1229;
+}
+
+.dark,
+.dark .on-tile,
+.dark .on-quiet {
+  --background: #101737;
+  --foreground: #eef1fb;
+  --card: #171f47;
+  --card-foreground: #eef1fb;
+  --popover: #18204a;
+  --popover-foreground: #eef1fb;
+  --primary: #6ea4ff;
+  --primary-foreground: #0c1229;
+  --secondary: #1f2852;
+  --secondary-foreground: #eef1fb;
+  /* In the dark the quiet ground is the darker one: a card stands out of it lighter, as it does in the light */
+  --quiet: #0b1130;
+  --muted: #1b2349;
+  --muted-foreground: #a5aecb;
+  --accent: #222c5c;
+  --accent-foreground: #eef1fb;
+  --destructive: #ff7a8c;
+  --agent-soft: #2a2460;
+  --agent-soft-foreground: #c9bdff;
+  --border: #222a54;
+  --edge: #333d70;
+  --input: #2c3668;
+  --ring: #6ea4ff;
+  --sidebar-foreground: #eef1fb;
+  --sidebar-accent: #1a2450;
+  --sidebar-accent-foreground: #eef1fb;
+  --sidebar-active: #1a2450;
+  --sidebar-active-foreground: #eef1fb;
+  --sidebar-primary: #27408f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-border: #222a54;
+  --sidebar-ring: #6ea4ff;
+}
+
+.dark .on-quiet {
+  --muted: #171f47;
+  --secondary: #171f47;
+  --border: #222a54;
+}
+
+.dark .on-frame {
+  --background: #1740a8;
+  --primary: #e9efff;
+  --primary-foreground: #15307f;
+  --secondary: #2c53b5;
+  --muted: #2c53b5;
+  --muted-foreground: #d3deff;
+  --accent: #12348c;
+  --border: #3a5fbe;
+  --edge: #3a5fbe;
+  --input: #3a5fbe;
+  --sidebar-accent: #12348c;
+  --sidebar-active: #e9efff;
+  --sidebar-active-foreground: #15307f;
+  --sidebar-primary: #e9efff;
+  --sidebar-primary-foreground: #15307f;
+  --sidebar-border: #3a5fbe;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  /* A ground is its colour, and what is written on it is in its ink. In this layer, so that a component which
+     names a colour of its own (a card, a menu) keeps it. */
+  .on-frame,
+  .on-tile {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  .on-quiet {
+    background-color: var(--quiet);
+  }
   body {
     @apply bg-background text-foreground;
   }
-  /* antialiased: macOS draws type heavier than it is by default, and Inter at 500 reads as bold. This turns that
-     off. Windows and Linux are not affected. */
+  /* antialiased: macOS draws type heavier than it is by default. This turns that off. Windows and Linux are not
+     affected. */
   html {
     @apply font-sans antialiased;
     /* What the browser draws itself (a scrollbar, a date field) is light or dark as the page is */
@@ -134,10 +298,17 @@
   html.dark {
     color-scheme: dark;
   }
-  /* Chinese is drawn in a typeface the system already has, so nobody downloads one. Inter stays first: digits and
-     Latin letters are still Inter. And Chinese is not set tighter the way a Latin heading is. */
+  /* What names a page or a thing is in the display face, whatever element it is written with */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+  /* Chinese is drawn in a typeface the system already has, so nobody downloads one. The two faces stay first:
+     digits and Latin letters are still theirs. And Chinese is not set tighter the way a Latin heading is. */
   html:lang(zh-Hans) {
-    font-family: "Inter Variable", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+    --font-body: "Figtree Variable", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+    --font-display: "Gabarito Variable", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
     --tracking-tight: 0em;
   }
 }

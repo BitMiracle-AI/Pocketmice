@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { membersQuery } from '@/features/space/members';
+import { SpaceMark } from '@/features/space/SpaceMark';
 import { spaceHolds, spaceSizeQuery } from '@/features/space/spaces';
 import { shareOf } from '@/features/space/storageLimit';
 import { spaceText } from '@/features/space/text';
@@ -58,7 +59,7 @@ export function FileInspector({
   return (
     // The pane of another file is another pane: it begins at its top, with nothing of the one before in it
     <ScrollArea key={file?.id} className="min-h-0 flex-1">
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-5 p-5">
         {file === null ? (
           <SpaceDetails />
         ) : file.kind === 'folder' ? (
@@ -80,7 +81,12 @@ function Locate({ file }: { file: DriveFile }) {
   const isMobile = useIsMobile();
   const fileId = isMobile && file.kind === 'file' ? file.parentId : file.id;
   return (
-    <Button variant="outline" size="sm" nativeButton={false} render={<FilesLink spaceId={space.id} fileId={fileId} />}>
+    <Button
+      variant="secondary"
+      size="sm"
+      nativeButton={false}
+      render={<FilesLink spaceId={space.id} fileId={fileId} />}
+    >
       {fileText.showInFolder}
     </Button>
   );
@@ -100,21 +106,24 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** What it is called and how it is described, with the way to describe it when there is one */
+/** What it is: its icon and its name, how it is described, and the way to describe it when there is one */
 function Heading({ file, onDescribe }: { file: DriveFile; onDescribe?: () => void }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <h2 className="text-base font-medium break-words">{file.name}</h2>
-      {file.description && (
-        <p className="text-sm break-words whitespace-pre-line text-muted-foreground">{file.description}</p>
-      )}
-      {onDescribe && (
-        <div>
-          <Button variant="link" size="sm" className="px-0" onClick={onDescribe}>
-            {file.description ? fileText.editDescription : fileText.addDescription}
-          </Button>
-        </div>
-      )}
+    <div className="flex items-start gap-3">
+      <FileIcon name={file.name} folder={file.kind === 'folder'} className="size-7" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <h2 className="text-xl leading-7 font-semibold break-words">{file.name}</h2>
+        {file.description && (
+          <p className="text-sm break-words whitespace-pre-line text-muted-foreground">{file.description}</p>
+        )}
+        {onDescribe && (
+          <div>
+            <Button variant="link" size="sm" className="h-auto px-0" onClick={onDescribe}>
+              {file.description ? fileText.editDescription : fileText.addDescription}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -123,16 +132,16 @@ function Heading({ file, onDescribe }: { file: DriveFile; onDescribe?: () => voi
 function EditButtons({ file, onAct }: { file: DriveFile; onAct: (file: DriveFile, what: FileAction) => void }) {
   return (
     <ButtonGroup>
-      <Button variant="outline" size="sm" onClick={() => onAct(file, 'rename')}>
+      <Button variant="secondary" size="sm" onClick={() => onAct(file, 'rename')}>
         <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} data-icon="inline-start" />
         {fileText.rename}
       </Button>
-      <Button variant="outline" size="sm" onClick={() => onAct(file, 'move')}>
+      <Button variant="secondary" size="sm" onClick={() => onAct(file, 'move')}>
         <HugeiconsIcon icon={FolderTransferIcon} strokeWidth={2} data-icon="inline-start" />
         {fileText.move}
       </Button>
       <Button
-        variant="outline"
+        variant="secondary"
         size="icon-sm"
         aria-label={fileText.toTrash}
         title={fileText.toTrash}
@@ -174,7 +183,8 @@ function FileDetails({
       <Heading file={file} onDescribe={onAct && (() => onAct(file, 'describe'))} />
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => downloadFile(space.id, file)}>
+        {/* The main thing to do takes the room the others leave, or a line of its own where there is none */}
+        <Button size="sm" className="flex-1" onClick={() => downloadFile(space.id, file)}>
           <HugeiconsIcon icon={Download04Icon} strokeWidth={2} data-icon="inline-start" />
           {fileText.downloadFile}
         </Button>
@@ -242,15 +252,19 @@ function Versions({ file }: { file: DriveFile }) {
             const when = formatMoment(version.createdAt);
             const isCurrent = version.id === file.version?.id;
             return (
-              <Item key={version.id} size="xs" variant="outline">
+              <Item key={version.id} size="xs" variant="muted">
                 <ItemMedia>
-                  {version.apiKey ? <KeyMark size="sm" /> : <PersonAvatar name={version.user.name} size="sm" />}
+                  {version.apiKey ? (
+                    <KeyMark size="sm" />
+                  ) : (
+                    <PersonAvatar id={version.user.id} name={version.user.name} size="sm" />
+                  )}
                 </ItemMedia>
                 <ItemContent>
                   {/* How long ago, which the pane has room for; the moment itself is said when it is pointed at */}
                   <ItemTitle title={when}>
                     {formatWhen(version.createdAt)}
-                    {isCurrent && <Badge variant="secondary">{fileText.current}</Badge>}
+                    {isCurrent && <Badge>{fileText.current}</Badge>}
                   </ItemTitle>
                   <ItemDescription
                     title={version.apiKey ? fileText.viaKey(version.user.name, version.apiKey.name) : undefined}
@@ -262,7 +276,7 @@ function Versions({ file }: { file: DriveFile }) {
                 <ItemActions>
                   {canEdit && !isCurrent && (
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="xs"
                       aria-label={fileText.restoreVersion(when)}
                       disabled={restoring !== null}
@@ -290,7 +304,7 @@ function Versions({ file }: { file: DriveFile }) {
       {versions.hasNextPage && (
         <div>
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             disabled={versions.isFetchingNextPage}
             onClick={() => versions.fetchNextPage()}
@@ -326,10 +340,7 @@ function FolderDetails({
 }) {
   return (
     <>
-      <div className="flex items-start gap-3">
-        <FileIcon name={folder.name} folder className="mt-0.5 size-6" />
-        <Heading file={folder} onDescribe={onAct && (() => onAct(folder, 'describe'))} />
-      </div>
+      <Heading file={folder} onDescribe={onAct && (() => onAct(folder, 'describe'))} />
 
       {(onAct || locate) && (
         <div className="flex flex-wrap gap-2">
@@ -365,9 +376,12 @@ function SpaceDetails() {
 
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <h2 className="text-base font-medium break-words">{space.name}</h2>
-        <p className="text-sm text-muted-foreground">{fileText.pickHint}</p>
+      <div className="flex items-start gap-3">
+        <SpaceMark id={space.id} name={space.name} />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <h2 className="text-xl leading-9 font-semibold break-words">{space.name}</h2>
+          <p className="text-sm text-muted-foreground">{fileText.pickHint}</p>
+        </div>
       </div>
 
       <Separator />

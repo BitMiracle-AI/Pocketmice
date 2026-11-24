@@ -113,7 +113,7 @@ export function NewKeyDialog({
           </FieldGroup>
 
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>{apiKeyText.cancel}</DialogClose>
+            <DialogClose render={<Button type="button" variant="secondary" />}>{apiKeyText.cancel}</DialogClose>
             <Button type="submit" disabled={busy}>
               {busy && <Spinner data-icon="inline-start" />}
               {apiKeyText.create}

@@ -47,7 +47,7 @@ export function JoinPage({ inviteId }: { inviteId: string }) {
     return (
       <CardPage title={inviteText.deadTitle} description={inviteText.deadDescription} foot={foot}>
         <Field>
-          <Button variant="outline" nativeButton={false} render={<Link to="/" />}>
+          <Button variant="secondary" nativeButton={false} render={<Link to="/" />}>
             {commonText.toHome}
           </Button>
         </Field>

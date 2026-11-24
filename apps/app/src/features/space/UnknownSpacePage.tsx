@@ -9,7 +9,7 @@ import { spaceText } from './text';
 export function UnknownSpacePage() {
   return (
     <EmptyPage icon={FolderOffIcon} title={spaceText.unknownTitle} description={spaceText.unknownDescription}>
-      <Button variant="outline" nativeButton={false} render={<Link to="/" />}>
+      <Button nativeButton={false} render={<Link to="/" />}>
         {commonText.toHome}
       </Button>
     </EmptyPage>

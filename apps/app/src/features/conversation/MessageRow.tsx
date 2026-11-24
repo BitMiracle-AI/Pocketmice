@@ -56,7 +56,7 @@ export function MessageRow({
     <MessageLine align={mine ? 'end' : 'start'} className={cn('group/row', head ? 'pt-4' : 'pt-1')}>
       {!mine && (
         <div className="flex w-8 shrink-0 justify-center pt-5">
-          {head && (apiKey ? <KeyMark /> : <PersonAvatar name={user.name} />)}
+          {head && (apiKey ? <KeyMark /> : <PersonAvatar id={user.id} name={user.name} />)}
         </div>
       )}
 
@@ -92,7 +92,7 @@ export function MessageRow({
             <Bubble variant={mine ? 'default' : apiKey ? 'tinted' : 'muted'} className="max-w-[min(80%,40rem)]">
               <BubbleContent className="whitespace-pre-wrap">
                 {message.mentionedUserIds.length > 0 && (
-                  <span className={cn('block font-medium', !mine && 'text-primary dark:text-chart-1')}>
+                  <span className={cn('block font-semibold', !mine && 'text-primary')}>
                     {message.mentionedUserIds.map((userId) => conversationText.at(nameOf(userId))).join(' ')}
                   </span>
                 )}

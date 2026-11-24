@@ -1,8 +1,9 @@
-import { ArrowRight01Icon, FolderOpenIcon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { useEffect, useRef } from 'react';
+import { Mouse } from '@/components/Mouse';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -126,8 +127,8 @@ function Column({
       ) : files.length === 0 && arriving.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <HugeiconsIcon icon={FolderOpenIcon} strokeWidth={2} />
+            <EmptyMedia>
+              <Mouse />
             </EmptyMedia>
             <EmptyTitle>{folder.id === null ? fileText.emptySpace : fileText.emptyFolder}</EmptyTitle>
             <EmptyDescription>{onAct ? fileText.emptyHint : fileText.emptyHintViewer}</EmptyDescription>
@@ -183,7 +184,7 @@ function Row({
       <FileIcon name={file.name} folder={isFolder} />
       {/* The button cuts a name to one line only where nothing follows it, and a folder's arrow does */}
       <span className="truncate">{file.name}</span>
-      {isFolder && <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-auto text-muted-foreground" />}
+      {isFolder && <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-auto size-4 opacity-50" />}
     </SidebarMenuButton>
   );
   if (isFolder && !onAct) return <SidebarMenuItem ref={item}>{button}</SidebarMenuItem>;

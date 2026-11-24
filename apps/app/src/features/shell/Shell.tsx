@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarSeparator,
   useSidebar
 } from '@/components/ui/sidebar';
 import { UploadPanel } from '@/features/upload/UploadPanel';
@@ -21,8 +22,8 @@ import { useUploads } from '@/features/upload/uploads';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { UserMenu } from './UserMenu';
 
-// The frame of the pages that have a sidebar: shadcn's inset sidebar on the left, and the page as a card next to
-// it. What the sidebar holds differs with where the page is (inside a space, or in the settings, which are the
+// The frame of the pages that have a sidebar: the sidebar on the blue of the frame, and the page as a white tile
+// next to it. What the sidebar holds differs with where the page is (inside a space, or in the settings, which are the
 // person's and no space's), so the frame is handed its parts: what is at its top (where the page is), its rows
 // (the pages there are here), and the small rows at its bottom (the ways out of here). It always ends with the
 // uploads that are going, while there are any, and with who is signed in.
@@ -74,6 +75,7 @@ export function Shell({
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
+        <SidebarSeparator />
         <SidebarFooter>
           <SidebarMenu>
             <UploadsRow />
@@ -104,8 +106,8 @@ function Head({
       <SidebarMenuButton size="lg" render={home} onClick={() => setOpenMobile(false)}>
         {mark}
         <div className="grid flex-1 text-left text-sm leading-tight">
-          <span className="truncate font-medium">{title}</span>
-          <span className="truncate text-xs">{subtitle}</span>
+          <span className="truncate font-heading text-base font-semibold">{title}</span>
+          <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
         </div>
       </SidebarMenuButton>
     </SidebarMenuItem>

@@ -102,7 +102,7 @@ export function NewInviteDialog({
           </FieldGroup>
 
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>{inviteText.cancel}</DialogClose>
+            <DialogClose render={<Button type="button" variant="secondary" />}>{inviteText.cancel}</DialogClose>
             <Button type="submit" disabled={busy}>
               {busy && <Spinner data-icon="inline-start" />}
               {inviteText.createLink}

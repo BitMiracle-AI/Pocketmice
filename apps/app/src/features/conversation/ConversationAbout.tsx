@@ -119,7 +119,7 @@ export function ConversationAbout({
             <p className="text-sm text-muted-foreground">{conversationText.membersCount(members.length)}</p>
           </div>
           <div>
-            <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
+            <Button variant="secondary" size="sm" onClick={() => setRenaming(true)}>
               <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} data-icon="inline-start" />
               {conversationText.rename}
             </Button>
@@ -139,9 +139,9 @@ export function ConversationAbout({
             ) : (
               <ItemGroup aria-label={conversationText.membersLabel}>
                 {members.map((member) => (
-                  <Item key={member.userId} size="xs" variant="outline">
+                  <Item key={member.userId} size="xs" variant="muted">
                     <ItemMedia>
-                      <PersonAvatar name={member.name} size="sm" />
+                      <PersonAvatar id={member.userId} name={member.name} size="sm" />
                     </ItemMedia>
                     <ItemContent className="min-w-0">
                       <ItemTitle>
@@ -191,9 +191,9 @@ export function ConversationAbout({
             ) : (
               <ItemGroup aria-labelledby="conversation-add-people">
                 {others.map((each) => (
-                  <Item key={each.userId} size="xs" variant="outline">
+                  <Item key={each.userId} size="xs" variant="muted">
                     <ItemMedia>
-                      <PersonAvatar name={each.name} size="sm" />
+                      <PersonAvatar id={each.userId} name={each.name} size="sm" />
                     </ItemMedia>
                     <ItemContent className="min-w-0">
                       <ItemTitle>
@@ -203,7 +203,7 @@ export function ConversationAbout({
                     </ItemContent>
                     <ItemActions>
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="xs"
                         aria-label={conversationText.addMember(each.name)}
                         disabled={busy !== null}
@@ -224,7 +224,7 @@ export function ConversationAbout({
               <Separator />
               <div className="flex flex-wrap gap-2">
                 {isMember && (
-                  <Button variant="outline" size="sm" onClick={() => setAsking('leave')}>
+                  <Button variant="secondary" size="sm" onClick={() => setAsking('leave')}>
                     {conversationText.leave}
                   </Button>
                 )}

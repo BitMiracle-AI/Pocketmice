@@ -8,7 +8,7 @@ import { EmptyPage } from './EmptyPage';
 export function NotFound() {
   return (
     <EmptyPage icon={FileSearchIcon} title={commonText.notFoundTitle} description={commonText.notFoundDescription}>
-      <Button variant="outline" nativeButton={false} render={<Link to="/" />}>
+      <Button nativeButton={false} render={<Link to="/" />}>
         {commonText.toHome}
       </Button>
     </EmptyPage>

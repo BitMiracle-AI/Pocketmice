@@ -5,9 +5,9 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Brand } from './Brand';
 
 /**
- * A page that has nothing to show and says why, with no sidebar: an address with nothing at it, a space the
- * person is not in, a page that failed to load. The name of the product is in its corner, and leads to the start;
- * children is the way on.
+ * A page that has nothing to show and says why, with no sidebar and so on the frame: an address with nothing at
+ * it, a space the person is not in, a page that failed to load. The name of the product is in its corner, and
+ * leads to the start; children is the way on.
  */
 export function EmptyPage({
   icon,
@@ -21,8 +21,8 @@ export function EmptyPage({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="flex h-14 shrink-0 items-center px-4 lg:px-6">
+    <div className="on-frame flex min-h-svh flex-col">
+      <header className="flex h-16 shrink-0 items-center px-4 lg:px-6">
         <Brand />
       </header>
       <Empty>

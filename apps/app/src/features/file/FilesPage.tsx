@@ -4,6 +4,7 @@ import { getFile, getFileByPath } from '@pocketmice/contract/domains/file';
 import { roleCovers } from '@pocketmice/contract/spaceRole';
 import { useQueries, useSuspenseQueries } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
+import { SidePane } from '@/components/SidePane';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -146,7 +147,7 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
             {canEdit && !searching && (
               <>
                 {/* On a narrow window the buttons keep their icons and drop their words, which stay as their names */}
-                <Button variant="outline" aria-label={fileText.newFolder} onClick={() => setNaming(true)}>
+                <Button variant="secondary" aria-label={fileText.newFolder} onClick={() => setNaming(true)}>
                   <HugeiconsIcon icon={FolderAddIcon} strokeWidth={2} data-icon="inline-start" />
                   <span className="hidden xl:inline">{fileText.newFolder}</span>
                 </Button>
@@ -204,9 +205,9 @@ function Files({ picked, words }: { picked: DriveFile | null; words: string }) {
         )}
         {/* The pane stands beside the columns where there is room for it; a phone has it come up over them */}
         {!isMobile && (
-          <aside aria-label={fileText.details} className="flex w-80 shrink-0 flex-col border-l xl:w-96">
+          <SidePane aria-label={fileText.details} className="w-80 xl:w-96">
             <FileInspector file={picked} onAct={onAct} locate={locate} />
-          </aside>
+          </SidePane>
         )}
       </div>
 

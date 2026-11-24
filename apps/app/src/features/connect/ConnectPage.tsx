@@ -55,7 +55,7 @@ export function ConnectPage() {
             {apiKey !== null && (
               <CardAction>
                 {/* On a narrow window the button keeps its icon and drops its words, which stay as its name */}
-                <Button variant="outline" aria-label={connectText.newKey} onClick={() => setCreating(true)}>
+                <Button variant="secondary" aria-label={connectText.newKey} onClick={() => setCreating(true)}>
                   <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
                   <span className="hidden sm:inline">{connectText.newKey}</span>
                 </Button>
@@ -144,7 +144,7 @@ export function ConnectPage() {
             <CardDescription>{connectText.tryHint}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Item variant="outline" size="sm">
+            <Item variant="muted" size="sm">
               <ItemContent>
                 <ItemTitle>{connectText.tryPrompt}</ItemTitle>
               </ItemContent>

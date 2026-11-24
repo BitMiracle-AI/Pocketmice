@@ -129,7 +129,7 @@ export function FilePreview({ file }: { file: DriveFile }) {
 
   return (
     <>
-      <AspectRatio ratio={4 / 3} className="overflow-hidden rounded-xl bg-muted">
+      <AspectRatio ratio={4 / 3} className="overflow-hidden rounded-2xl bg-muted">
         {preview.kind === 'none' ? (
           <Quiet>
             <FileIcon name={file.name} className="size-10" />
@@ -313,14 +313,14 @@ function Large({
       draw={(bytes) => {
         if (preview.kind === 'image') {
           return (
-            <div className="overflow-hidden rounded-xl bg-muted">
+            <div className="overflow-hidden rounded-2xl bg-muted">
               <Picture bytes={bytes} preview={preview} name={file.name} className={className} />
             </div>
           );
         }
         if (preview.kind === 'pdf') {
           return (
-            <div className="overflow-hidden rounded-xl bg-muted">
+            <div className="overflow-hidden rounded-2xl bg-muted">
               <Pdf bytes={bytes} file={file} className={className} />
             </div>
           );
@@ -510,7 +510,7 @@ function Player({
     return (
       <div
         className={cn(
-          'flex flex-col items-center justify-center gap-6 rounded-xl bg-muted p-6 text-muted-foreground',
+          'flex flex-col items-center justify-center gap-6 rounded-2xl bg-muted p-6 text-muted-foreground',
           className
         )}
       >
@@ -522,7 +522,7 @@ function Player({
     );
   }
   return (
-    <div className="overflow-hidden rounded-xl bg-muted">
+    <div className="overflow-hidden rounded-2xl bg-muted">
       <video {...playing} playsInline className={cn('bg-black', className)}>
         {source}
       </video>

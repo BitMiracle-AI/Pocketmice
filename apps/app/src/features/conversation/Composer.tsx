@@ -132,7 +132,7 @@ export function Composer({
                 </Badge>
               ))}
               {writing.files.map((file) => (
-                <Badge key={file.id} variant="outline" className="max-w-full pr-1">
+                <Badge key={file.id} variant="secondary" className="max-w-full pr-1">
                   <FileIcon name={file.name} folder={file.kind === 'folder'} />
                   <span className="truncate">{file.name}</span>
                   <button
@@ -200,7 +200,7 @@ export function Composer({
                           })
                         }
                       >
-                        <PersonAvatar name={member.name} size="sm" />
+                        <PersonAvatar id={member.userId} name={member.name} size="sm" />
                         <span className="truncate">
                           {member.userId === user.id ? conversationText.nameAndYou(member.name) : member.name}
                         </span>

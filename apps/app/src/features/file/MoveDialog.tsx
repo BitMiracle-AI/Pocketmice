@@ -3,6 +3,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { getFile } from '@pocketmice/contract/domains/file';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PickBox, PickRow } from '@/components/PickBox';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
@@ -118,12 +119,12 @@ function MoveForm({ file, from, onDone }: { file: DriveFile; from: Place | null;
               <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
             </Button>
           ) : (
-            <SpaceMark name={space.name} />
+            <SpaceMark id={space.id} name={space.name} />
           )}
           <span className="truncate font-medium">{at?.name ?? space.name}</span>
         </div>
 
-        <div className="h-56 overflow-y-auto rounded-2xl border p-1">
+        <PickBox className="h-56">
           {inside.isPending ? (
             <div className="flex h-full items-center justify-center">
               <Spinner />
@@ -138,24 +139,20 @@ function MoveForm({ file, from, onDone }: { file: DriveFile; from: Place | null;
             <ul>
               {folders?.map((each) => (
                 <li key={each.id}>
-                  <button
-                    type="button"
-                    onClick={() => go(each)}
-                    className="flex h-9 w-full min-w-0 items-center gap-3 rounded-xl px-2.5 text-left outline-none hover:bg-muted/70 focus-visible:ring-3 focus-visible:ring-ring/30"
-                  >
-                    <FileIcon name={each.name} folder className="size-4.5" />
+                  <PickRow render={<button type="button" onClick={() => go(each)} />}>
+                    <FileIcon name={each.name} folder />
                     <span className="min-w-0 flex-1 truncate">{each.name}</span>
                     <HugeiconsIcon
                       icon={ArrowRight01Icon}
                       strokeWidth={2}
                       className="size-4 shrink-0 text-muted-foreground"
                     />
-                  </button>
+                  </PickRow>
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </PickBox>
 
         {/* One line under the list, kept whether it says something or not: the buttons below do not jump */}
         <p role={problem !== null ? 'alert' : undefined} className="min-h-5 text-muted-foreground">
@@ -170,7 +167,7 @@ function MoveForm({ file, from, onDone }: { file: DriveFile; from: Place | null;
       </div>
 
       <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" />}>{fileText.cancel}</DialogClose>
+        <DialogClose render={<Button type="button" variant="secondary" />}>{fileText.cancel}</DialogClose>
         <Button disabled={busy || alreadyHere || taken || !inside.isSuccess} onClick={move}>
           {busy && <Spinner data-icon="inline-start" />}
           {fileText.moveHere}

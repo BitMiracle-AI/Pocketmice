@@ -99,7 +99,7 @@ export function MembersPage() {
         title={shellText.members}
         actions={
           !isOwner && (
-            <Button variant="outline" onClick={() => setAsking('leave')}>
+            <Button variant="secondary" onClick={() => setAsking('leave')}>
               {spaceText.leave}
             </Button>
           )
@@ -128,9 +128,9 @@ export function MembersPage() {
           <CardContent>
             <ItemGroup aria-label={spaceText.membersLabel}>
               {members.map((member) => (
-                <Item key={member.userId} variant="outline" size="sm">
+                <Item key={member.userId} variant="muted" size="sm">
                   <ItemMedia>
-                    <PersonAvatar name={member.name} />
+                    <PersonAvatar id={member.userId} name={member.name} />
                   </ItemMedia>
                   <ItemContent className="min-w-0">
                     <ItemTitle>

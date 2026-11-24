@@ -1,4 +1,4 @@
-import { Add01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { Add01Icon, ArrowRight02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -21,6 +21,7 @@ import { useNewSpace } from './useNewSpace';
 // The start: the spaces the person is in, a card each. A space is gone into by opening its card, and left by
 // coming back here: there is no other switch. Signing in leads here, whichever space the person was in last.
 // The page is outside the frame of a space: it has no sidebar, and who is signed in is in the corner of its bar.
+// It is on the blue of the frame itself, and the spaces are white cards on it.
 // Someone who is in no space is asked to make one, here: the server makes none for them.
 
 export function SpacesPage() {
@@ -29,13 +30,13 @@ export function SpacesPage() {
 
   if (spaces.length === 0) return <FirstSpace />;
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="on-frame flex min-h-svh flex-col">
       <TopBar />
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
-        <div className="flex items-center gap-4">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <h1 className="text-xl font-semibold">{spaceText.spacesTitle}</h1>
-            <p className="text-sm text-muted-foreground">{spaceText.whatASpaceIs}</p>
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-4 md:p-6 md:pt-10">
+        <div className="flex items-end gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <h1 className="text-3xl font-bold md:text-4xl">{spaceText.spacesTitle}</h1>
+            <p className="text-base text-muted-foreground">{spaceText.whatASpaceIs}</p>
           </div>
           <Button onClick={() => setCreating(true)}>
             <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
@@ -63,15 +64,18 @@ function SpaceCard({ space }: { space: Space }) {
       params={{ spaceId: space.id }}
       className="group/space block rounded-4xl outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
     >
-      <Card className="transition-colors group-hover/space:bg-muted/50">
+      <Card className="gap-10">
         <CardHeader>
-          <SpaceMark name={space.name} />
+          <SpaceMark id={space.id} name={space.name} large />
           <CardAction>
-            <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-4 text-muted-foreground" />
+            {/* The way in: it takes the colour of the main button while the pointer is on the card */}
+            <span className="flex size-9 items-center justify-center rounded-full bg-secondary text-muted-foreground group-hover/space:bg-primary group-hover/space:text-primary-foreground">
+              <HugeiconsIcon icon={ArrowRight02Icon} strokeWidth={2} className="size-4" />
+            </span>
           </CardAction>
         </CardHeader>
-        <CardContent className="flex flex-col gap-1">
-          <CardTitle className="truncate">{space.name}</CardTitle>
+        <CardContent className="flex flex-col gap-0.5">
+          <CardTitle className="truncate text-xl">{space.name}</CardTitle>
           <CardDescription>{spaceText.roles[space.role]}</CardDescription>
         </CardContent>
       </Card>

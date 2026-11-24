@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Marker, MarkerContent } from '@/components/ui/marker';
 import {
@@ -99,7 +100,7 @@ export function MessageStream({
         {/* Above the messages and not among them: the scroller keeps the person's place by the messages it holds */}
         {earlier && (
           <div className="flex justify-center pt-4">
-            <Button variant="outline" size="sm" disabled={earlier.busy} onClick={earlier.show}>
+            <Button variant="secondary" size="sm" disabled={earlier.busy} onClick={earlier.show}>
               {earlier.busy && <Spinner data-icon="inline-start" />}
               {conversationText.showEarlier}
             </Button>
@@ -122,9 +123,11 @@ export function MessageStream({
                 <Marker
                   variant="separator"
                   data-unread-line=""
-                  className="pt-4 text-xs font-medium text-primary before:bg-primary/30 after:bg-primary/30 dark:text-chart-1"
+                  className="pt-4 before:bg-primary/30 after:bg-primary/30"
                 >
-                  <MarkerContent>{conversationText.newMessages}</MarkerContent>
+                  <MarkerContent>
+                    <Badge>{conversationText.newMessages}</Badge>
+                  </MarkerContent>
                 </Marker>
               )}
               <MessageRow

@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-qu
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { PersonAvatar } from '@/components/PersonAvatar';
+import { SidePane } from '@/components/SidePane';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -183,7 +184,7 @@ function OpenConversation({
               <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
             </Button>
             {/* The page is the conversations of the space, which the bar of the list says: this is one of them */}
-            <h2 className="min-w-0 flex-1 truncate text-base font-medium">{conversation.title}</h2>
+            <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">{conversation.title}</h2>
             {/* Who is in it at a glance: read out as how many they are, and not as their letters */}
             <AvatarGroup
               role="img"
@@ -192,7 +193,7 @@ function OpenConversation({
               className="max-sm:hidden"
             >
               {members.slice(0, AVATARS_SHOWN).map((member) => (
-                <PersonAvatar key={member.userId} name={member.name} size="sm" />
+                <PersonAvatar key={member.userId} id={member.userId} name={member.name} size="sm" />
               ))}
               {members.length > AVATARS_SHOWN && (
                 <AvatarGroupCount>{conversationText.moreMembers(members.length - AVATARS_SHOWN)}</AvatarGroupCount>
@@ -218,7 +219,7 @@ function OpenConversation({
                     <EmptyDescription role="alert">{thrownText(held.error)}</EmptyDescription>
                   </EmptyHeader>
                   <EmptyContent>
-                    <Button variant="outline" onClick={() => held.refetch()}>
+                    <Button variant="secondary" onClick={() => held.refetch()}>
                       {commonText.tryAgain}
                     </Button>
                   </EmptyContent>
@@ -258,9 +259,9 @@ function OpenConversation({
       </div>
 
       {pane !== null && beside && (
-        <aside aria-label={paneName} className="flex min-h-0 w-80 shrink-0 flex-col border-l @7xl:w-96">
+        <SidePane aria-label={paneName} className="w-80 @7xl:w-96">
           {paneContent}
-        </aside>
+        </SidePane>
       )}
       {!beside && (
         <Drawer

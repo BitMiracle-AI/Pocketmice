@@ -1,11 +1,4 @@
-import {
-  Add01Icon,
-  Delete02Icon,
-  Key01Icon,
-  MoreHorizontalIcon,
-  ViewIcon,
-  ViewOffSlashIcon
-} from '@hugeicons/core-free-icons';
+import { Add01Icon, Delete02Icon, MoreHorizontalIcon, ViewIcon, ViewOffSlashIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -13,6 +6,7 @@ import { cn } from 'cn';
 import { useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import { KeyMark } from '@/components/KeyMark';
+import { Mouse } from '@/components/Mouse';
 import { Page } from '@/components/Page';
 import {
   AlertDialog,
@@ -104,8 +98,8 @@ export function KeysPage() {
             {data.apiKeys.length === 0 ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <HugeiconsIcon icon={Key01Icon} strokeWidth={2} />
+                  <EmptyMedia>
+                    <Mouse />
                   </EmptyMedia>
                   <EmptyTitle>{apiKeyText.emptyTitle}</EmptyTitle>
                   <EmptyDescription>{apiKeyText.emptyDescription}</EmptyDescription>
@@ -173,7 +167,7 @@ function KeyRow({
   onRemove: () => void;
 }) {
   return (
-    <Item variant="outline" size="sm">
+    <Item variant="muted" size="sm">
       <ItemMedia>
         <KeyMark />
       </ItemMedia>

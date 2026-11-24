@@ -1,9 +1,10 @@
-import { Add01Icon, BubbleChatIcon, ViewIcon } from '@hugeicons/core-free-icons';
+import { Add01Icon, ViewIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { type ReactNode, useState } from 'react';
+import { Mouse } from '@/components/Mouse';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -62,7 +63,7 @@ export function ConversationsFrame({ openId, children }: { openId: string | null
           title={shellText.conversations}
           actions={
             <Button
-              variant="ghost"
+              variant="secondary"
               size="icon-sm"
               aria-label={conversationText.start}
               title={conversationText.start}
@@ -93,7 +94,7 @@ export function ConversationsFrame({ openId, children }: { openId: string | null
                   <EmptyDescription role="alert">{thrownText(list.error)}</EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button variant="outline" size="sm" onClick={() => list.refetch()}>
+                  <Button variant="secondary" size="sm" onClick={() => list.refetch()}>
                     {commonText.tryAgain}
                   </Button>
                 </EmptyContent>
@@ -127,7 +128,7 @@ export function ConversationsFrame({ openId, children }: { openId: string | null
               {list.hasNextPage && (
                 <div className="flex justify-center pt-3">
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     disabled={list.isFetchingNextPage}
                     onClick={() => list.fetchNextPage()}
@@ -157,16 +158,14 @@ function NoConversations({ all, onStart, className }: { all: boolean; onStart: (
   return (
     <Empty className={className}>
       <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <HugeiconsIcon icon={BubbleChatIcon} strokeWidth={2} />
+        <EmptyMedia>
+          <Mouse />
         </EmptyMedia>
         <EmptyTitle>{all ? conversationText.noneInSpace : conversationText.noneTitle}</EmptyTitle>
         <EmptyDescription>{conversationText.noneHint}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button variant="outline" onClick={onStart}>
-          {conversationText.start}
-        </Button>
+        <Button onClick={onStart}>{conversationText.start}</Button>
       </EmptyContent>
     </Empty>
   );

@@ -77,7 +77,7 @@ function MemberLimitForm({ spaceId, member, onDone }: { spaceId: string; member:
         }}
       />
       <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" />}>{spaceText.cancel}</DialogClose>
+        <DialogClose render={<Button type="button" variant="secondary" />}>{spaceText.cancel}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Spinner data-icon="inline-start" />}
           {commonText.save}

@@ -26,7 +26,7 @@ export function FileGonePage() {
           <EmptyDescription>{fileText.goneDescription}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" nativeButton={false} render={<FilesLink spaceId={space.id} fileId={null} />}>
+          <Button variant="secondary" nativeButton={false} render={<FilesLink spaceId={space.id} fileId={null} />}>
             {fileText.toFiles}
           </Button>
         </EmptyContent>

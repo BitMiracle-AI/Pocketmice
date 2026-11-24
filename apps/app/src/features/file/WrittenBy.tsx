@@ -1,4 +1,4 @@
-import { KeyMark } from '@/components/KeyMark';
+import { KeyChip } from '@/components/KeyMark';
 import { PersonAvatar } from '@/components/PersonAvatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DriveFile } from './files';
@@ -14,7 +14,7 @@ export function WrittenBy({ version }: { version: NonNullable<DriveFile['version
   if (!apiKey) {
     return (
       <span className="flex min-w-0 items-center gap-2">
-        <PersonAvatar name={user.name} size="sm" />
+        <PersonAvatar id={user.id} name={user.name} size="sm" />
         <span className="truncate">{user.name}</span>
       </span>
     );
@@ -25,18 +25,13 @@ export function WrittenBy({ version }: { version: NonNullable<DriveFile['version
         render={
           <button
             type="button"
-            className="flex max-w-full min-w-0 cursor-default items-center gap-2 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+            className="flex max-w-full min-w-0 cursor-default items-center gap-2 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
           />
         }
       >
-        <KeyMark size="sm" />
-        <span className="truncate">
-          <span className="text-foreground">{apiKey.name}</span>
-          <span aria-hidden="true" className="px-1.5 text-muted-foreground/50">
-            ·
-          </span>
-          {user.name}
-        </span>
+        {/* The key is a piece of the agent's violet, and the person it wrote as follows in the plain ink */}
+        <KeyChip name={apiKey.name} />
+        <span className="truncate text-muted-foreground">{user.name}</span>
       </TooltipTrigger>
       <TooltipContent className="max-w-72">{fileText.viaKey(user.name, apiKey.name)}</TooltipContent>
     </Tooltip>

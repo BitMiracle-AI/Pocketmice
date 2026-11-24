@@ -95,7 +95,7 @@ function UploadItem({ upload }: { upload: Upload }) {
   const going = upload.state === 'waiting' || upload.state === 'sending';
 
   return (
-    <Item size="xs" variant="outline">
+    <Item size="xs" variant="muted">
       <ItemMedia variant="icon">
         <FileIcon name={upload.name} />
       </ItemMedia>
@@ -157,7 +157,7 @@ function UploadItem({ upload }: { upload: Upload }) {
 
       {upload.state === 'failed' && upload.failure !== 'TOO_LARGE' && (
         <ItemActions className="basis-full">
-          <Button size="xs" variant="outline" onClick={() => retryUpload(upload.id)}>
+          <Button size="xs" variant="secondary" onClick={() => retryUpload(upload.id)}>
             {uploadText.tryAgain}
           </Button>
         </ItemActions>

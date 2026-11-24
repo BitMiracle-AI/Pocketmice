@@ -67,7 +67,7 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
         <CardDescription>{inviteText.hint}</CardDescription>
         <CardAction>
           {/* On a narrow window the button keeps its icon and drops its words, which stay as its name */}
-          <Button variant="outline" aria-label={inviteText.newLink} onClick={() => setAdding(true)}>
+          <Button variant="secondary" aria-label={inviteText.newLink} onClick={() => setAdding(true)}>
             <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
             <span className="hidden sm:inline">{inviteText.newLink}</span>
           </Button>
@@ -79,7 +79,7 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
         ) : (
           <ItemGroup aria-label={inviteText.listLabel}>
             {invites.map((invite) => (
-              <Item key={invite.id} variant="outline" size="sm">
+              <Item key={invite.id} variant="muted" size="sm">
                 <ItemMedia variant="icon">
                   <HugeiconsIcon icon={Link01Icon} strokeWidth={2} />
                 </ItemMedia>

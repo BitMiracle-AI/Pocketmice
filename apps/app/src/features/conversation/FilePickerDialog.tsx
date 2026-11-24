@@ -2,6 +2,7 @@ import { ArrowLeft01Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
+import { PickBox, PickRow } from '@/components/PickBox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -93,12 +94,12 @@ function FilePicker({
               <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
             </Button>
           ) : (
-            <SpaceMark name={space.name} />
+            <SpaceMark id={space.id} name={space.name} />
           )}
           <span className="truncate font-medium">{at?.name ?? space.name}</span>
         </div>
 
-        <div className="h-64 overflow-y-auto rounded-2xl border p-1">
+        <PickBox className="h-64">
           {inside.isPending ? (
             <div className="flex h-full items-center justify-center">
               <Spinner />
@@ -125,7 +126,7 @@ function FilePicker({
                   />
                 );
                 return (
-                  <li key={file.id} className="flex h-9 min-w-0 items-center gap-3 rounded-xl px-2.5 hover:bg-muted/70">
+                  <PickRow key={file.id} render={<li />}>
                     {file.kind === 'folder' ? (
                       // A folder is ticked by its box, and walked into by its name
                       <>
@@ -133,9 +134,9 @@ function FilePicker({
                         <button
                           type="button"
                           onClick={() => setTrail([...trail, file])}
-                          className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+                          className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-full text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
                         >
-                          <FileIcon name={file.name} folder className="size-4.5" />
+                          <FileIcon name={file.name} folder />
                           <span className="min-w-0 flex-1 truncate">{file.name}</span>
                           <HugeiconsIcon
                             icon={ArrowRight01Icon}
@@ -150,16 +151,16 @@ function FilePicker({
                         className="flex h-full min-w-0 flex-1 items-center gap-3"
                       >
                         {box}
-                        <FileIcon name={file.name} className="size-4.5" />
+                        <FileIcon name={file.name} />
                         <span className="min-w-0 flex-1 truncate">{file.name}</span>
                       </label>
                     )}
-                  </li>
+                  </PickRow>
                 );
               })}
             </ul>
           )}
-        </div>
+        </PickBox>
 
         {/* One line under the list, kept whether it says something or not: the buttons below do not jump */}
         <p className="min-h-5 text-muted-foreground">
@@ -168,7 +169,7 @@ function FilePicker({
       </div>
 
       <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" />}>{conversationText.cancel}</DialogClose>
+        <DialogClose render={<Button type="button" variant="secondary" />}>{conversationText.cancel}</DialogClose>
         <Button onClick={() => onDone([...ticked])}>{conversationText.pointAtFilesConfirm}</Button>
       </DialogFooter>
     </>

@@ -19,9 +19,9 @@ export function SettingsShell({ backTo, children }: { backTo: string | undefined
       mark={
         <div
           aria-hidden="true"
-          className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+          className="flex aspect-square size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground"
         >
-          <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} className="size-4" />
+          <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} className="size-5" />
         </div>
       }
       title={shellText.settings}

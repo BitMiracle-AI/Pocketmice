@@ -18,9 +18,7 @@ export function RouteError({ error }: ErrorComponentProps) {
       title={commonText.somethingWentWrong}
       description={<span role="alert">{thrownText(error)}</span>}
     >
-      <Button variant="outline" onClick={() => router.invalidate()}>
-        {commonText.tryAgain}
-      </Button>
+      <Button onClick={() => router.invalidate()}>{commonText.tryAgain}</Button>
     </EmptyPage>
   );
 }

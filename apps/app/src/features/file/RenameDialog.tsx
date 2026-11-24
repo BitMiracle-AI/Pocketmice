@@ -76,7 +76,7 @@ function RenameForm({ spaceId, file, onDone }: { spaceId: string; file: DriveFil
         {problem !== null && <FieldError>{problem}</FieldError>}
       </Field>
       <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" />}>{fileText.cancel}</DialogClose>
+        <DialogClose render={<Button type="button" variant="secondary" />}>{fileText.cancel}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Spinner data-icon="inline-start" />}
           {fileText.renameSave}

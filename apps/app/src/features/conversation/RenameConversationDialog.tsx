@@ -76,7 +76,7 @@ function RenameForm({
         {problem !== null && <FieldError>{problem}</FieldError>}
       </Field>
       <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" />}>{conversationText.cancel}</DialogClose>
+        <DialogClose render={<Button type="button" variant="secondary" />}>{conversationText.cancel}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Spinner data-icon="inline-start" />}
           {conversationText.rename}

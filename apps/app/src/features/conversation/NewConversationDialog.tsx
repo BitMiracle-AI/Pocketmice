@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { type FormEvent, useId, useState } from 'react';
 import { PersonAvatar } from '@/components/PersonAvatar';
+import { PickBox, PickRow } from '@/components/PickBox';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -106,7 +107,7 @@ function NewConversationForm({ spaceId, onDone }: { spaceId: string; onDone: () 
       <Field>
         <FieldLabel id="new-conversation-people">{conversationText.peopleLabel}</FieldLabel>
         {others === undefined ? (
-          <div className="flex h-20 items-center justify-center rounded-2xl border">
+          <PickBox className="flex h-20 items-center justify-center">
             {members.isError ? (
               <p role="alert" className="px-6 text-center text-muted-foreground">
                 {thrownText(members.error)}
@@ -114,17 +115,15 @@ function NewConversationForm({ spaceId, onDone }: { spaceId: string; onDone: () 
             ) : (
               <Spinner />
             )}
-          </div>
+          </PickBox>
         ) : others.length === 0 ? (
           <p className="text-muted-foreground">{conversationText.nobodyElse}</p>
         ) : (
-          <ul aria-labelledby="new-conversation-people" className="max-h-48 overflow-y-auto rounded-2xl border p-1">
+          <PickBox render={<ul aria-labelledby="new-conversation-people" />} className="max-h-48">
             {others.map((member) => (
               <li key={member.userId}>
-                <label
-                  htmlFor={`${idPrefix}-${member.userId}`}
-                  className="flex h-9 min-w-0 items-center gap-3 rounded-xl px-2.5 hover:bg-muted/70"
-                >
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: the box it is the label of is inside it */}
+                <PickRow render={<label htmlFor={`${idPrefix}-${member.userId}`} />}>
                   <Checkbox
                     id={`${idPrefix}-${member.userId}`}
                     checked={picked.includes(member.userId)}
@@ -132,12 +131,12 @@ function NewConversationForm({ spaceId, onDone }: { spaceId: string; onDone: () 
                       setPicked(checked ? [...picked, member.userId] : picked.filter((each) => each !== member.userId))
                     }
                   />
-                  <PersonAvatar name={member.name} size="sm" />
+                  <PersonAvatar id={member.userId} name={member.name} size="sm" />
                   <span className="min-w-0 flex-1 truncate">{member.name}</span>
-                </label>
+                </PickRow>
               </li>
             ))}
-          </ul>
+          </PickBox>
         )}
         <FieldDescription>
           {/* No conversation is closed to the owner of the space: whoever starts one is told */}
@@ -147,7 +146,7 @@ function NewConversationForm({ spaceId, onDone }: { spaceId: string; onDone: () 
       </Field>
 
       <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" />}>{conversationText.cancel}</DialogClose>
+        <DialogClose render={<Button type="button" variant="secondary" />}>{conversationText.cancel}</DialogClose>
         <Button type="submit" disabled={busy}>
           {busy && <Spinner data-icon="inline-start" />}
           {conversationText.startConfirm}
