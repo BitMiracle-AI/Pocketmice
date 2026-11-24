@@ -109,6 +109,8 @@ export const zhHans: typeof en = {
   where: '位置',
   holds: '包含',
   nothingInside: '空',
+  takesUp: '占用',
+  takesUpHint: '里面每个文件的每个版本都算，回收站里的不算。',
   pickHint: '选一个文件或文件夹，在这里查看。',
   showInFolder: '在文件夹中显示',
   restoreShort: '恢复',

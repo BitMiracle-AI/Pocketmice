@@ -31,7 +31,7 @@ import { FileIcon } from './FileIcon';
 import { FilePreview } from './FilePreview';
 import { FilesLink } from './FilesLink';
 import { placeOf } from './fileOrder';
-import { type DriveFile, folderQuery } from './files';
+import { type DriveFile, fileSizeQuery, folderQuery } from './files';
 import { fileText } from './text';
 import { type FileVersion, restoreVersion, versionsQuery } from './versions';
 import { WrittenBy } from './WrittenBy';
@@ -331,6 +331,17 @@ function Holds({ folderId }: { folderId: string | null }) {
   return fileText.summary(folders, inside.data.length - folders) || fileText.nothingInside;
 }
 
+/**
+ * How much a folder holds with everything in it, once that is known. The pane does not wait for it: the api adds
+ * it up when it is asked, and a folder of very many files takes it seconds.
+ */
+function TakesUp({ folderId }: { folderId: string }) {
+  const space = useCurrentSpace();
+  const size = useQuery(fileSizeQuery(space.id, folderId));
+  if (!size.data) return size.isError ? null : <Skeleton className="h-5 w-16" />;
+  return <span title={fileText.takesUpHint}>{formatSize(size.data.storageSize)}</span>;
+}
+
 function FolderDetails({
   folder,
   onAct,
@@ -356,6 +367,9 @@ function FolderDetails({
       <Facts>
         <Fact label={fileText.holds}>
           <Holds folderId={folder.id} />
+        </Fact>
+        <Fact label={fileText.takesUp}>
+          <TakesUp folderId={folder.id} />
         </Fact>
         <Fact label={fileText.modified}>
           <When time={folder.updatedAt} />

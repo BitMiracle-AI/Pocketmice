@@ -124,6 +124,9 @@ export const en = {
   where: 'Location',
   holds: 'Holds',
   nothingInside: 'Nothing',
+  /** How much room a folder takes, and, for whoever points at the number, what was counted */
+  takesUp: 'Takes up',
+  takesUpHint: 'Every version of every file in it. What is in the trash is not counted.',
   pickHint: 'Pick a file or a folder to see it here.',
   showInFolder: 'Show in folder',
   /** On the button of a version, and of something in the trash */

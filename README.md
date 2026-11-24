@@ -183,9 +183,14 @@ each other, and together can go past it by as much as they add. And a limit hold
 whoever can sign in makes spaces of their own, which have no limit, so limits do not say how much the server
 holds in all.
 
+Where the bytes are is asked of `getFileSize`: how much one folder holds with everything in it, or one file with
+every version of it. What is in the trash is not counted there, though the space still keeps it. The number is
+added up when it is asked for, so it is not in the lists of files, and it takes longer the more files a folder
+has.
+
 In the web app the owner sets the limit of a space in its settings, the limit of a member from that member's row
 on the page of the members, and the limit an invite link gives when the link is made. Every member sees there how
-much the space holds, and how much each member does.
+much the space holds, and how much each member does, and among the files how much a folder that is picked holds.
 
 A reverse proxy goes in front of the API, which by itself listens on its own machine only. The API counts on the
 proxy for four things:

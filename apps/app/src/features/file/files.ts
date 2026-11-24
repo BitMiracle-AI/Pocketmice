@@ -4,6 +4,7 @@ import {
   fileName,
   getFile,
   getFileByPath,
+  getFileSize,
   getFiles,
   moveFile,
   updateFile
@@ -79,6 +80,16 @@ export function folderQuery(spaceId: string, parentId: string | null) {
       return inOrder(files, namesCompare);
     }
   });
+}
+
+/**
+ * How much a folder holds: every version of every file in it, down to the last folder, with what is in the trash
+ * left out. The api adds it up when it is asked, which takes as long as the folder has files: so it is asked for
+ * the one folder whose pane shows it, and not for each folder of a column. Whatever changes the space marks it
+ * stale with everything else read from the space (spaceChanged).
+ */
+export function fileSizeQuery(spaceId: string, fileId: string) {
+  return readQuery(getFileSize, { spaceId, fileId });
 }
 
 /** Names as a person of this language expects them in a list: file2 before file10, and a before B */

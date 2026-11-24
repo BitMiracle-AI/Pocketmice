@@ -316,11 +316,17 @@ kept counts: every version of every file, the versions before the current one an
 you write with a key counts as its person's.
 
 ```sh
-pm getSpaceSize '{"spaceId":"<space>"}'   # {"storageSize":7340032,"storageLimit":10485760}
-pm getMembers   '{"spaceId":"<space>"}'   # each member has storageSize and storageLimit too
+pm getSpaceSize '{"spaceId":"<space>"}'                    # {"storageSize":7340032,"storageLimit":10485760}
+pm getMembers   '{"spaceId":"<space>"}'                    # each member has storageSize and storageLimit too
+pm getFileSize  '{"spaceId":"<space>","fileId":"<file>"}'  # {"storageSize":5242880}
 ```
 
-Both are in bytes, and a `storageLimit` of `null` is no limit. Which member you write as is `id` of `getProfile`.
+All are in bytes, and a `storageLimit` of `null` is no limit. Which member you write as is `id` of `getProfile`.
+
+`getFileSize` says where the bytes are: how much one folder holds with everything in it, or one file with every
+version of it, which can be more than the `size` of its content now. What is in the trash is not counted there,
+though the space still keeps it. It is added up when you ask, and takes longer the more files a folder has: ask it
+of the folders that matter, not of every folder you list.
 
 An upload, a write over a file or a `restoreFileVersion` that would pass a limit is refused before anything is
 written: `SPACE_STORAGE_LIMIT_EXCEEDED` when the space would hold too much, `MEMBER_STORAGE_LIMIT_EXCEEDED` when
@@ -445,6 +451,7 @@ role `owner`; the conversations take no role, and any member of the space talks.
 | `getFiles`             | read  | `{spaceId, parentId, limit?, cursor?}`                         | `{files, nextCursor}`                                                | `NOT_FOUND`             |
 | `getFile`              | read  | `{spaceId, fileId}`                                            | `{file}`                                                             | `NOT_FOUND`             |
 | `getFileByPath`        | read  | `{spaceId, path}`                                              | `{file}`                                                             | `NOT_FOUND`             |
+| `getFileSize`          | read  | `{spaceId, fileId}`                                            | `{storageSize}`: bytes, every version under it; the trash left out   | `NOT_FOUND`             |
 | `getMatchingFiles`     | read  | `{spaceId, folderId, query, kind?, limit?, cursor?}`           | `{files, nextCursor}`                                                | `NOT_FOUND`             |
 | `getFileVersions`      | read  | `{spaceId, fileId, limit?, cursor?}`                           | `{versions, nextCursor}`                                             | `NOT_FOUND`             |
 | `getFileDownloadUrl`   | read  | `{spaceId, fileId, versionId}`                                 | `{url, version}`: where to fetch the bytes from, for 5 minutes       | `NOT_FOUND`             |

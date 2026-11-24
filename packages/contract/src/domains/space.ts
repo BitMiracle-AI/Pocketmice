@@ -118,7 +118,7 @@ export const getSpaceSize = operation({
     'storageLimit is the most the space may hold, in bytes, or null when its owner has set no limit. An upload ' +
     'that would take the space past it is refused with SPACE_STORAGE_LIMIT_EXCEEDED, and then only the owner ' +
     'can help: by deleting files for good, or by raising the limit. What each member holds, and the most each ' +
-    'may, is in getMembers.',
+    'may, is in getMembers; what one folder holds, or one file, is in getFileSize.',
   kind: 'read',
   access: 'authenticated',
   belongsTo: 'space',

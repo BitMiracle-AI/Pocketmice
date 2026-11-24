@@ -32,7 +32,8 @@ import { cursor, limit, nextCursor, PAGED } from '../paging.ts';
 // (restoreFileVersion) adds a version with the same content, so the history only ever grows.
 // Every version is kept, so every version takes up room: all of them count towards what the space holds, and
 // towards what whoever wrote them holds in it, which the owner of the space can limit (see "Storage limits" in
-// space.ts). A write that would pass a limit is refused before its bytes are taken.
+// space.ts). A write that would pass a limit is refused before its bytes are taken. How much of what the space
+// holds is in one file, or in one folder with everything in it, is asked of getFileSize.
 //
 // 3. The trash. trashFile does not remove anything: it puts the file in the trash, and what is in a trashed folder
 // goes with it. What is in the trash does not exist for any operation but these: getTrashedFiles lists it,
@@ -342,6 +343,32 @@ export const getFileByPath = operation({
   minRole: 'viewer',
   input: z.object({ spaceId: id, path: filePath }),
   output: z.object({ file }),
+  errors: ['NOT_FOUND']
+});
+
+// The number is not in the answers that carry a file (getFile, getFiles): it is added up from everything under the
+// folder, and a list of folders would pay that for each of them, every time it is read. It is asked for by
+// itself, of the one file or folder it is wanted of.
+export const getFileSize = operation({
+  name: 'getFileSize',
+  description:
+    'How much a file or a folder holds: storageSize, in bytes, counted as getSpaceSize counts. For a file it is ' +
+    'every version of it, the versions before the current one included, since all of them are kept: it can be ' +
+    'more than the size of its content now, which is version.size of getFile. For a folder it is every version ' +
+    'of every file in it and in the folders inside it. What is in the trash is not counted, so the files and ' +
+    'folders directly in a space together hold what getSpaceSize answers, less what is in the trash. It is added ' +
+    'up when it is asked for, and that takes longer the more files a folder has, over ten seconds for a ' +
+    'million: ask it of the folders it is wanted of, not of every folder of a list. NOT_FOUND: there is no such ' +
+    'file.',
+  kind: 'read',
+  access: 'authenticated',
+  belongsTo: 'space',
+  minRole: 'viewer',
+  input: z.object({ spaceId: id, fileId: id }),
+  output: z.object({
+    /** The bytes of every version of the file, or of every file in the folder. What is in the trash is left out */
+    storageSize: z.number()
+  }),
   errors: ['NOT_FOUND']
 });
 
