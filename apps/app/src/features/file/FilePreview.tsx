@@ -4,7 +4,7 @@ import { failureOfThrown } from '@pocketmice/client/api';
 import { DOWNLOAD_URL_SECONDS, getFileDownloadUrl } from '@pocketmice/contract/domains/file';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
-import { lazy, type ReactNode, Suspense, type SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { lazy, type ReactNode, Suspense, useEffect, useRef, useState } from 'react';
 import { Rows } from '@/components/Rows';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
@@ -412,10 +412,9 @@ function Pdf({ bytes, file, className }: { bytes: ArrayBuffer; file: DriveFile; 
 /**
  * A video or a sound, played by the player the browser has. The player fetches from the storage itself, at the
  * address the api answered with, a part at a time as the playing needs it: the page holds nothing of the file.
- * - The player is given the address twice, first with the type the name of the file stands for and then with
- *   none. The storage says of every object that it is bytes of no particular kind. A browser that goes by the
- *   type (Safari's, for some kinds) takes the first; one that does not know the type by that name (Chrome, of a
- *   .mov) passes it over, and tells what it has from the bytes of the second.
+ * - The player is told what the file is by the type its name stands for (preview.ts): the storage says of every
+ *   object that it is bytes of no particular kind, and a browser that goes by what it is told (Safari's, for
+ *   some kinds) would not play it.
  * - An address works for a few minutes, and playing may take longer. Fetching from one whose time is up, a player
  *   gives up (Chrome), gives up and then tries what it was given once more (Firefox), or waits without end
  *   (Safari's). So when the player gives up, or has run out of what to play, and its address is past its time,
@@ -473,7 +472,7 @@ function Player({
     void from.refetch({ cancelRefetch: false });
     return true;
   };
-  /** The player gave up: on what it was playing, or on finding something it can play in what it was given */
+  /** The player gave up: on what it was playing, or on playing what it was given at all */
   const gaveUp = () => {
     if (!askAgain()) setUnplayable(true);
   };
@@ -486,11 +485,9 @@ function Player({
     onWaiting: () => {
       askAgain();
     },
-    // What one of its sources says is handed to the player too, and is not the player giving up: the first
-    // source is passed over by a browser that does not know its type by name
-    onError: (event: SyntheticEvent<HTMLMediaElement>) => {
-      if (event.target === event.currentTarget) gaveUp();
-    },
+    // Said by the player of what it was playing, and by its source when the player can play nothing of what is
+    // there: React hands what the source says on to the player
+    onError: gaveUp,
     onLoadedMetadata: () => {
       const element = player.current;
       const place = left.current;
@@ -502,13 +499,7 @@ function Player({
       if (place.playing) element.play().catch(() => undefined);
     }
   } as const;
-  const sources = (
-    <>
-      <source src={from.data} type={preview.type} />
-      {/* The last source says so when the player could play neither */}
-      <source src={from.data} onError={gaveUp} />
-    </>
-  );
+  const source = <source src={from.data} type={preview.type} />;
 
   if (preview.as === 'audio') {
     return (
@@ -520,7 +511,7 @@ function Player({
       >
         <FileIcon name={file.name} className="size-10" />
         <audio {...playing} className="w-full max-w-xl">
-          {sources}
+          {source}
         </audio>
       </div>
     );
@@ -528,7 +519,7 @@ function Player({
   return (
     <div className="overflow-hidden rounded-xl bg-muted">
       <video {...playing} playsInline className={cn('bg-black', className)}>
-        {sources}
+        {source}
       </video>
     </div>
   );
