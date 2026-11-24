@@ -164,8 +164,8 @@ curl -sS -f -o summary.md '<url>'
 ```
 
 - `url` is an address of the storage the files are kept in, not of the server. Fetch it exactly as it came, in
-  single quotes (it has `&` in it), and without the API key: the address itself is what lets you in, and a
-  storage refuses a request that brings the key as well.
+  single quotes (it has `&` in it), and without the API key: the address itself is what lets you in. The key is
+  for the server alone, and some storages refuse a request that brings one.
 - It works for 5 minutes. Do not keep it or pass it on: ask again when you need the content again.
 - `-f` makes curl fail when the storage refuses, where it would otherwise save the storage's error as your file.
   If curl cannot connect at all, your network reaches the server and not its storage: tell the person.

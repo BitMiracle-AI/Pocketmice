@@ -9,7 +9,7 @@ import { cursor, limit, nextCursor, PAGED } from '../paging.ts';
 // 3. the trash, and deleting for good;
 // 4. looking for a file by words;
 // 5. lists that come a page at a time;
-// 6. the address the content goes through, which is not an operation;
+// 6. how the content gets in and out, which is not through operations;
 // 7. the operations.
 //
 // 1. The tree. What is in a space is a tree of files and folders, and "a file" here means either: a folder is a file
@@ -50,10 +50,11 @@ import { cursor, limit, nextCursor, PAGED } from '../paging.ts';
 //
 // 5. Pages. A list that can grow without limit comes a page at a time, by the rule every such list has (paging.ts).
 //
-// 6. The content address. Bytes do not go through operations, whose inputs and outputs are JSON. They go through
-// one address, FILE_CONTENT_PATH: PUT uploads and GET downloads, with what an operation would take as its input
-// written in the query. Who may call it is checked the way it is for an operation, and a failure is the same error
-// body.
+// 6. The content itself. Bytes do not go through operations, whose inputs and outputs are JSON. They are uploaded
+// to one address of the api, FILE_CONTENT_PATH, with what an operation would take as its input written in the
+// query: who may call it is checked the way it is for an operation, and a failure is the same error body. They are
+// downloaded from the storage the files are kept in, and not from the api: getFileDownloadUrl answers with an
+// address of it, which works for a few minutes.
 
 /** What a file is: a file with content, or a folder that holds others */
 export const FILE_KINDS = ['file', 'folder'] as const;

@@ -15,7 +15,9 @@ import { type AdmissionDeps, admitCaller, fail, INTERNAL_MESSAGE } from './opera
 // - A tool is a request to this same api, sent as the caller of the tool: to an operation, or to another entrance
 //   such as the address the content of files goes through. Nothing is done here that a request from outside could
 //   not do, and nothing is decided here: who may call what is settled where it always is, when that request comes
-//   in. So a tool does what the key it was called with does over HTTP, and nothing else.
+//   in. So a tool does what the key it was called with does over HTTP, and nothing else. The bytes of a file are
+//   what the api hands out an address for and not the thing itself: a tool that reads them fetches them where its
+//   caller would, from the storage, at the address its request to the api was answered with.
 // - Every operation that is done as the person a key belongs to is a tool, under the operation's own name, with
 //   its description and its input. The list is not written a second time: it is the operations of the api whose
 //   access is authenticated. The other two kinds are left out, each for its own reason. One kept for the person
