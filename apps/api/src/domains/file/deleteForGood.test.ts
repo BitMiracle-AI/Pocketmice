@@ -18,7 +18,6 @@ import { files, fileVersions } from '@pocketmice/db/schema/file';
 import { spaceInvites } from '@pocketmice/db/schema/invite';
 import { spaceMembers, spaces } from '@pocketmice/db/schema/space';
 import { eq, inArray } from 'drizzle-orm';
-import { MissingObject } from '../../external/storage/fileStorage.ts';
 import type { CurrentUser } from '../../http/operation.ts';
 import { NOBODY, useTestApi } from '../testing.ts';
 
@@ -78,15 +77,7 @@ async function versionRows(ids: string[]) {
 }
 
 /** Whether the storage still has the bytes of this version */
-async function hasBytes(versionId: string) {
-  try {
-    (await api.storage.get(versionId)).destroy();
-    return true;
-  } catch (error) {
-    if (error instanceof MissingObject) return false;
-    throw error;
-  }
-}
+const hasBytes = (versionId: string) => api.storedBytes(versionId) !== undefined;
 
 test('deleteFile deletes a trashed file for good: its row, every version of it, and their bytes', async () => {
   const ada = await api.addPerson('Ada');
@@ -101,14 +92,14 @@ test('deleteFile deletes a trashed file for good: its row, every version of it, 
 
   assert.deepEqual(await api.db.select().from(files).where(eq(files.id, first.id)), []);
   assert.deepEqual(await versionRows(versions), []);
-  assert.deepEqual(await Promise.all(versions.map(hasBytes)), [false, false]);
+  assert.deepEqual(versions.map(hasBytes), [false, false]);
   // Nothing brings it back, and it is no longer in the trash
   const restored = await api.as(ada)(restoreFile, { spaceId, fileId: first.id });
   assert.equal(!restored.ok && restored.code, 'NOT_FOUND');
   const trashed = await api.as(ada)(getTrashedFiles, { spaceId });
   assert.deepEqual(trashed.ok && trashed.data.files, []);
   // What was not deleted is as it was
-  assert.equal(await hasBytes(kept.version?.id ?? ''), true);
+  assert.equal(hasBytes(kept.version?.id ?? ''), true);
   assert.equal((await api.as(ada)(getFile, { spaceId, fileId: kept.id })).ok, true);
 });
 
@@ -133,8 +124,8 @@ test('deleteFile of a trashed folder deletes everything in it, however deep, als
     ['outside.md']
   );
   assert.equal(api.storedObjects(), before - 3);
-  for (const gone of [deep, direct, earlier]) assert.equal(await hasBytes(gone.version?.id ?? ''), false);
-  assert.equal(await hasBytes(outside.version?.id ?? ''), true);
+  for (const gone of [deep, direct, earlier]) assert.equal(hasBytes(gone.version?.id ?? ''), false);
+  assert.equal(hasBytes(outside.version?.id ?? ''), true);
 });
 
 test('deleteFile only deletes what was put in the trash itself: anything else is NOT_FOUND and stays', async () => {
@@ -184,7 +175,7 @@ test('emptyTrash deletes for good everything in the trash of one space, and noth
   const trashed = await api.as(ada)(getTrashedFiles, { spaceId });
   assert.deepEqual(trashed.ok && trashed.data.files, []);
   assert.deepEqual(
-    await Promise.all([single, inside, live, elsewhere].map((file) => hasBytes(file.version?.id ?? ''))),
+    [single, inside, live, elsewhere].map((file) => hasBytes(file.version?.id ?? '')),
     [false, false, true, true]
   );
   // The trash of the other space is as it was
@@ -214,11 +205,10 @@ test('deleteSpace deletes the space for good: its files and their bytes, its mem
   assert.deepEqual(await api.db.select().from(files).where(eq(files.spaceId, spaceId)), []);
   assert.deepEqual(await api.db.select().from(spaceMembers).where(eq(spaceMembers.spaceId, spaceId)), []);
   assert.deepEqual(await api.db.select().from(spaceInvites).where(eq(spaceInvites.spaceId, spaceId)), []);
-  assert.deepEqual(await Promise.all([first, second, trashed].map((file) => hasBytes(file.version?.id ?? ''))), [
-    false,
-    false,
-    false
-  ]);
+  assert.deepEqual(
+    [first, second, trashed].map((file) => hasBytes(file.version?.id ?? '')),
+    [false, false, false]
+  );
   // It no longer exists for anyone who was in it
   for (const person of [ada, grace]) {
     const result = await api.as(person)(getFiles, { spaceId, parentId: null });
@@ -227,7 +217,7 @@ test('deleteSpace deletes the space for good: its files and their bytes, its mem
   // The other space of the same person is as it was
   const spacesLeft = await api.as(ada)(getSpaces, {});
   assert.deepEqual(spacesLeft.ok && spacesLeft.data.spaces.map((space) => space.name), ['Kept']);
-  assert.equal(await hasBytes(kept.version?.id ?? ''), true);
+  assert.equal(hasBytes(kept.version?.id ?? ''), true);
 });
 
 test('deleteSpace deletes every file of the space, also ones that no path leads to any more', async () => {
@@ -245,7 +235,7 @@ test('deleteSpace deletes every file of the space, also ones that no path leads 
 
   assert.deepEqual(await api.db.select().from(files).where(eq(files.spaceId, spaceId)), []);
   assert.deepEqual(await api.db.select().from(spaces).where(eq(spaces.id, spaceId)), []);
-  assert.equal(await hasBytes(file.version?.id ?? ''), false);
+  assert.equal(hasBytes(file.version?.id ?? ''), false);
 });
 
 test('what cannot be undone is for the owner, signed in themselves: not an editor, and not a key, not even a key of the owner', async () => {
@@ -281,7 +271,7 @@ test('what cannot be undone is for the owner, signed in themselves: not an edito
   // Nothing went: the owner still restores it, content and all
   const restored = await api.as(ada)(restoreFile, { spaceId, fileId: file.id });
   assert.equal(restored.ok && restored.data.file.version?.id, file.version?.id);
-  assert.equal(await hasBytes(file.version?.id ?? ''), true);
+  assert.equal(hasBytes(file.version?.id ?? ''), true);
 });
 
 test('when the storage fails to remove the bytes, the delete still counts and the failure is reported', async () => {
@@ -302,7 +292,7 @@ test('when the storage fails to remove the bytes, the delete still counts and th
 
   // The rows are gone, which is what the caller asked for. The bytes are left, with nothing pointing at them
   assert.deepEqual(await api.db.select().from(files).where(eq(files.id, file.id)), []);
-  assert.equal(await hasBytes(file.version?.id ?? ''), true);
+  assert.equal(hasBytes(file.version?.id ?? ''), true);
   const reports = api.takeReported();
   assert.deepEqual(
     reports.map(({ error, where }) => [where, (error as Error).message]),

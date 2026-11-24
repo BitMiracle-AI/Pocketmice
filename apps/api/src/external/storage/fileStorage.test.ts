@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { buffer } from 'node:stream/consumers';
 import { after, before, test } from 'node:test';
 import { type FileStorage, MissingObject } from './fileStorage.ts';
 import { type MiniS3, startMiniS3 } from './miniS3.testing.ts';
 import { createS3Storage } from './s3Storage.ts';
 
 // What the api counts on from the storage. The bucket is the small S3 of miniS3.testing.ts, reached over a real
-// socket by the real SDK.
+// socket by the real SDK. What the bucket holds is looked at in the small S3 itself: the storage has no way to
+// read an object, since the api never reads one.
 
 /** The smallest part S3 allows in an upload that goes up in parts */
 const PART_BYTES = 5 * 1024 * 1024;
@@ -40,25 +40,23 @@ const put = async (bytes: Buffer) => {
   await storage.put(key, Readable.from([bytes]));
   return key;
 };
-const read = async (key: string, range?: { start: number; end: number }) => buffer(await storage.get(key, range));
+/** What the bucket holds under a key. Undefined when it holds nothing there */
+const held = (key: string) => mini.objects.get(`files/${key}`);
 
-test('what is stored under a key is read back as it was, whole or one range of it', async () => {
+test('what is stored under a key is in the bucket as it was', async () => {
   const bytes = randomBytes(64 * 1024);
   const key = await put(bytes);
 
-  assert.deepEqual(await read(key), bytes);
-  assert.deepEqual(await read(key, { start: 0, end: 0 }), bytes.subarray(0, 1));
-  assert.deepEqual(await read(key, { start: 1000, end: 1999 }), bytes.subarray(1000, 2000));
-  assert.deepEqual(await read(key, { start: bytes.length - 10, end: bytes.length - 1 }), bytes.subarray(-10));
+  assert.deepEqual(held(key), bytes);
 });
 
 test('an object of no bytes is an object', async () => {
   const key = await put(Buffer.alloc(0));
 
-  assert.equal((await read(key)).length, 0);
+  assert.equal(held(key)?.length, 0);
 });
 
-test('an object larger than a part goes up in parts and is read back as it was', async () => {
+test('an object larger than a part goes up in parts and is in the bucket as it was', async () => {
   const bytes = randomBytes(PART_BYTES + 1024 * 1024 + 7);
   const key = randomUUID();
   // Given in small pieces, the way a request body arrives
@@ -68,15 +66,16 @@ test('an object larger than a part goes up in parts and is read back as it was',
 
   await storage.put(key, Readable.from(pieces));
 
-  assert.equal(sha256(await read(key)), sha256(bytes));
+  assert.equal(sha256(held(key) ?? Buffer.alloc(0)), sha256(bytes));
   assert.equal(count().halfDone, 0);
 });
 
-test('reading, or copying, what is not there is MissingObject, known before a stream is handed over', async () => {
-  const nothing = randomUUID();
+test('copying what is not there is MissingObject, and nothing is stored', async () => {
+  const to = randomUUID();
 
-  await assert.rejects(storage.get(nothing), MissingObject);
-  await assert.rejects(storage.copy(nothing, randomUUID()), MissingObject);
+  await assert.rejects(storage.copy(randomUUID(), to), MissingObject);
+
+  assert.equal(held(to), undefined);
 });
 
 test('a copy is an object of its own: it stays when the one it was copied from is removed', async () => {
@@ -87,8 +86,8 @@ test('a copy is an object of its own: it stays when the one it was copied from i
   await storage.copy(from, to);
   await storage.delete([from]);
 
-  assert.deepEqual(await read(to), bytes);
-  await assert.rejects(storage.get(from), MissingObject);
+  assert.deepEqual(held(to), bytes);
+  assert.equal(held(from), undefined);
 });
 
 test('delete removes every key it is given, and one with nothing under it is no error', async () => {
@@ -98,8 +97,8 @@ test('delete removes every key it is given, and one with nothing under it is no 
   await storage.delete([...keys, randomUUID()]);
   await storage.delete([]);
 
-  for (const key of keys) await assert.rejects(storage.get(key), MissingObject);
-  assert.equal((await read(kept)).length, 16);
+  for (const key of keys) assert.equal(held(key), undefined);
+  assert.equal(held(kept)?.length, 16);
 });
 
 test('an upload whose stream breaks off fails, and leaves nothing under the key', async () => {
@@ -113,7 +112,7 @@ test('an upload whose stream breaks off fails, and leaves nothing under the key'
 
   await assert.rejects(storage.put(key, Readable.from(breaking())), /the connection went away/);
 
-  await assert.rejects(storage.get(key), MissingObject);
+  assert.equal(held(key), undefined);
   assert.deepEqual(count(), before);
 });
 
@@ -126,7 +125,6 @@ test('a key that is not an id is refused, whatever is asked', async () => {
     `${randomUUID()}/x`
   ]) {
     await assert.rejects(storage.put(key, Readable.from([Buffer.from('x')])), /not a key of the storage/);
-    await assert.rejects(storage.get(key), /not a key of the storage/);
     await assert.rejects(storage.copy(randomUUID(), key), /not a key of the storage/);
     await assert.rejects(storage.delete([key]), /not a key of the storage/);
     await assert.rejects(storage.downloadUrl(key, { saveAs: 'x', seconds: 60 }), /not a key of the storage/);
@@ -183,7 +181,7 @@ test('a download address is signed, for the time given and for the host callers 
   assert.equal(address.searchParams.has('response-content-type'), false);
 
   // A server that reaches its bucket at one address and whose callers reach it at another signs for theirs, and
-  // still reads and writes at its own
+  // still writes at its own
   const twoAddresses = createS3Storage({
     endpoint: mini.url,
     publicEndpoint: 'https://files.example.com',
@@ -195,7 +193,7 @@ test('a download address is signed, for the time given and for the host callers 
   });
   const stored = randomUUID();
   await twoAddresses.put(stored, Readable.from([Buffer.from('reached at its own address')]));
-  assert.equal((await buffer(await twoAddresses.get(stored))).toString(), 'reached at its own address');
+  assert.equal(held(stored)?.toString(), 'reached at its own address');
   const forCallers = new URL(await twoAddresses.downloadUrl(stored, { saveAs: 'notes.md', seconds: 60 }));
   assert.equal(forCallers.origin, 'https://files.example.com');
   assert.equal(forCallers.searchParams.get('X-Amz-Expires'), '60');

@@ -2,8 +2,10 @@ import type { Readable } from 'node:stream';
 
 /**
  * The storage: where the bytes of files are kept. It knows nothing of files, versions or spaces. It keeps objects,
- * each a run of bytes under a key, and an object never changes once it is stored: it is read, copied, and at some
- * point removed.
+ * each a run of bytes under a key, and an object never changes once it is stored: it is copied, and at some point
+ * removed.
+ * The api does not read an object, and hands no bytes out: whoever is to have them is given an address of the
+ * storage to fetch them from (downloadUrl).
  * The api names an object after the version whose content it is, so a key is always an id (see assertKey).
  * It is a bucket of an S3-compatible service (s3Storage.ts), and nothing else: what a running server keeps its
  * bytes in is what the tests and a developer's machine keep them in, so each is the same path through the code.
@@ -16,14 +18,6 @@ export interface FileStorage {
    * an object either.
    */
   put: (key: string, bytes: Readable) => Promise<void>;
-  /**
-   * The bytes of the object under key, or the range of them from start to end, both counted from 0 and both
-   * included.
-   * MissingObject when there is nothing under key. That is known before the stream is handed over: a stream that
-   * was handed over has bytes to give.
-   * Whoever takes the stream reads it to its end or destroys it: until then it holds a file, or a connection, open.
-   */
-  get: (key: string, range?: ByteRange) => Promise<Readable>;
   /** Stores under to a copy of the object under from. MissingObject when there is nothing under from */
   copy: (from: string, to: string) => Promise<void>;
   /** Removes the objects under these keys. A key with nothing under it is not an error: it is gone, as asked */
@@ -39,12 +33,6 @@ export interface FileStorage {
    * an address for nothing is answered with a refusal when it is fetched.
    */
   downloadUrl: (key: string, download: { saveAs: string; seconds: number }) => Promise<string>;
-}
-
-/** A run of bytes inside an object: from start to end, both counted from 0 and both included */
-export interface ByteRange {
-  start: number;
-  end: number;
 }
 
 /**
@@ -73,8 +61,8 @@ export class MissingObject extends Error {
 const KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
- * Refuses a key that is not an id, written the one way ids are written. Every implementation asks this first: a
- * key becomes part of a path on disk, or of an address, and must not be able to point anywhere else.
+ * Refuses a key that is not an id, written the one way ids are written. It is asked first, whatever is done with a
+ * key: a key becomes part of an address, and must not be able to point anywhere else.
  */
 export function assertKey(key: string): void {
   if (!KEY.test(key)) throw new Error(`"${key}" is not a key of the storage: a key is an id.`);

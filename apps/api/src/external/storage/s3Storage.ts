@@ -1,4 +1,3 @@
-import type { Readable } from 'node:stream';
 import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -86,24 +85,6 @@ export function createS3Storage(options: S3Options): FileStorage {
         partSize: options.partBytes ?? PART_BYTES,
         queueSize: PARTS_AT_ONCE
       }).done();
-    },
-
-    async get(key, range) {
-      assertKey(key);
-      try {
-        const answer = await client.send(
-          new GetObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            ...(range && { Range: `bytes=${range.start}-${range.end}` })
-          })
-        );
-        if (!answer.Body) throw new Error(`The storage answered for ${key} without a body.`);
-        // In Node the body of an answer is a stream of Node's
-        return answer.Body as Readable;
-      } catch (error) {
-        throw isNamed(error, 'NoSuchKey') ? new MissingObject(key) : error;
-      }
     },
 
     async copy(from, to) {

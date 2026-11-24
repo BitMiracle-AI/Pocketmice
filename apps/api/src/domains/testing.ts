@@ -30,6 +30,9 @@ export const WEB_ORIGIN = 'http://localhost:11211';
 /** An id that is written correctly and that nothing in the database has */
 export const NOBODY = '00000000-0000-4000-8000-000000000000';
 
+/** The name of the bucket a test file keeps its bytes in, in the small S3 started for it */
+const BUCKET = 'files';
+
 /** The request header a test uses to say who is calling, in place of the sign-in cookie */
 const TEST_USER_HEADER = 'x-test-user';
 
@@ -40,6 +43,8 @@ export interface TestApi {
   readonly storage: FileStorage;
   /** How many objects that bucket really holds: what a test asks to see what is kept, and what is gone */
   storedObjects: () => number;
+  /** The bytes that bucket really holds under a key, which is the id of a version. Undefined when it holds none */
+  storedBytes: (key: string) => Buffer | undefined;
   /**
    * Adds a person who signed up under this name: their user row, and what every signed-in person has (see
    * prepareSignIn). The sign-in library is not involved; it is tested in domains/auth/auth.test.ts.
@@ -89,7 +94,7 @@ export function useTestApi(): TestApi {
     const bucket = await startMiniS3();
     const storage = createS3Storage({
       endpoint: bucket.url,
-      bucket: 'files',
+      bucket: BUCKET,
       region: 'us-east-1',
       accessKeyId: 'test',
       secretAccessKey: 'test',
@@ -163,6 +168,10 @@ export function useTestApi(): TestApi {
 
     storedObjects() {
       return ready().bucket.objects.size;
+    },
+
+    storedBytes(key) {
+      return ready().bucket.objects.get(`${BUCKET}/${key}`);
     },
 
     async send(who, path, init = {}) {

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { Readable, Writable } from 'node:stream';
-import { buffer } from 'node:stream/consumers';
 import { pipeline } from 'node:stream/promises';
 import { test } from 'node:test';
 import { createApiKey, deleteApiKey } from '@pocketmice/contract/domains/apiKey';
@@ -138,7 +137,7 @@ test('an upload makes a file with its content as the first version, and a downlo
   assert.equal(response.status, 200);
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), content);
   // The bytes are in the storage under the id of the version, as they were sent
-  assert.deepEqual(await buffer(await api.storage.get(file.version.id)), content);
+  assert.deepEqual(api.storedBytes(file.version.id), content);
 });
 
 test('an upload without parentId goes directly into the space, and a file of no bytes is a file', async () => {
