@@ -139,7 +139,9 @@ export const en = {
   /** In the small box of a PDF, which is read only once it is opened large */
   previewPdf: 'Enlarge it to read it here',
   previewNotPdf: 'This file is not a PDF',
-  /** The two ways a text written in Markdown is shown large */
+  /** The ways a text is shown large: one written in Markdown as a document, one that is a table as a table, and
+   * either as it is written */
   previewDocument: 'Document',
+  previewTable: 'Table',
   previewSource: 'Source'
 };

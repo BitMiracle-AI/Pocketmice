@@ -10,6 +10,7 @@ import {
   PDF_PREVIEW_MAX_BYTES,
   previewOf,
   SVG_PREVIEW_MAX_BYTES,
+  separatorOf,
   TEXT_PREVIEW_BYTES,
   textOf
 } from './preview.ts';
@@ -96,6 +97,13 @@ test('a text written in Markdown is told by its name', () => {
   assert.equal(isMarkdown('notes.MARKDOWN'), true);
   assert.equal(isMarkdown('notes.txt'), false);
   assert.equal(isMarkdown('md'), false);
+});
+
+test('a text that is a table is told by its name, with what stands between its values', () => {
+  assert.equal(separatorOf('people.csv'), ',');
+  assert.equal(separatorOf('people.TSV'), '\t');
+  assert.equal(separatorOf('people.txt'), null);
+  assert.equal(separatorOf('csv'), null);
 });
 
 test('a character the cut went through is left out of the text', () => {

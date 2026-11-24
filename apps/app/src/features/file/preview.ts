@@ -82,6 +82,17 @@ export function isMarkdown(name: string): boolean {
   return languageOf(name) === 'markdown';
 }
 
+/** What stands between the values of a row, in a text whose name says it is a table */
+const SEPARATORS: Record<string, string> = { csv: ',', tsv: '\t' };
+
+/**
+ * What stands between the values of a row in a text called name, when the name says it is a table: shown large,
+ * it is laid out as one (rows.ts reads its rows). Null for any other text
+ */
+export function separatorOf(name: string): string | null {
+  return SEPARATORS[extensionOf(name)] ?? null;
+}
+
 /** Whether the bytes begin the way a PDF does. What is handed to the reader of PDFs has to be one */
 export function isPdf(bytes: ArrayBuffer): boolean {
   return new TextDecoder('latin1').decode(bytes.slice(0, 5)) === '%PDF-';

@@ -5,6 +5,7 @@ import { getFileDownloadUrl } from '@pocketmice/contract/domains/file';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react';
+import { Rows } from '@/components/Rows';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,16 +23,18 @@ import {
   languageOf,
   type Preview,
   previewOf,
+  separatorOf,
   TEXT_PREVIEW_BYTES,
   textOf
 } from './preview';
+import { rowsOf } from './rows';
 import { fileText } from './text';
 
 // What a file holds, shown where the file is picked: the start of a text, a picture, or a PDF (preview.ts says
 // which). It is shown twice: small, in a box beside what else is known of the file, and large, in a dialog.
 // The box is kept cheap: a text is plain there, and a PDF is not fetched for it at all. Large, a text is coloured
-// as the language its name says, one written in Markdown is laid out as the document it is, and a PDF is read in
-// the reader the browser has.
+// as the language its name says, one written in Markdown is laid out as the document it is, one that is a table
+// (a CSV) as a table, and a PDF is read in the reader the browser has.
 // The page asks the api where the bytes are (getFileDownloadUrl), fetches them there, from the storage, and draws
 // them itself.
 
@@ -234,9 +237,9 @@ function Small({
 }
 
 /**
- * The content shown large. A text written in Markdown is laid out as the document it is, with its text as it is
- * written one tab away; any other text is coloured as the language its name says. A picture and a PDF are on a
- * ground of their own.
+ * The content shown large. A text written in Markdown is laid out as the document it is, and one that is a table
+ * as a table, each with its text as it is written one tab away; any other text is coloured as the language its
+ * name says. A picture and a PDF are on a ground of their own.
  */
 function Large({
   file,
@@ -278,33 +281,61 @@ function Large({
             </Quiet>
           </div>
         );
-        if (!isMarkdown(file.name)) {
+        const separator = separatorOf(file.name);
+        if (separator !== null) {
           return (
-            <Suspense fallback={waiting}>
-              <Code text={text} language={languageOf(file.name)} className={className} />
-            </Suspense>
+            <TwoWays
+              laidOut={fileText.previewTable}
+              first={<Rows rows={rowsOf(text, separator, preview.cut)} className={className} />}
+              source={
+                <Suspense fallback={waiting}>
+                  <Code text={text} language={null} className={className} />
+                </Suspense>
+              }
+            />
+          );
+        }
+        if (isMarkdown(file.name)) {
+          return (
+            <TwoWays
+              laidOut={fileText.previewDocument}
+              first={
+                <Suspense fallback={waiting}>
+                  <Markdown text={text} className={cn('overflow-auto px-1 py-2', className)} />
+                </Suspense>
+              }
+              source={
+                <Suspense fallback={waiting}>
+                  <Code text={text} language="markdown" className={className} />
+                </Suspense>
+              }
+            />
           );
         }
         return (
-          <Tabs defaultValue="document">
-            <TabsList>
-              <TabsTrigger value="document">{fileText.previewDocument}</TabsTrigger>
-              <TabsTrigger value="source">{fileText.previewSource}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="document">
-              <Suspense fallback={waiting}>
-                <Markdown text={text} className={cn('overflow-auto px-1 py-2', className)} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="source">
-              <Suspense fallback={waiting}>
-                <Code text={text} language="markdown" className={className} />
-              </Suspense>
-            </TabsContent>
-          </Tabs>
+          <Suspense fallback={waiting}>
+            <Code text={text} language={languageOf(file.name)} className={className} />
+          </Suspense>
         );
       }}
     />
+  );
+}
+
+/**
+ * A text shown two ways, a tab each: first laid out as what it is written to be, under the name laidOut, and
+ * then as it is written
+ */
+function TwoWays({ laidOut, first, source }: { laidOut: string; first: ReactNode; source: ReactNode }) {
+  return (
+    <Tabs defaultValue="laidOut">
+      <TabsList>
+        <TabsTrigger value="laidOut">{laidOut}</TabsTrigger>
+        <TabsTrigger value="source">{fileText.previewSource}</TabsTrigger>
+      </TabsList>
+      <TabsContent value="laidOut">{first}</TabsContent>
+      <TabsContent value="source">{source}</TabsContent>
+    </Tabs>
   );
 }
 
