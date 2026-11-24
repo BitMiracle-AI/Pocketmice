@@ -89,28 +89,28 @@ function contentQuery(spaceId: string, fileId: string, versionId: string, bytes:
 }
 
 /**
- * Where a player plays one version of a file from: the address, and when the page asked for it, on the clock of
- * the page. It is kept only while a player shows it: an address works for a few minutes, so the one of an
- * earlier look at the file is of no use to the next.
+ * The address a player plays one version of a file from. It is kept only while a player shows it: an address
+ * works for a few minutes, so the one of an earlier look at the file is of no use to the next.
  */
 function playedFromQuery(spaceId: string, fileId: string, versionId: string) {
-  return queryOptions<{ url: string; askedAt: number }, ApiFailure<'NOT_FOUND'>>({
+  return queryOptions<string, ApiFailure<'NOT_FOUND'>>({
     queryKey: ['filePlayedFrom', versionId],
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 0,
-    queryFn: async () => {
-      // Read before asking: the address is then never older than the page takes it to be
-      const askedAt = performance.now();
-      return { url: await addressOf(spaceId, fileId, versionId), askedAt };
-    }
+    queryFn: () => addressOf(spaceId, fileId, versionId)
   });
 }
 
 /**
- * Whether an address asked for at askedAt is past its time, or close to it. The last tenth of its time is not
- * counted on: the clocks of the api, which signs an address, and of the storage, which reads it, need not agree.
+ * Whether an address the api answered with at answeredAt (as the cache tells it, dataUpdatedAt) is past its time,
+ * or close to it.
+ * - Both times are read off the clock that tells the time of day, which goes on while the machine sleeps. The
+ *   clock a page has of its own (performance.now) stands still then in most browsers: by it, a player found
+ *   again the next morning would have an address a minute old.
+ * - The last tenth of its time is not counted on: an address is a little older than the answer it came in, and
+ *   the clocks of the api, which signs it, and of the storage, which reads it, need not agree.
  */
-const isSpent = (askedAt: number) => performance.now() - askedAt >= DOWNLOAD_URL_SECONDS * 1000 * 0.9;
+const isSpent = (answeredAt: number) => Date.now() - answeredAt >= DOWNLOAD_URL_SECONDS * 1000 * 0.9;
 
 // What colours code and lays a document out is fetched when a text is first shown large, and not with the page:
 // it is several times the size of everything else the pane of a file needs.
@@ -439,12 +439,13 @@ function Player({
   /** Where the playing was, and whether it was going, when another address was asked for: taken up once it is here */
   const left = useRef<{ at: number; playing: boolean } | null>(null);
   const [unplayable, setUnplayable] = useState(false);
-  const playedFrom = from.data;
+  const answeredAt = from.dataUpdatedAt;
 
-  // A player reads where to fetch from when it is made, and again only when told to
+  // A player reads where to fetch from when it is made, and again only when told to: when another address,
+  // asked for because the playing had stopped, is here
   useEffect(() => {
-    if (playedFrom && left.current) player.current?.load();
-  }, [playedFrom]);
+    if (answeredAt && left.current) player.current?.load();
+  }, [answeredAt]);
 
   if (from.isPending) return <Waiting className={className} />;
   if (from.isError) {
@@ -465,7 +466,7 @@ function Player({
   /** Asks for another address when the one in use is past its time, and says whether it did */
   const askAgain = (): boolean => {
     const element = player.current;
-    if (!element || !isSpent(from.data.askedAt)) return false;
+    if (!element || !isSpent(answeredAt)) return false;
     // A player may say that it waits and then that it gave up: the place is the one of the first time, since by
     // the second the playing may have been set back to its start
     left.current ??= { at: element.currentTime, playing: !element.paused };
@@ -503,9 +504,9 @@ function Player({
   } as const;
   const sources = (
     <>
-      <source src={from.data.url} type={preview.type} />
+      <source src={from.data} type={preview.type} />
       {/* The last source says so when the player could play neither */}
-      <source src={from.data.url} onError={gaveUp} />
+      <source src={from.data} onError={gaveUp} />
     </>
   );
 
