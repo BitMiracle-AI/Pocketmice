@@ -1,6 +1,7 @@
 import { Globe02Icon, Logout03Icon, Settings01Icon, UnfoldMoreIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { PersonAvatar } from '@/components/PersonAvatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +18,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { signOut } from '@/features/auth/signOut';
+import { SignOutDialog } from '@/features/auth/SignOutDialog';
 import { authText } from '@/features/auth/text';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -46,6 +47,7 @@ function Who() {
  */
 export function UserMenu({ space }: { space: string | undefined }) {
   const isMobile = useIsMobile();
+  const [leaving, setLeaving] = useState(false);
   return (
     <SidebarMenuItem>
       <DropdownMenu>
@@ -54,9 +56,10 @@ export function UserMenu({ space }: { space: string | undefined }) {
           <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={2} className="ml-auto size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent side={isMobile ? 'top' : 'right'} align="end" className="min-w-56">
-          <UserMenuItems space={space} />
+          <UserMenuItems space={space} onSignOut={() => setLeaving(true)} />
         </DropdownMenuContent>
       </DropdownMenu>
+      <SignOutDialog open={leaving} onOpenChange={setLeaving} />
     </SidebarMenuItem>
   );
 }
@@ -64,20 +67,24 @@ export function UserMenu({ space }: { space: string | undefined }) {
 /** The same menu on a page with no sidebar: the person's avatar, in the corner of the page, opens it */
 export function UserButton() {
   const user = useCurrentUser();
+  const [leaving, setLeaving] = useState(false);
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={shellText.userMenu} />}>
-        <PersonAvatar id={user.id} name={user.name} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-56">
-        <UserMenuItems space={undefined} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={shellText.userMenu} />}>
+          <PersonAvatar id={user.id} name={user.name} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-56">
+          <UserMenuItems space={undefined} onSignOut={() => setLeaving(true)} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <SignOutDialog open={leaving} onOpenChange={setLeaving} />
+    </>
   );
 }
 
-/** What the menu holds, whichever button opens it */
-function UserMenuItems({ space }: { space: string | undefined }) {
+/** What the menu holds, whichever button opens it. Signing out is asked about first: onSignOut opens the question */
+function UserMenuItems({ space, onSignOut }: { space: string | undefined; onSignOut: () => void }) {
   return (
     <>
       <DropdownMenuGroup>
@@ -106,7 +113,7 @@ function UserMenuItems({ space }: { space: string | undefined }) {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuGroup>
-      <DropdownMenuItem onClick={signOut}>
+      <DropdownMenuItem onClick={onSignOut}>
         <HugeiconsIcon icon={Logout03Icon} strokeWidth={2} />
         {authText.signOut}
       </DropdownMenuItem>

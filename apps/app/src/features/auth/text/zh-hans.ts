@@ -35,6 +35,9 @@ export const zhHans: typeof en = {
 
   signedInAs: (email) => `当前登录：${email}`,
   signOut: '退出登录',
+  signOutTitle: '退出登录？',
+  signOutDescription: '退出后要重新登录才能回来。',
+  cancel: '取消',
 
   failures: {
     INVALID_EMAIL_OR_PASSWORD: '邮箱或密码不正确。',

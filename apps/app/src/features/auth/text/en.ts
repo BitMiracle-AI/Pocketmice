@@ -39,6 +39,10 @@ export const en = {
 
   signedInAs: (email: string) => `Signed in as ${email}`,
   signOut: 'Sign out',
+  /** What is asked before signing out, and the way not to */
+  signOutTitle: 'Sign out?',
+  signOutDescription: 'You sign in again to come back.',
+  cancel: 'Cancel',
 
   /** What to tell a person when signing in is refused: one sentence for each code an address or operation lists */
   failures: {

@@ -8,7 +8,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Field, FieldGroup } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { SignedInAs } from '@/features/auth/SignedInAs';
-import { signOut } from '@/features/auth/signOut';
+import { SignOutDialog } from '@/features/auth/SignOutDialog';
 import { authText } from '@/features/auth/text';
 import { TopBar } from '@/features/shell/TopBar';
 import { NewSpaceDialog } from './NewSpaceDialog';
@@ -89,11 +89,17 @@ function SpaceCard({ space }: { space: Space }) {
  */
 function FirstSpace() {
   const form = useNewSpace();
+  const [leaving, setLeaving] = useState(false);
   return (
     <CardPage
       title={spaceText.firstTitle}
       description={spaceText.firstDescription}
-      foot={<SignedInAs way={authText.signOut} onLeave={signOut} />}
+      foot={
+        <>
+          <SignedInAs way={authText.signOut} onLeave={() => setLeaving(true)} />
+          <SignOutDialog open={leaving} onOpenChange={setLeaving} />
+        </>
+      }
     >
       <form onSubmit={form.submit} noValidate>
         <FieldGroup>
