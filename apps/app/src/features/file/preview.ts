@@ -44,8 +44,8 @@ const IMAGE_TYPES: Record<string, string> = {
  * Each of these was played in Chrome, Firefox and WebKit from an address of the storage, told this type. A .mov
  * is told to be an mp4: the two are written the same way, every browser plays one that is called so, and Chrome
  * turns down the name a .mov has of its own (video/quicktime) without looking at the file.
- * What a browser plays of what is inside (how the pictures and the sound are packed) is its own: one it cannot
- * play says so.
+ * What a browser plays of what is inside (how the pictures and the sound are packed) is its own: the page says
+ * that a file cannot be played when the browser says so.
  */
 const MEDIA: Record<string, { as: 'video' | 'audio'; type: string }> = {
   mp4: { as: 'video', type: 'video/mp4' },

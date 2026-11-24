@@ -135,7 +135,7 @@ test('a text that is not written in UTF-8 is read as GB18030 when it is that', (
   assert.equal(textOf(Uint8Array.from([0x61, 0x2c, 0x31, 0x0a, 0xc4, 0xe3]).buffer, false), 'a,1\n你');
 });
 
-test('a text written in UTF-8 stays that, whatever it holds, and bytes that are no text are shown with marks', () => {
+test('a text written in UTF-8 stays that, whatever it holds, and bytes written in neither way are shown with marks', () => {
   // The mark of something broken, written out as the character it is
   const marked = new TextEncoder().encode('a\uFFFDb 预算');
   assert.equal(textOf(marked.buffer, false), 'a\uFFFDb 预算');

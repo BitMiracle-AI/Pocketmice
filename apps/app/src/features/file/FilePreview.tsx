@@ -45,8 +45,8 @@ const KEPT_FOR_MS = 60_000;
 
 /**
  * Asks the api where the bytes of one version of a file are. Whether the person may read the file is settled
- * here, by the api. The address it answers with is asked for each time something is to be fetched from it, and
- * is kept no longer than that takes: it works for a few minutes.
+ * here, by the api. The address it answers with works for a few minutes: one is asked for when something is to
+ * be fetched, and none is kept for a later time.
  */
 async function addressOf(spaceId: string, fileId: string, versionId: string): Promise<string> {
   const asked = await call(getFileDownloadUrl, { spaceId, fileId, versionId });
@@ -417,9 +417,10 @@ function Pdf({ bytes, file, className }: { bytes: ArrayBuffer; file: DriveFile; 
  *   some kinds) would not play it.
  * - An address works for a few minutes, and playing may take longer. Fetching from one whose time is up, a player
  *   gives up (Chrome), gives up and then tries what it was given once more (Firefox), or waits without end
- *   (Safari's). So when the player gives up, or has run out of what to play, and its address is past its time,
- *   the api is asked for another, and the playing goes on from where it was, at the speed it had. A player that
- *   gives up while its address still works could not play the file.
+ *   (Safari's). So when the player gives up, or has nothing to go on playing with, and its address is past its
+ *   time, the api is asked for another, and the playing goes on from where it was, at the speed it had.
+ * - A player that gives up while its address still works is taken to have a file it cannot play, and the page
+ *   says so. One that lost its connection ends the same way: opening the file large again tries again.
  */
 function Player({
   file,
@@ -531,8 +532,8 @@ function Player({
 
 /**
  * A picture drawn from its bytes. The browser is told what they are by the type the name of the file stands for:
- * the api sends every content as plain bytes. One that can carry a script is drawn from a data: address, and the
- * others from an address of the bytes the page holds (see Preview).
+ * the storage hands every content out as plain bytes. One that can carry a script is drawn from a data: address,
+ * and the others from an address of the bytes the page holds (see Preview).
  */
 function Picture({
   bytes,
