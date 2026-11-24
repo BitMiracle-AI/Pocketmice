@@ -174,16 +174,6 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
   );
 }
 
-function ComboboxSeparator({ className, ...props }: ComboboxPrimitive.Separator.Props) {
-  return (
-    <ComboboxPrimitive.Separator
-      data-slot="combobox-separator"
-      className={cn('-mx-1.5 my-1.5 h-px bg-border', className)}
-      {...props}
-    />
-  );
-}
-
 function ComboboxChips({
   className,
   ...props
@@ -258,7 +248,6 @@ export {
   ComboboxItem,
   ComboboxLabel,
   ComboboxList,
-  ComboboxSeparator,
   ComboboxTrigger,
   ComboboxValue,
   useComboboxAnchor

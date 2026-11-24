@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
@@ -125,8 +124,6 @@ export function ConversationAbout({
             </Button>
           </div>
 
-          <Separator />
-
           <section aria-labelledby="conversation-members" className="flex flex-col gap-3">
             <h3 id="conversation-members" className="text-sm font-medium">
               {conversationText.membersTitle}
@@ -174,8 +171,6 @@ export function ConversationAbout({
             )}
           </section>
 
-          <Separator />
-
           <section aria-labelledby="conversation-add-people" className="flex flex-col gap-3">
             <h3 id="conversation-add-people" className="text-sm font-medium">
               {conversationText.addPeople}
@@ -221,7 +216,6 @@ export function ConversationAbout({
 
           {(isMember || isOwner) && (
             <>
-              <Separator />
               <div className="flex flex-wrap gap-2">
                 {isMember && (
                   <Button variant="secondary" size="sm" onClick={() => setAsking('leave')}>

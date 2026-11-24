@@ -11,7 +11,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -86,7 +85,6 @@ function UserMenuItems({ space }: { space: string | undefined }) {
           <Who />
         </DropdownMenuLabel>
       </DropdownMenuGroup>
-      <DropdownMenuSeparator />
       <DropdownMenuGroup>
         <DropdownMenuItem render={<Link to="/settings/account" search={{ space }} />}>
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={2} />
@@ -108,7 +106,6 @@ function UserMenuItems({ space }: { space: string | undefined }) {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuGroup>
-      <DropdownMenuSeparator />
       <DropdownMenuItem onClick={signOut}>
         <HugeiconsIcon icon={Logout03Icon} strokeWidth={2} />
         {authText.signOut}

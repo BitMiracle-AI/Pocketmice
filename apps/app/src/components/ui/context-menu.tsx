@@ -200,16 +200,6 @@ function ContextMenuRadioItem({
   );
 }
 
-function ContextMenuSeparator({ className, ...props }: ContextMenuPrimitive.Separator.Props) {
-  return (
-    <ContextMenuPrimitive.Separator
-      data-slot="context-menu-separator"
-      className={cn('-mx-1.5 my-1.5 h-px bg-border/50', className)}
-      {...props}
-    />
-  );
-}
-
 function ContextMenuShortcut({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
@@ -233,7 +223,6 @@ export {
   ContextMenuPortal,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
-  ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuSub,
   ContextMenuSubContent,

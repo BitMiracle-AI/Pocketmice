@@ -14,7 +14,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarSeparator,
   useSidebar
 } from '@/components/ui/sidebar';
 import { UploadPanel } from '@/features/upload/UploadPanel';
@@ -75,7 +74,6 @@ export function Shell({
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarSeparator />
         <SidebarFooter>
           <SidebarMenu>
             <UploadsRow />

@@ -14,7 +14,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
-  DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -178,16 +177,6 @@ function MenubarLabel({
   );
 }
 
-function MenubarSeparator({ className, ...props }: React.ComponentProps<typeof DropdownMenuSeparator>) {
-  return (
-    <DropdownMenuSeparator
-      data-slot="menubar-separator"
-      className={cn('-mx-1 my-1 h-px bg-border/50', className)}
-      {...props}
-    />
-  );
-}
-
 function MenubarShortcut({ className, ...props }: React.ComponentProps<typeof DropdownMenuShortcut>) {
   return (
     <DropdownMenuShortcut
@@ -249,7 +238,6 @@ export {
   MenubarPortal,
   MenubarRadioGroup,
   MenubarRadioItem,
-  MenubarSeparator,
   MenubarShortcut,
   MenubarSub,
   MenubarSubContent,

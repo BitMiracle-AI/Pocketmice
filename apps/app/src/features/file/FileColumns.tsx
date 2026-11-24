@@ -4,13 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { useEffect, useRef } from 'react';
 import { Mouse } from '@/components/Mouse';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger
-} from '@/components/ui/context-menu';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
@@ -204,7 +198,6 @@ function Row({
                 {file.description ? fileText.editDescription : fileText.addDescription}
               </ContextMenuItem>
               <ContextMenuItem onClick={() => onAct(file, 'move')}>{fileText.move}</ContextMenuItem>
-              <ContextMenuSeparator />
               <ContextMenuItem variant="destructive" onClick={() => onAct(file, 'trash')}>
                 {fileText.toTrash}
               </ContextMenuItem>

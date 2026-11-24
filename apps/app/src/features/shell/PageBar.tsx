@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
 /**
@@ -10,8 +9,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 export function PageBar({ title, children, actions }: { title?: string; children?: ReactNode; actions?: ReactNode }) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 data-vertical:h-4 data-vertical:self-auto" />
+      <SidebarTrigger className="-ml-1.5" />
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {title !== undefined && <h1 className="truncate text-lg font-semibold">{title}</h1>}
         {children}

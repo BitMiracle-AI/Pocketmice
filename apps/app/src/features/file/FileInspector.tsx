@@ -12,7 +12,6 @@ import { FieldError } from '@/components/ui/field';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { shellText } from '@/features/shell/text';
@@ -59,7 +58,7 @@ export function FileInspector({
   return (
     // The pane of another file is another pane: it begins at its top, with nothing of the one before in it
     <ScrollArea key={file?.id} className="min-h-0 flex-1">
-      <div className="flex flex-col gap-5 p-5">
+      <div className="flex flex-col gap-6 p-5">
         {file === null ? (
           <SpaceDetails />
         ) : file.kind === 'folder' ? (
@@ -194,8 +193,6 @@ function FileDetails({
         {onAct && <EditButtons file={file} onAct={onAct} />}
       </div>
 
-      <Separator />
-
       <Facts>
         {file.version && <Fact label={fileText.size}>{formatSize(file.version.size)}</Fact>}
         <Fact label={fileText.modified}>
@@ -210,8 +207,6 @@ function FileDetails({
           <Where file={file} />
         </Fact>
       </Facts>
-
-      <Separator />
 
       <Versions file={file} />
     </>
@@ -362,8 +357,6 @@ function FolderDetails({
         </div>
       )}
 
-      <Separator />
-
       <Facts>
         <Fact label={fileText.holds}>
           <Holds folderId={folder.id} />
@@ -400,8 +393,6 @@ function SpaceDetails() {
         </div>
       </div>
 
-      <Separator />
-
       <Facts>
         <Fact label={fileText.holds}>
           <Holds folderId={null} />
@@ -413,7 +404,6 @@ function SpaceDetails() {
 
       {size.data && (
         <>
-          <Separator />
           <section className="flex flex-col gap-3">
             <h3 className="text-sm font-medium">{spaceText.storageTitle}</h3>
             {size.data.storageLimit !== null && (
