@@ -1,11 +1,11 @@
 import { FolderOpenIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Link } from '@tanstack/react-router';
-import { buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { PageBar } from '@/features/shell/PageBar';
 import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
+import { FilesLink } from './FilesLink';
 import { fileText } from './text';
 
 /**
@@ -26,9 +26,9 @@ export function FileGonePage() {
           <EmptyDescription>{fileText.goneDescription}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Link to="/spaces/$spaceId" params={{ spaceId: space.id }} className={buttonVariants({ variant: 'outline' })}>
+          <Button variant="outline" nativeButton={false} render={<FilesLink spaceId={space.id} fileId={null} />}>
             {fileText.toFiles}
-          </Link>
+          </Button>
         </EmptyContent>
       </Empty>
     </>

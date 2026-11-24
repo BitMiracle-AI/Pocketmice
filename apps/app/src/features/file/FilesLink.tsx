@@ -1,9 +1,15 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { type ComponentProps, useCallback } from 'react';
 
-// Where the page of the files is, is all in its address: /spaces/<space> with nothing picked,
+// Where the page of the files is, is all in its address: /spaces/<space>/files with nothing picked,
 // /spaces/<space>/files/<id> with a file or a folder picked, and ?q= with the words being looked for. Every way
 // to that page is written here, so that the three are put together the one way.
+
+/** The page of the files: one route, whether something is picked or not */
+const FILES = '/spaces/$spaceId/files/{-$fileId}';
+
+/** What the address says is picked: nothing leaves the id out of it */
+const paramsOf = (spaceId: string, fileId: string | null) => ({ spaceId, fileId: fileId ?? undefined });
 
 /** What ?q= says for these words: nothing, when there are none */
 const searchOf = (words: string) => ({ q: words === '' ? undefined : words });
@@ -18,11 +24,7 @@ export function FilesLink({
   words = '',
   ...rest
 }: { spaceId: string; fileId: string | null; words?: string } & Omit<ComponentProps<'a'>, 'href'>) {
-  return fileId === null ? (
-    <Link to="/spaces/$spaceId" params={{ spaceId }} search={searchOf(words)} {...rest} />
-  ) : (
-    <Link to="/spaces/$spaceId/files/$fileId" params={{ spaceId, fileId }} search={searchOf(words)} {...rest} />
-  );
+  return <Link to={FILES} params={paramsOf(spaceId, fileId)} search={searchOf(words)} {...rest} />;
 }
 
 /**
@@ -34,14 +36,7 @@ export function useGoToFiles(spaceId: string) {
   const navigate = useNavigate();
   return useCallback(
     (fileId: string | null, words = '', replace = false) =>
-      fileId === null
-        ? navigate({ to: '/spaces/$spaceId', params: { spaceId }, search: searchOf(words), replace })
-        : navigate({
-            to: '/spaces/$spaceId/files/$fileId',
-            params: { spaceId, fileId },
-            search: searchOf(words),
-            replace
-          }),
+      navigate({ to: FILES, params: paramsOf(spaceId, fileId), search: searchOf(words), replace }),
     [navigate, spaceId]
   );
 }

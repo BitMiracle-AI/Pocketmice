@@ -11,6 +11,7 @@ import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useUnreadTotal } from '@/features/conversation/conversations';
 import { useSpaceEvents } from '@/features/event/useSpaceEvents';
+import { FilesLink } from '@/features/file/FilesLink';
 import { NavRow, Shell } from '@/features/shell/Shell';
 import { shellText } from '@/features/shell/text';
 import { CurrentSpaceProvider } from './CurrentSpaceProvider';
@@ -57,7 +58,7 @@ function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) 
         nav={
           <>
             <NavRow
-              link={<Link to="/spaces/$spaceId" params={{ spaceId }} />}
+              link={<FilesLink spaceId={spaceId} fileId={null} />}
               icon={Folder01Icon}
               label={shellText.files}
               active={!onConversations && !onMembers && !onTrash && !onSettings}

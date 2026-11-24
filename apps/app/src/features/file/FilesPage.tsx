@@ -2,7 +2,7 @@ import { ArrowLeft01Icon, FolderAddIcon, InformationCircleIcon, Upload04Icon } f
 import { HugeiconsIcon } from '@hugeicons/react';
 import { getFile, getFileByPath } from '@pocketmice/contract/domains/file';
 import { roleCovers } from '@pocketmice/contract/spaceRole';
-import { useQueries, useSuspenseQuery } from '@tanstack/react-query';
+import { useQueries, useSuspenseQueries } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,9 +31,9 @@ import { fileText } from './text';
 // folder on the way down to what is picked. Right of them is what is picked, a file or a folder: what it is, what
 // it holds, every content it has had (FileInspector). Words typed into the field of the bar put what they find
 // in place of the columns, and the pane on the right stays.
-// What is picked and what is looked for are both in the address, and nowhere else: /spaces/<space>/files/<id>
-// picks a file or a folder (one address for both, since they are the same kind of thing with the same kind of
-// id), and ?q= are the words.
+// What is picked and what is looked for are both in the address, and nowhere else: /spaces/<space>/files has
+// nothing picked, /spaces/<space>/files/<id> picks a file or a folder (one address for both, since they are the
+// same kind of thing with the same kind of id), and ?q= are the words.
 // A phone has room for one column: the folder that is open last. A file that is picked comes up over it.
 
 /**
@@ -44,14 +44,14 @@ import { fileText } from './text';
  * answer that it is not there: the page goes by that answer, as the route does for an address with nothing at it.
  */
 export function FilesPage({ fileId, words }: { fileId: string | null; words: string }) {
-  return fileId === null ? <Files picked={null} words={words} /> : <PickedFiles fileId={fileId} words={words} />;
-}
-
-function PickedFiles({ fileId, words }: { fileId: string; words: string }) {
   const space = useCurrentSpace();
-  const { data, error } = useSuspenseQuery(readQuery(getFile, { spaceId: space.id, fileId }));
-  if (error?.code === 'NOT_FOUND') return <FileGonePage />;
-  return <Files picked={data.file} words={words} />;
+  // What is picked is read here, one file or none, and not in a component of its own around the page: the page
+  // is the same page with something picked and with nothing, and stays as it is from the one to the other
+  const found = useSuspenseQueries({
+    queries: (fileId === null ? [] : [fileId]).map((id) => readQuery(getFile, { spaceId: space.id, fileId: id }))
+  }).at(0);
+  if (found?.error?.code === 'NOT_FOUND') return <FileGonePage />;
+  return <Files picked={found?.data.file ?? null} words={words} />;
 }
 
 /**

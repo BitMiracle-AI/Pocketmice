@@ -16,8 +16,8 @@ import { languageTag } from '@/lib/language/languages';
 import { inOrder } from './fileOrder';
 import { fileText } from './text';
 
-// What is in a space: a tree of files and folders. A page shows one folder of it, and which one is in its address:
-// /spaces/<space> is what is directly in the space, /spaces/<space>/files/<folder> is a folder.
+// What is in a space: a tree of files and folders. The page of the files shows it a folder at a time, down to what
+// its address says is picked (FilesPage).
 // What changes the tree is here too: a new folder, another name, another description, another place. Each answers
 // null when it is done, or the sentence that says why it is not; and whatever the api said, what was read from
 // the space is asked for again: a refusal often means the page was showing what is no longer so (a name an agent
