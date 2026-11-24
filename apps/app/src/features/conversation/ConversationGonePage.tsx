@@ -26,7 +26,9 @@ export function ConversationGonePage() {
         <Button
           variant="outline"
           nativeButton={false}
-          render={<Link to="/spaces/$spaceId/conversations" params={{ spaceId: space.id }} />}
+          render={
+            <Link to="/spaces/$spaceId/conversations" params={{ spaceId: space.id }} activeOptions={{ exact: true }} />
+          }
         >
           {conversationText.toList}
         </Button>

@@ -21,8 +21,10 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader } from '@/components
 import { MessageScrollerProvider } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
+import { fileText } from '@/features/file/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useIsWide } from '@/hooks/useIsWide';
 import { useLastGiven } from '@/hooks/useLastGiven';
 import { thrownText } from '@/lib/api';
@@ -50,8 +52,9 @@ import { conversationText } from './text';
 // address asks for it, a pane: a file a message points at (?file=<id>), shown as the files show what is picked,
 // or what the conversation is and who is in it (?about=true). Which of the two is shown is in the address and
 // nowhere else, so a step back closes it.
-// Where there is room the pane stands beside the conversation; where there is not, it comes up over it. The
-// conversation stays as it is under it either way: where the person was reading, and what they were writing.
+// Where there is room the pane stands beside the conversation; where there is not, it comes in over it: from the
+// side of a window that is wide but has no room left, and from the bottom of a phone. The conversation stays as
+// it is under it either way: where the person was reading, and what they were writing.
 
 /** How wide the place of a conversation has to be for the pane to stand beside it, in pixels */
 const PANE_BESIDE_PX = 672;
@@ -120,6 +123,7 @@ function OpenConversation({
   const space = useCurrentSpace();
   const user = useCurrentUser();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   // The messages the page shows are the ones after this number: it moves back when earlier ones are asked for
   const [after, setAfter] = useState(() => windowStart(conversation.lastMessageNumber));
   // The first message the person had not read when they opened the conversation: where the line of what is new
@@ -181,17 +185,29 @@ function OpenConversation({
     if (problem !== null) toast.add({ type: 'error', title: problem });
   };
 
-  const paneContent =
-    shownPane === 'file' && shownFile !== null ? (
-      <ConversationFilePane fileId={shownFile} />
-    ) : (
-      <ConversationAbout
-        conversation={conversation}
-        members={members}
-        onRename={() => setRenaming(true)}
-        onAsk={setAsking}
-      />
-    );
+  // What the pane is called, and what it holds: the way back to the conversation alone, then the file or the
+  // conversation itself. It is the same pane beside the conversation and over it
+  const paneName = shownPane === 'file' ? fileText.details : conversationText.about;
+  const paneContent = (
+    <>
+      <div className="flex h-14 shrink-0 items-center border-b px-2">
+        <Button variant="ghost" size="sm" onClick={() => show(false)}>
+          <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
+          {conversationText.closePane}
+        </Button>
+      </div>
+      {shownPane === 'file' && shownFile !== null ? (
+        <ConversationFilePane fileId={shownFile} />
+      ) : (
+        <ConversationAbout
+          conversation={conversation}
+          members={members}
+          onRename={() => setRenaming(true)}
+          onAsk={setAsking}
+        />
+      )}
+    </>
+  );
 
   return (
     <div ref={room} className="flex min-h-0 flex-1">
@@ -206,13 +222,26 @@ function OpenConversation({
               aria-label={conversationText.backToList}
               title={conversationText.backToList}
               nativeButton={false}
-              render={<Link to="/spaces/$spaceId/conversations" params={{ spaceId: space.id }} />}
+              render={
+                // The list is where every conversation begins, and is not this page: the link does not say it is
+                <Link
+                  to="/spaces/$spaceId/conversations"
+                  params={{ spaceId: space.id }}
+                  activeOptions={{ exact: true }}
+                />
+              }
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
             </Button>
             {/* The page is the conversations of the space, which the bar of the list says: this is one of them */}
             <h2 className="min-w-0 flex-1 truncate text-base font-medium">{conversation.title}</h2>
-            <AvatarGroup title={conversationText.membersCount(members.length)} className="max-sm:hidden">
+            {/* Who is in it at a glance: read out as how many they are, and not as their letters */}
+            <AvatarGroup
+              role="img"
+              aria-label={conversationText.membersCount(members.length)}
+              title={conversationText.membersCount(members.length)}
+              className="max-sm:hidden"
+            >
               {members.slice(0, AVATARS_SHOWN).map((member) => (
                 <PersonAvatar key={member.userId} name={member.name} size="sm" />
               ))}
@@ -280,25 +309,21 @@ function OpenConversation({
       </div>
 
       {pane !== null && beside && (
-        <aside
-          aria-label={pane === 'about' ? conversationText.about : undefined}
-          className="flex min-h-0 w-80 shrink-0 flex-col border-l @7xl:w-96"
-        >
-          <div className="flex h-14 shrink-0 items-center border-b px-2">
-            <Button variant="ghost" size="sm" onClick={() => show(false)}>
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} data-icon="inline-start" />
-              {conversationText.closePane}
-            </Button>
-          </div>
+        <aside aria-label={paneName} className="flex min-h-0 w-80 shrink-0 flex-col border-l @7xl:w-96">
           {paneContent}
         </aside>
       )}
       {!beside && (
-        <Drawer open={pane !== null} onOpenChange={(open) => !open && void show(false)}>
+        <Drawer
+          open={pane !== null}
+          onOpenChange={(open) => !open && void show(false)}
+          swipeDirection={isMobile ? 'down' : 'right'}
+          showSwipeHandle={isMobile}
+        >
           <DrawerContent>
             <DrawerHeader className="sr-only">
-              <DrawerTitle>{conversation.title}</DrawerTitle>
-              <DrawerDescription>{conversationText.about}</DrawerDescription>
+              <DrawerTitle>{paneName}</DrawerTitle>
+              <DrawerDescription>{conversation.title}</DrawerDescription>
             </DrawerHeader>
             {paneContent}
           </DrawerContent>

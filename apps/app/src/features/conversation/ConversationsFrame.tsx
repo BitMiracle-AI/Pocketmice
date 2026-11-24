@@ -52,6 +52,7 @@ export function ConversationsFrame({ openId, children }: { openId: string | null
   return (
     <div className="@container flex min-h-0 flex-1">
       <aside
+        aria-label={shellText.conversations}
         className={cn(
           'flex min-h-0 w-full flex-col @3xl:w-80 @3xl:shrink-0 @3xl:border-r',
           openId !== null && '@max-3xl:hidden'
