@@ -158,9 +158,11 @@ function CodeBlockContent({
       )}
       {...props}
     >
+      {/* Wrapped, the column of the text may be narrower than its longest word, which is then broken: left to its
+          own width the column is as wide as that word, and a block narrower than it scrolls sideways */}
       <code
         data-slot="code-block-code"
-        className="grid min-h-lh min-w-max content-start in-data-numbered:grid-cols-[auto_1fr] in-data-wrap:min-w-0"
+        className="grid min-h-lh min-w-max content-start in-data-numbered:grid-cols-[auto_1fr] in-data-wrap:min-w-0 in-data-wrap:grid-cols-[minmax(0,1fr)] in-data-wrap:in-data-numbered:grid-cols-[auto_minmax(0,1fr)]"
       >
         {lineNumbers && typeof children === 'string'
           ? children
