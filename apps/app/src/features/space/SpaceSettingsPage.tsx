@@ -35,7 +35,7 @@ import {
   spaceSizeQuery,
   useNoLongerIn
 } from './spaces';
-import { isLimit, limitOf, typedOf } from './storageLimit';
+import { isLimit, limitOf, shareOf, typedOf } from './storageLimit';
 import { spaceText } from './text';
 
 // The settings of a space: what it is called, how much it may hold, and the end of it. All of it is the owner's
@@ -120,8 +120,6 @@ function SpaceStorage({ spaceId }: { spaceId: string }) {
   const [busy, setBusy] = useState(false);
 
   const unchanged = isLimit(typed, size.storageLimit);
-  // Nothing more goes in: the space holds as much as it may, or more, when the limit was set under what it holds
-  const noRoom = size.storageLimit !== null && size.storageSize >= size.storageLimit;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -145,7 +143,7 @@ function SpaceStorage({ spaceId }: { spaceId: string }) {
         <CardContent className="flex flex-col gap-6">
           {size.storageLimit !== null && (
             // The sentence over it says the same in words, so the bar is for the eye alone
-            <Progress aria-hidden="true" value={noRoom ? 100 : (size.storageSize / size.storageLimit) * 100} />
+            <Progress aria-hidden="true" value={shareOf(size.storageSize, size.storageLimit)} />
           )}
           <StorageLimitField
             id="space-limit"

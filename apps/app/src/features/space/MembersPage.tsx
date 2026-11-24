@@ -39,6 +39,7 @@ import { useCurrentSpace } from './CurrentSpaceProvider';
 import { MemberLimitDialog } from './MemberLimitDialog';
 import { changeRole, type GrantableRole, leave, type Member, membersQuery, removeFromSpace } from './members';
 import { spaceHolds, spaceSizeQuery, useNoLongerIn } from './spaces';
+import { shareOf } from './storageLimit';
 import { spaceText } from './text';
 
 // Who is in a space, what each may do there, and how much of it each holds. Every member sees the list, and over
@@ -114,10 +115,7 @@ export function MembersPage() {
           {size.storageLimit !== null && (
             <CardContent>
               {/* The sentence over it says the same in words, so the bar is for the eye alone */}
-              <Progress
-                aria-hidden="true"
-                value={size.storageSize >= size.storageLimit ? 100 : (size.storageSize / size.storageLimit) * 100}
-              />
+              <Progress aria-hidden="true" value={shareOf(size.storageSize, size.storageLimit)} />
             </CardContent>
           )}
         </Card>

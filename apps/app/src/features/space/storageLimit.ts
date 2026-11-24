@@ -46,3 +46,11 @@ export function typedOf(limit: number | null): TypedLimit {
 export function isLimit(typed: TypedLimit, limit: number | null): boolean {
   return limitOf(typed) === limitOf(typedOf(limit));
 }
+
+/**
+ * How much of its limit something holds, from 0 to 100: for a bar next to the sentence that says the same. What
+ * holds as much as it may, or more (a limit set under what is held, a limit of nothing), is full.
+ */
+export function shareOf(size: number, limit: number): number {
+  return size >= limit ? 100 : (size / limit) * 100;
+}

@@ -1,7 +1,7 @@
 // To run it, in apps/app: node --test src/features/space/storageLimit.test.ts
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isLimit, limitOf, typedOf } from './storageLimit.ts';
+import { isLimit, limitOf, shareOf, typedOf } from './storageLimit.ts';
 
 const MB = 1024 ** 2;
 const GB = 1024 ** 3;
@@ -78,4 +78,13 @@ test('no limit and a limit of 0 are not the same, and neither is what cannot be 
 test('a limit that is shown rounded and left as it is shown is the one that is there', () => {
   assert.equal(isLimit(typedOf(1_000_000_000), 1_000_000_000), true);
   assert.equal(isLimit({ amount: '954', unit: 'MB' }, 1_000_000_000), false);
+});
+
+test('what is held is a share of its limit, and never more than all of it', () => {
+  assert.equal(shareOf(0, 10 * GB), 0);
+  assert.equal(shareOf(GB, 4 * GB), 25);
+  assert.equal(shareOf(4 * GB, 4 * GB), 100);
+  // A limit set under what is held, and a limit of nothing
+  assert.equal(shareOf(5 * GB, 4 * GB), 100);
+  assert.equal(shareOf(0, 0), 100);
 });
