@@ -117,13 +117,27 @@ export function previewOf(name: string, size: number): Preview {
   return { kind: 'text', bytes: Math.min(size, TEXT_PREVIEW_BYTES), cut: size > TEXT_PREVIEW_BYTES };
 }
 
+/** How a text may be written, in the order they are tried: the first that the bytes are written in is taken */
+const ENCODINGS = ['utf-8', 'gb18030'];
+
 /**
- * The text the bytes are, read as UTF-8. cut says they are only the start of the file: a character the cut went
- * through is left out, where it would otherwise show as a mark of something broken.
+ * The text the bytes are. Nearly every text is written in UTF-8. One that is not is read as GB18030 when its bytes
+ * are that: it is the other way Chinese text is commonly written, and what a spreadsheet on Windows saves a CSV
+ * as. Bytes that are neither are shown as UTF-8, with a mark wherever they are not.
+ * cut says they are only the start of the file: a character the cut went through is left out, where it would
+ * otherwise show as a mark of something broken.
  */
 export function textOf(bytes: ArrayBuffer, cut: boolean): string {
-  const text = new TextDecoder().decode(bytes);
-  return cut ? text.replace(/�+$/u, '') : text;
+  for (const encoding of ENCODINGS) {
+    try {
+      // Read as the start of something longer, the bytes of a character that is not all there are no mistake:
+      // they are held back for the rest, which here never comes
+      return new TextDecoder(encoding, { fatal: true }).decode(bytes, { stream: cut });
+    } catch {
+      // Not written this way
+    }
+  }
+  return new TextDecoder().decode(bytes, { stream: cut });
 }
 
 /** The bytes written out as a data: address of the type type, for a picture that must not be drawn from blob: */

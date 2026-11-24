@@ -106,3 +106,22 @@ test('a character the cut went through is left out of the text', () => {
   // A file that is all there is shown as it is, broken or not
   assert.equal(textOf(whole.slice(0, 5).buffer, false), '预�');
 });
+
+test('a text that is not written in UTF-8 is read as GB18030 when it is that', () => {
+  // "你好，世界" as a spreadsheet on Windows writes it: two bytes to a character
+  const written = Uint8Array.from([0xc4, 0xe3, 0xba, 0xc3, 0xa3, 0xac, 0xca, 0xc0, 0xbd, 0xe7]);
+  assert.equal(textOf(written.buffer, false), '你好，世界');
+  // The cut goes through the last character
+  assert.equal(textOf(written.slice(0, 9).buffer, true), '你好，世');
+  // Letters and digits are the same bytes in both
+  assert.equal(textOf(Uint8Array.from([0x61, 0x2c, 0x31, 0x0a, 0xc4, 0xe3]).buffer, false), 'a,1\n你');
+});
+
+test('a text written in UTF-8 stays that, whatever it holds, and bytes that are no text are shown with marks', () => {
+  // The mark of something broken, written out as the character it is
+  const marked = new TextEncoder().encode('a\uFFFDb 预算');
+  assert.equal(textOf(marked.buffer, false), 'a\uFFFDb 预算');
+  // Neither UTF-8 nor GB18030: 0xff begins no character in either
+  assert.equal(textOf(Uint8Array.from([0x61, 0xff, 0x62]).buffer, false), 'a\uFFFDb');
+  assert.equal(textOf(Uint8Array.from([0x61, 0xff, 0x62, 0xe9]).buffer, true), 'a\uFFFDb');
+});
