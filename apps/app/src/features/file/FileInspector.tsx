@@ -114,7 +114,9 @@ function Heading({ file, onDescribe }: { file: DriveFile; onDescribe?: () => voi
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <h2 className="text-xl leading-7 font-semibold break-words">{file.name}</h2>
         {file.description && (
-          <p className="text-sm break-words whitespace-pre-line text-muted-foreground">{file.description}</p>
+          <p className="text-sm break-words whitespace-pre-line text-muted-foreground select-text">
+            {file.description}
+          </p>
         )}
         {onDescribe && (
           <div>

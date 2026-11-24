@@ -1,3 +1,4 @@
+import { cn } from 'cn';
 import { Children, type ComponentProps, isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -101,7 +102,7 @@ const components: Components = {
 /** The text, laid out as the document it is written as */
 export function Markdown({ text, className }: { text: string; className?: string }) {
   return (
-    <div className={className}>
+    <div className={cn('select-text', className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {text}
       </ReactMarkdown>

@@ -13,7 +13,7 @@ export function Rows({ rows, className }: { rows: string[][]; className?: string
   return (
     // The table is not the one of components/ui, which scrolls sideways in a box of its own: here one box
     // scrolls both ways, so the bar that moves the columns is in sight however many rows there are
-    <div className={cn('overflow-auto rounded-2xl border bg-background', className)}>
+    <div className={cn('overflow-auto rounded-2xl border bg-background select-text', className)}>
       <table className="w-full text-sm">
         {/* The rows pass under the head: it has the ground of the box, and not none as they have */}
         <TableHeader className="sticky top-0 bg-background">

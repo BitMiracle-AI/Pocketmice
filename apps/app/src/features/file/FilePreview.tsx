@@ -272,7 +272,7 @@ function Small({
         ) : (
           <pre
             className={cn(
-              'overflow-auto p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap',
+              'overflow-auto p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap select-text',
               className
             )}
           >
