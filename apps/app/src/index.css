@@ -366,6 +366,11 @@
   .on-quiet {
     background-color: var(--quiet);
   }
+  /* The pointer stays the arrow over whatever is pressed: a button has it by itself, and a link is given it here,
+     since a row that is a link and a row that is a button look the same. The hand of a web page is not used. */
+  a {
+    cursor: default;
+  }
   /* Nothing on a page is picked up by dragging across it or by a double click: what is there is pressed, not
      read off. What a person may want to take away says so itself with select-text: what someone wrote (a
      message, a description), the content of a file, code. What is typed into stays as the browser has it. */
