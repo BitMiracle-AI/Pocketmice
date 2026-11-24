@@ -24,7 +24,7 @@ import { UserMenu } from './UserMenu';
 // The frame of the pages that have a sidebar: the sidebar on the blue of the frame, and the page as a white tile
 // next to it. What the sidebar holds differs with where the page is (inside a space, or in the settings, which are the
 // person's and no space's), so the frame is handed its parts: what is at its top (where the page is), its rows
-// (the pages there are here), and the small rows at its bottom (the ways out of here). It always ends with the
+// (the pages there are here), and the rows at its bottom (the ways out of here). It always ends with the
 // uploads that are going, while there are any, and with who is signed in.
 
 export function Shell({
@@ -46,7 +46,7 @@ export function Shell({
   home: React.ReactElement;
   /** The rows of the sidebar: the pages there are here */
   nav: ReactNode;
-  /** The small rows at the bottom of the sidebar: the ways out of here */
+  /** The rows at the bottom of the sidebar: the ways out of here */
   ways: ReactNode;
   /** The space the page is in, or came from: the settings carry it along, for the way back */
   space: string | undefined;
@@ -128,7 +128,6 @@ function UploadsRow() {
  * A row of the sidebar that leads to a page. link is the link itself, with nothing in it (a Link of the router
  * with its address): the row puts the icon and the label inside. active says the page being shown is this one.
  * count is how many things on that page wait for the person, shown at the end of the row; nothing is shown for 0.
- * small is for the ways out at the bottom of the sidebar.
  * On a phone the sidebar is a sheet over the page, and the pages of one frame share it: the row that was tapped
  * closes it, or it would stay over the page it led to.
  */
@@ -137,25 +136,18 @@ export function NavRow({
   icon,
   label,
   active = false,
-  count = 0,
-  small = false
+  count = 0
 }: {
   link: React.ReactElement;
   icon: IconSvgElement;
   label: string;
   active?: boolean;
   count?: number;
-  small?: boolean;
 }) {
   const { setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        render={link}
-        size={small ? 'sm' : 'default'}
-        isActive={active}
-        onClick={() => setOpenMobile(false)}
-      >
+      <SidebarMenuButton render={link} isActive={active} onClick={() => setOpenMobile(false)}>
         <HugeiconsIcon icon={icon} strokeWidth={2} />
         <span>{label}</span>
       </SidebarMenuButton>

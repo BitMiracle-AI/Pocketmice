@@ -8,6 +8,8 @@ export const en = {
   account: 'Account',
   apiKeys: 'API keys',
   connect: 'Connect an agent',
+  /** The way out of a space, at the bottom of its sidebar: to the spaces the person is in */
+  back: 'Back',
   backToFiles: 'Back to files',
   allSpaces: 'All spaces',
   userMenu: 'Your account',

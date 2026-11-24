@@ -331,7 +331,8 @@
   --secondary-foreground: #ffffff;
   --muted: #3167f2;
   --muted-foreground: #dfe8ff;
-  --accent: #1549d6;
+  /* What is under the pointer is a little lighter than the frame, never darker: the frame is the darkest there is */
+  --accent: #3b6ff3;
   --accent-foreground: #ffffff;
   --destructive: #ffe6ea;
   --border: #4c7bf3;
@@ -339,7 +340,7 @@
   --input: #4c7bf3;
   --ring: #ffffff;
   --sidebar-foreground: #ffffff;
-  --sidebar-accent: #1549d6;
+  --sidebar-accent: #3b6ff3;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-active: #ffffff;
   --sidebar-active-foreground: #1746c8;

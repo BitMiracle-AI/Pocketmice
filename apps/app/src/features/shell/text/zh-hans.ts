@@ -9,6 +9,7 @@ export const zhHans: typeof en = {
   account: '账号',
   apiKeys: 'API key',
   connect: '接入 Agent',
+  back: '返回',
   backToFiles: '回到文件',
   allSpaces: '所有空间',
   userMenu: '你的账号',

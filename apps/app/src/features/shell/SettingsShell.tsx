@@ -1,4 +1,4 @@
-import { ArrowLeft01Icon, Key01Icon, Robot01Icon, Settings01Icon, UserCircleIcon } from '@hugeicons/core-free-icons';
+import { ArrowLeft02Icon, Key01Icon, PlugSocketIcon, Settings01Icon, UserCircleIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -43,7 +43,7 @@ export function SettingsShell({ backTo, children }: { backTo: string | undefined
           />
           <NavRow
             link={<Link to="/settings/connect" search={{ space: backTo }} />}
-            icon={Robot01Icon}
+            icon={PlugSocketIcon}
             label={shellText.connect}
             active={matches({ to: '/settings/connect' }) !== false}
           />
@@ -53,12 +53,11 @@ export function SettingsShell({ backTo, children }: { backTo: string | undefined
         backTo ? (
           <NavRow
             link={<Link to="/spaces/$spaceId" params={{ spaceId: backTo }} />}
-            icon={ArrowLeft01Icon}
+            icon={ArrowLeft02Icon}
             label={shellText.backToFiles}
-            small
           />
         ) : (
-          <NavRow link={<Link to="/" />} icon={ArrowLeft01Icon} label={shellText.allSpaces} small />
+          <NavRow link={<Link to="/" />} icon={ArrowLeft02Icon} label={shellText.allSpaces} />
         )
       }
     >

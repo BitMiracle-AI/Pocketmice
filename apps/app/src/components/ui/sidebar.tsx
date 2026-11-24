@@ -1,6 +1,6 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
-import { SidebarLeftIcon } from '@hugeicons/core-free-icons';
+import { LayoutAlignLeftIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'cn';
@@ -250,7 +250,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       }}
       {...props}
     >
-      <HugeiconsIcon icon={SidebarLeftIcon} strokeWidth={2} />
+      <HugeiconsIcon icon={LayoutAlignLeftIcon} strokeWidth={2} />
       <span className="sr-only">{commonText.ui.toggleSidebar}</span>
     </Button>
   );
@@ -449,7 +449,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
 // the row that leads to that very page (primary: the link itself says so, aria-current). In the sidebar the last
 // two are the same white; among the files the way down is paler than what is picked.
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-full px-3.5 text-left text-sm ring-sidebar-ring outline-hidden group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-active:bg-sidebar-active data-active:font-semibold data-active:text-sidebar-active-foreground data-active:aria-[current=page]:bg-sidebar-primary data-active:aria-[current=page]:text-sidebar-primary-foreground [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4.5 [&>span:last-child]:truncate",
+  "peer/menu-button group/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-full px-3.5 text-left text-sm font-medium ring-sidebar-ring outline-hidden group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-active:bg-sidebar-active data-active:text-sidebar-active-foreground data-active:aria-[current=page]:bg-sidebar-primary data-active:aria-[current=page]:text-sidebar-primary-foreground [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4.5 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {

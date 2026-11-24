@@ -1,9 +1,10 @@
 import {
-  ArrowLeft01Icon,
+  ArrowLeft02Icon,
   BubbleChatIcon,
   Delete02Icon,
   Folder01Icon,
-  Robot01Icon,
+  Key01Icon,
+  PlugSocketIcon,
   Settings01Icon,
   UserMultiple02Icon
 } from '@hugeicons/core-free-icons';
@@ -93,16 +94,21 @@ function SpaceFrame({ space, children }: { space: Space; children: ReactNode }) 
             )}
           </>
         }
-        // The other spaces, and how an agent is connected: that is about the person's keys and not about this
-        // space, and the address says which space the person came from, for the way back
+        // Back to the person's spaces, then their keys and how an agent is connected with one: those two are
+        // about the person and not about this space, and the address says which space the person came from,
+        // for the way back
         ways={
           <>
-            <NavRow link={<Link to="/" />} icon={ArrowLeft01Icon} label={shellText.allSpaces} small />
+            <NavRow link={<Link to="/" />} icon={ArrowLeft02Icon} label={shellText.back} />
+            <NavRow
+              link={<Link to="/settings/keys" search={{ space: spaceId }} />}
+              icon={Key01Icon}
+              label={shellText.apiKeys}
+            />
             <NavRow
               link={<Link to="/settings/connect" search={{ space: spaceId }} />}
-              icon={Robot01Icon}
+              icon={PlugSocketIcon}
               label={shellText.connect}
-              small
             />
           </>
         }
