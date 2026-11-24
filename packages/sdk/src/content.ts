@@ -121,8 +121,8 @@ export interface ContentMethods {
 }
 
 /**
- * The codes a request to the content may be refused with, besides the ones any request may: every one this side
- * knows. Which of them the address answers with is written in the contract in words only.
+ * The codes an upload may be refused with, besides the ones any request may: every one this side knows. Which of
+ * them the address answers with is written in the contract in words only.
  */
 const DECLARED = Object.keys(DECLARED_ERROR_STATUS) as DeclaredErrorCode[];
 
@@ -153,25 +153,6 @@ export function contentMethods(
     }
   }
 
-  /** Sends one request to the content. Returns the answer when it is a success, and throws what it says otherwise */
-  async function request(
-    name: string,
-    query: Parameters<typeof fileContentPath>[0],
-    init: { method: string; body?: Blob | string }
-  ): Promise<Response> {
-    const url = new URL(fileContentPath(query), baseUrl).href;
-    let response: Response;
-    try {
-      response = await send(url, init);
-    } catch (thrown) {
-      throw errorOf(failureOfThrown(thrown, name), name);
-    }
-    if (response.ok) return response;
-
-    const text = await read(name, () => response.text());
-    throw errorOf(failureOf(name, response.status, text, DECLARED), name);
-  }
-
   /** Uploads content with the query of a new file or of a new version. Returns the file the server answered with */
   async function upload(name: string, query: NewFileQuery | NewVersionQuery, content: Content): Promise<FileAnswer> {
     // Checked as it arrives and not by its type, for a caller that has no types. What such a caller hands over
@@ -188,8 +169,14 @@ export function contentMethods(
       throw new PocketmiceError('UNEXPECTED', `The content ${name} was given could not be read.`, name, thrown);
     }
 
-    const response = await request(name, query, { method: 'PUT', body });
+    let response: Response;
+    try {
+      response = await send(new URL(fileContentPath(query), baseUrl).href, { method: 'PUT', body });
+    } catch (thrown) {
+      throw errorOf(failureOfThrown(thrown, name), name);
+    }
     const text = await read(name, () => response.text());
+    if (!response.ok) throw errorOf(failureOf(name, response.status, text, DECLARED), name);
     try {
       // Not checked against the definition, as the output of an operation is not: the server checked it
       return JSON.parse(text);
