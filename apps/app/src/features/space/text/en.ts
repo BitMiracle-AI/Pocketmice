@@ -73,7 +73,7 @@ export const en = {
     'The most this space may hold. Every version of every file counts, the versions before the current one and what is in the trash too. Leave it empty for no limit.',
   limitInvalid: 'Type an amount like 10 or 1.5, or leave it empty for no limit.',
   limitSaved: 'Storage limit saved',
-  storageLimitItem: 'Storage limit…',
+  storageLimitItem: 'Storage limit',
   moreFor: (name: string) => `More for ${name}`,
   memberLimitTitle: (name: string) => `Storage limit of ${name}`,
   memberHoldsNow: (name: string, size: string) => `${name} holds ${size} in this space now.`,

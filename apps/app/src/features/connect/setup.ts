@@ -13,7 +13,7 @@ export const URL_VARIABLE = 'POCKETMICE_URL';
 export const KEY_VARIABLE = 'POCKETMICE_API_KEY';
 
 /** What stands where the key goes while the person has no key */
-export const NO_KEY = 'pm_…';
+export const NO_KEY = 'pm_••••••••';
 
 /**
  * The two variables with their values, a line each, the way a shell and a settings file both write them.

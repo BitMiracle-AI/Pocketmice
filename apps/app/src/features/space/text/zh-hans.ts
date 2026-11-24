@@ -63,7 +63,7 @@ export const zhHans: typeof en = {
   spaceLimitHint: '这个空间最多能放多少。每个文件的每个版本都算，旧版本和回收站里的也算。留空就是不限。',
   limitInvalid: '请填一个数，比如 10 或 1.5；留空就是不限。',
   limitSaved: '存储上限已保存',
-  storageLimitItem: '存储上限…',
+  storageLimitItem: '存储上限',
   moreFor: (name) => `对 ${name} 的更多操作`,
   memberLimitTitle: (name) => `${name} 的存储上限`,
   memberHoldsNow: (name, size) => `${name} 现在在这个空间里占用 ${size}。`,

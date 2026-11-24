@@ -13,7 +13,7 @@ export const en = {
     `We sent a ${digits}-digit code to ${email}. It works for ${minutes} minutes.`,
   codeLabel: 'Code',
   /** Under the boxes while the code that was entered is being checked */
-  checkingCode: 'Checking the code…',
+  checkingCode: 'Checking the code',
   newCode: 'Send a new code',
   newCodeSent: (email: string) => `A new code is on its way to ${email}`,
   otherEmail: 'Use another address',

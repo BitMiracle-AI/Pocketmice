@@ -10,7 +10,7 @@ export const zhHans: typeof en = {
   codeTitle: '输入验证码',
   codeSent: (email, digits, minutes) => `${digits} 位验证码已发到 ${email}，${minutes} 分钟内有效。`,
   codeLabel: '验证码',
-  checkingCode: '正在验证…',
+  checkingCode: '正在验证',
   newCode: '重新发送',
   newCodeSent: (email) => `新的验证码已发到 ${email}`,
   otherEmail: '换一个邮箱',
