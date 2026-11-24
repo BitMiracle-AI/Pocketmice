@@ -3,12 +3,11 @@ import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/compon
 
 /**
  * Rows of values laid out as a table, in a box of the size className gives that scrolls both ways. The first row
- * names the columns, as the first line of a CSV does, and stays in sight. A row with fewer values than the
- * widest ends in empty cells. A long value is shown as far as its column goes, and whole when pointed at.
+ * names the columns, as the first line of a CSV does, and stays in sight. A row has a cell for each value of its
+ * own and none for what the widest row has more: the cells are then as many as the values, whatever the rows
+ * are like. A long value is shown as far as its column goes, and whole when pointed at.
  */
 export function Rows({ rows, className }: { rows: string[][]; className?: string }) {
-  const width = Math.max(0, ...rows.map((row) => row.length));
-  const cellsOf = (row: string[]) => Array.from({ length: width }, (_, column) => row[column] ?? '');
   const [first = [], ...rest] = rows;
 
   return (
@@ -18,7 +17,7 @@ export function Rows({ rows, className }: { rows: string[][]; className?: string
       <table className="w-full text-sm">
         <TableHeader className="sticky top-0 bg-background">
           <TableRow>
-            {cellsOf(first).map((value, column) => (
+            {first.map((value, column) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: the cells of a row are told apart by their position alone
               <TableHead key={column} title={value} className="max-w-96 truncate">
                 {value}
@@ -30,7 +29,7 @@ export function Rows({ rows, className }: { rows: string[][]; className?: string
           {rest.map((row, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: the rows of a text are told apart by their position alone
             <TableRow key={index}>
-              {cellsOf(row).map((value, column) => (
+              {row.map((value, column) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: the cells of a row are told apart by their position alone
                 <TableCell key={column} title={value} className="max-w-96 truncate">
                   {value}
