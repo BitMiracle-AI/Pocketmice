@@ -418,8 +418,8 @@ function Pdf({ bytes, file, className }: { bytes: ArrayBuffer; file: DriveFile; 
  * - An address works for a few minutes, and playing may take longer. Fetching from one whose time is up, a player
  *   gives up (Chrome), gives up and then tries what it was given once more (Firefox), or waits without end
  *   (Safari's). So when the player gives up, or has run out of what to play, and its address is past its time,
- *   the api is asked for another, and the playing goes on from where it was. A player that gives up while its
- *   address still works could not play the file.
+ *   the api is asked for another, and the playing goes on from where it was, at the speed it had. A player that
+ *   gives up while its address still works could not play the file.
  */
 function Player({
   file,
@@ -443,7 +443,11 @@ function Player({
   // A player reads where to fetch from when it is made, and again only when told to: when another address,
   // asked for because the playing had stopped, is here
   useEffect(() => {
-    if (answeredAt && left.current) player.current?.load();
+    const element = player.current;
+    if (!answeredAt || !left.current || !element) return;
+    // Told to read again, a player goes back to the speed it began at: the speed it has is made that one
+    element.defaultPlaybackRate = element.playbackRate;
+    element.load();
   }, [answeredAt]);
 
   if (from.isPending) return <Waiting className={className} />;
