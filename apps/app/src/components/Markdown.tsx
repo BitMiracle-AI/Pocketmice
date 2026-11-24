@@ -62,11 +62,11 @@ const components: Components = {
   a: ({ node: _, href, children, ...rest }: FromDocument<'a'>) =>
     leadsOut(href) ? (
       <a
+        {...rest}
         href={href}
         target="_blank"
         rel="noreferrer noopener"
         className="font-medium text-primary underline underline-offset-4"
-        {...rest}
       >
         {children}
       </a>
@@ -95,7 +95,7 @@ const components: Components = {
   tbody: ({ node: _, ...rest }: FromDocument<'tbody'>) => <TableBody {...rest} />,
   tr: ({ node: _, ...rest }: FromDocument<'tr'>) => <TableRow {...rest} />,
   th: ({ node: _, ...rest }: FromDocument<'th'>) => <TableHead {...rest} />,
-  td: ({ node: _, ...rest }: FromDocument<'td'>) => <TableCell className="whitespace-normal" {...rest} />
+  td: ({ node: _, ...rest }: FromDocument<'td'>) => <TableCell {...rest} className="whitespace-normal" />
 };
 
 /** The text, laid out as the document it is written as */
