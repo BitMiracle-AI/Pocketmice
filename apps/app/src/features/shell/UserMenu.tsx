@@ -41,8 +41,8 @@ function Who() {
 }
 
 /**
- * The bottom of the sidebar: who is signed in, and what is theirs and not a space's: their settings, how the page
- * looks, which language it is in, and signing out.
+ * The bottom of the sidebar: who is signed in, and what is theirs and not a space's: their settings, which language
+ * the page is in, and signing out.
  * space is the space the page is in, or came from: the settings carry it along, for the way back.
  */
 export function UserMenu({ space }: { space: string | undefined }) {

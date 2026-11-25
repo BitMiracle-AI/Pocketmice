@@ -215,21 +215,19 @@ export function ConversationAbout({
           </section>
 
           {(isMember || isOwner) && (
-            <>
-              <div className="flex flex-wrap gap-2">
-                {isMember && (
-                  <Button variant="secondary" size="sm" onClick={() => setAsking('leave')}>
-                    {conversationText.leave}
-                  </Button>
-                )}
-                {/* What cannot be undone is the owner's alone */}
-                {isOwner && (
-                  <Button variant="destructive" size="sm" onClick={() => setAsking('delete')}>
-                    {conversationText.deleteConversation}
-                  </Button>
-                )}
-              </div>
-            </>
+            <div className="flex flex-wrap gap-2">
+              {isMember && (
+                <Button variant="secondary" size="sm" onClick={() => setAsking('leave')}>
+                  {conversationText.leave}
+                </Button>
+              )}
+              {/* What cannot be undone is the owner's alone */}
+              {isOwner && (
+                <Button variant="destructive" size="sm" onClick={() => setAsking('delete')}>
+                  {conversationText.deleteConversation}
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </ScrollArea>

@@ -403,16 +403,14 @@ function SpaceDetails() {
       </Facts>
 
       {size.data && (
-        <>
-          <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{spaceText.storageTitle}</h3>
-            {size.data.storageLimit !== null && (
-              // The sentence under it says the same in words, so the bar is for the eye alone
-              <Progress aria-hidden="true" value={shareOf(size.data.storageSize, size.data.storageLimit)} />
-            )}
-            <p className="text-sm text-muted-foreground">{spaceHolds(size.data)}</p>
-          </section>
-        </>
+        <section className="flex flex-col gap-3">
+          <h3 className="text-sm font-medium">{spaceText.storageTitle}</h3>
+          {size.data.storageLimit !== null && (
+            // The sentence under it says the same in words, so the bar is for the eye alone
+            <Progress aria-hidden="true" value={shareOf(size.data.storageSize, size.data.storageLimit)} />
+          )}
+          <p className="text-sm text-muted-foreground">{spaceHolds(size.data)}</p>
+        </section>
       )}
     </>
   );
