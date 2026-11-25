@@ -1,5 +1,6 @@
 import { id } from '@pocketmice/contract/id';
 import { createFileRoute } from '@tanstack/react-router';
+import { ConversationGonePage } from '@/features/conversation/ConversationGonePage';
 import { ConversationPage } from '@/features/conversation/ConversationPage';
 import { ConversationError } from '@/features/conversation/ConversationWaiting';
 
@@ -13,6 +14,9 @@ export const Route = createFileRoute('/_app/spaces/$spaceId/conversations/$conve
     about: search.about === true ? true : undefined
   }),
   component: OpenConversation,
+  // For an address that goes on after the id, as the route of the files has it: the page shows the conversation
+  // the address names up to there, or that there is none
+  notFoundComponent: ConversationGonePage,
   errorComponent: ConversationError
 });
 
