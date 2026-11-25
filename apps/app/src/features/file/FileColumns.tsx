@@ -106,8 +106,10 @@ function Column({
     : [];
 
   return (
-    // A column is as wide as the room allows, between a least and a most: more of them than fit are scrolled to
-    <div className={cn('w-full shrink-0 flex-col border-r md:max-w-80 md:min-w-56 md:flex-1', className)}>
+    // Every column is the same width, however many are open and whatever is in them: more of them than fit are
+    // scrolled to. Where there is not the room for one, it is as wide as the room: on a phone, which shows one
+    // alone, and in a narrow window that has the pane beside the columns
+    <div className={cn('w-full max-w-full shrink-0 flex-col border-r md:w-70', className)}>
       {files === undefined ? (
         <Empty>
           <EmptyHeader>
