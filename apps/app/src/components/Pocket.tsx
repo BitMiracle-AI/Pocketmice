@@ -21,8 +21,8 @@ import {
 //
 // The mouse is alive. What it does and when is in lib/mouseLife.ts; this file tells it what happens on the page
 // and draws what it is doing:
-// - when the page opens it takes hold of the edge and climbs up, once: a card that follows another (the code
-//   after the address) finds it where and how the last left it;
+// - when the page opens it takes hold of the edge and climbs up. A page whose card changes what it holds (the
+//   code after the address) keeps the one card, so the mouse stays as it is;
 // - it blinks, and an ear twitches now and then;
 // - it looks at the pointer, and at what is typed while a field of the card is typed into;
 // - it does not look at a password: while one is typed it sinks until only its ears and forehead show;
@@ -85,10 +85,6 @@ const STROKE = 200;
 const STROKE_MORE = 70;
 const STROKE_PAUSE = 400;
 
-// What outlives one card, so that the next finds the mouse as the last left it: whether it has climbed up on this
-// page yet, where it was looking, and what it was doing
-const kept = { climbed: false, looking: { x: 0, y: 0 } as Point, mouse: START };
-
 const clock = () => performance.now();
 const tick = (mouse: Mouse, told: Happening & { at: number }) => live(mouse, told, told.at);
 
@@ -125,9 +121,7 @@ function Eyes({ act }: { act: Act }) {
 export function Pocket({ children }: { children: ReactNode }) {
   const pocket = useRef<HTMLDivElement>(null);
   const face = useRef<SVGSVGElement>(null);
-  // Whether this is the card the mouse climbs up on: the first of the page
-  const climbs = useRef(!kept.climbed).current;
-  const [mouse, tell] = useReducer(tick, kept.mouse);
+  const [mouse, tell] = useReducer(tick, START);
   // For what listens to the page: what the mouse is doing as of the last drawing
   const doing = useRef(mouse.act);
   const posture = postureOf(mouse);
@@ -135,7 +129,6 @@ export function Pocket({ children }: { children: ReactNode }) {
   const at = `${(SPOTS[mouse.spot] ?? 0.58) * 100}%`;
 
   useEffect(() => {
-    kept.mouse = mouse;
     doing.current = mouse.act;
   });
 
@@ -147,7 +140,6 @@ export function Pocket({ children }: { children: ReactNode }) {
   }, [mouse.until]);
 
   useEffect(() => {
-    kept.climbed = true;
     const root = pocket.current;
     const drawing = face.current;
     if (!root || !drawing || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -170,9 +162,9 @@ export function Pocket({ children }: { children: ReactNode }) {
       frame = 0;
       if (target === null) return;
       const box = drawing.getBoundingClientRect();
-      kept.looking = gaze({ x: box.left + box.width / 2, y: box.top + box.height * EYES }, target, FAR);
-      root.style.setProperty('--look-x', kept.looking.x.toFixed(3));
-      root.style.setProperty('--look-y', kept.looking.y.toFixed(3));
+      const look = gaze({ x: box.left + box.width / 2, y: box.top + box.height * EYES }, target, FAR);
+      root.style.setProperty('--look-x', look.x.toFixed(3));
+      root.style.setProperty('--look-y', look.y.toFixed(3));
     };
     const lookAt = (point: Point) => {
       target = point;
@@ -259,12 +251,9 @@ export function Pocket({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    // z-0 makes this the frame the three are ordered in, so the back does not go behind the page
-    <div
-      ref={pocket}
-      className="relative z-0"
-      style={{ '--look-x': kept.looking.x, '--look-y': kept.looking.y } as CSSProperties}
-    >
+    // z-0 makes this the frame the three are ordered in, so the back does not go behind the page. Where the mouse
+    // looks is written on it as --look-x and --look-y, by the listener above and not by a render
+    <div ref={pocket} className="relative z-0">
       {/* The back shows above the card and in its two top corners, and nowhere down its sides. Its left end is a
           drawing, for the tab that runs down into it in a curve; the rest is as wide as the card happens to be */}
       <div
@@ -289,7 +278,7 @@ export function Pocket({ children }: { children: ReactNode }) {
         style={{ left: at, top: -16.9 * UNIT, marginLeft: -FACE / 2, zIndex: -10 }}
         aria-hidden="true"
       >
-        <g className={climbs ? 'motion-safe:animate-mouse-rise' : undefined}>
+        <g className="motion-safe:animate-mouse-rise">
           <g data-mouse="" style={{ transform: HELD[posture], transition: MOVE[posture] }}>
             {/* It sways and rocks about its chin. Asleep it looks at nothing */}
             <g
@@ -375,7 +364,7 @@ export function Pocket({ children }: { children: ReactNode }) {
           key={side}
           data-mouse=""
           aria-hidden="true"
-          className={cn('absolute', climbs && 'motion-safe:animate-paw-grab')}
+          className="absolute motion-safe:animate-paw-grab"
           style={{
             left: at,
             zIndex: 10,

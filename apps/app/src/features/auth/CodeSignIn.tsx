@@ -38,10 +38,24 @@ async function sendCode(email: string): Promise<string | null> {
 export function CodeSignIn({ next }: { next: string | undefined }) {
   // The address a code was sent to. Null while the person is still giving their address
   const [sentTo, setSentTo] = useState<string | null>(null);
-  return sentTo === null ? (
-    <EmailStep onSent={setSentTo} />
-  ) : (
-    <CodeStep email={sentTo} next={next} onOtherEmail={() => setSentTo(null)} />
+  // The two steps are in one card: what it says and what it holds change with the step, and the card stays, so
+  // the mouse that looks out of it is not put there a second time
+  return (
+    <CardPage
+      title={sentTo === null ? authText.signInTitle : authText.codeTitle}
+      description={
+        sentTo === null
+          ? authText.codeIntro
+          : authText.codeSent(sentTo, SIGN_IN_CODE_LENGTH, SIGN_IN_CODE_TTL_SECONDS / 60)
+      }
+      pitch={pitch}
+    >
+      {sentTo === null ? (
+        <EmailStep onSent={setSentTo} />
+      ) : (
+        <CodeStep email={sentTo} next={next} onOtherEmail={() => setSentTo(null)} />
+      )}
+    </CardPage>
   );
 }
 
@@ -63,34 +77,32 @@ function EmailStep({ onSent }: { onSent: (email: string) => void }) {
   };
 
   return (
-    <CardPage title={authText.signInTitle} description={authText.codeIntro} pitch={pitch}>
-      <form onSubmit={submit} noValidate>
-        <FieldGroup>
-          <Field data-invalid={problem !== null || undefined}>
-            <FieldLabel htmlFor="auth-email">{authText.email}</FieldLabel>
-            <Input
-              id="auth-email"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              value={email}
-              aria-invalid={problem !== null || undefined}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setProblem(null);
-              }}
-            />
-            {problem !== null && <FieldError>{problem}</FieldError>}
-          </Field>
-          <Field>
-            <Button type="submit" disabled={sending}>
-              {sending && <Spinner data-icon="inline-start" />}
-              {authText.sendCode}
-            </Button>
-          </Field>
-        </FieldGroup>
-      </form>
-    </CardPage>
+    <form onSubmit={submit} noValidate>
+      <FieldGroup>
+        <Field data-invalid={problem !== null || undefined}>
+          <FieldLabel htmlFor="auth-email">{authText.email}</FieldLabel>
+          <Input
+            id="auth-email"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            value={email}
+            aria-invalid={problem !== null || undefined}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              setProblem(null);
+            }}
+          />
+          {problem !== null && <FieldError>{problem}</FieldError>}
+        </Field>
+        <Field>
+          <Button type="submit" disabled={sending}>
+            {sending && <Spinner data-icon="inline-start" />}
+            {authText.sendCode}
+          </Button>
+        </Field>
+      </FieldGroup>
+    </form>
   );
 }
 
@@ -147,61 +159,55 @@ function CodeStep({
   };
 
   return (
-    <CardPage
-      title={authText.codeTitle}
-      description={authText.codeSent(email, SIGN_IN_CODE_LENGTH, SIGN_IN_CODE_TTL_SECONDS / 60)}
-      pitch={pitch}
-    >
-      <FieldGroup>
-        <Field data-invalid={problem !== null || undefined}>
-          <div className="flex justify-center">
-            <InputOTP
-              ref={input}
-              autoFocus
-              maxLength={SIGN_IN_CODE_LENGTH}
-              value={code}
-              disabled={spent}
-              aria-label={authText.codeLabel}
-              aria-invalid={problem !== null || undefined}
-              onChange={(value) => {
-                // While a code is being checked, what is typed is not taken: the field keeps the caret, so the
-                // person can type again the moment the answer is there
-                if (busy !== null) return;
-                setCode(value);
-                if (value) setProblem(null);
-              }}
-              onComplete={check}
-            >
-              <InputOTPGroup>
-                {SLOTS.map((index) => (
-                  <InputOTPSlot key={index} index={index} aria-invalid={problem !== null || undefined} />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
-          </div>
-          {/* That the code is being checked is said under the boxes, where what is wrong with it is said: beside
-              them it would push them out of the middle. The line has its room when it says nothing, so the card
-              does not jump when it speaks */}
-          <div className="flex min-h-5 items-center justify-center">
-            {busy === 'checking' ? (
-              <FieldDescription className="flex items-center gap-2">
-                <Spinner />
-                {authText.checkingCode}
-              </FieldDescription>
-            ) : (
-              problem !== null && <FieldError className="text-center">{problem}</FieldError>
-            )}
-          </div>
-        </Field>
-        <Field orientation="horizontal" className="justify-center">
-          <Button variant="link" size="sm" disabled={busy !== null} onClick={sendAnother}>
-            {authText.newCode}
-          </Button>
-          <Button variant="link" size="sm" disabled={busy !== null} onClick={onOtherEmail}>
-            {authText.otherEmail}
-          </Button>
-        </Field>
-      </FieldGroup>
-    </CardPage>
+    <FieldGroup>
+      <Field data-invalid={problem !== null || undefined}>
+        <div className="flex justify-center">
+          <InputOTP
+            ref={input}
+            autoFocus
+            maxLength={SIGN_IN_CODE_LENGTH}
+            value={code}
+            disabled={spent}
+            aria-label={authText.codeLabel}
+            aria-invalid={problem !== null || undefined}
+            onChange={(value) => {
+              // While a code is being checked, what is typed is not taken: the field keeps the caret, so the
+              // person can type again the moment the answer is there
+              if (busy !== null) return;
+              setCode(value);
+              if (value) setProblem(null);
+            }}
+            onComplete={check}
+          >
+            <InputOTPGroup>
+              {SLOTS.map((index) => (
+                <InputOTPSlot key={index} index={index} aria-invalid={problem !== null || undefined} />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+        </div>
+        {/* That the code is being checked is said under the boxes, where what is wrong with it is said: beside
+            them it would push them out of the middle. The line has its room when it says nothing, so the card
+            does not jump when it speaks */}
+        <div className="flex min-h-5 items-center justify-center">
+          {busy === 'checking' ? (
+            <FieldDescription className="flex items-center gap-2">
+              <Spinner />
+              {authText.checkingCode}
+            </FieldDescription>
+          ) : (
+            problem !== null && <FieldError className="text-center">{problem}</FieldError>
+          )}
+        </div>
+      </Field>
+      <Field orientation="horizontal" className="justify-center">
+        <Button variant="link" size="sm" disabled={busy !== null} onClick={sendAnother}>
+          {authText.newCode}
+        </Button>
+        <Button variant="link" size="sm" disabled={busy !== null} onClick={onOtherEmail}>
+          {authText.otherEmail}
+        </Button>
+      </Field>
+    </FieldGroup>
   );
 }
