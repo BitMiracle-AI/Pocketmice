@@ -18,6 +18,19 @@ document.documentElement.lang = languageTag(language);
 // page at it shows the same screen too
 const router = createRouter({ routeTree, defaultErrorComponent: RouteError, defaultNotFoundComponent: NotFound });
 
+// The code of each page is a file of its own (autoCodeSplitting in vite.config.ts), and the router asks for it only
+// once the routes above the page have let the person in: routes/_app.tsx asks the api who is signed in, and the
+// download begins when that answer is there, one after the other. On a line that is slow, that is a wait after a
+// wait before a page that is opened for the first time.
+// Here the two begin together: at the start of every move to an address, the code of every page on the way to it
+// is asked for, whatever the routes above will say. When they send the person elsewhere (not signed in: to the
+// sign-in page), what was downloaded is there for later. A download that fails says nothing here: the router asks
+// again in its turn, and what fails then is its to report.
+router.subscribe('onBeforeLoad', ({ toLocation }) => {
+  const [routes] = router.getMatchedRoutes(toLocation.pathname);
+  for (const route of routes) void router.loadRouteChunk(route)?.catch(() => undefined);
+});
+
 // Tells the types of the router which pages there are: a link to an address that does not exist fails the type check
 declare module '@tanstack/react-router' {
   interface Register {
@@ -30,7 +43,7 @@ if (!root) throw new Error('index.html has no element with id "root".');
 
 createRoot(root).render(
   <StrictMode>
-    {/* What was read from the api is in this one cache: the pages and the loaders of the routes share it */}
+    {/* What was read from the api is in this one cache: the pages and the routes that let them in share it */}
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>
