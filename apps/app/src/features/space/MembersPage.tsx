@@ -1,7 +1,7 @@
 import { HardDriveIcon, MoreHorizontalIcon, UserRemove01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { grantableRole } from '@pocketmice/contract/spaceRole';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Page } from '@/components/Page';
 import { PersonAvatar } from '@/components/PersonAvatar';
@@ -30,7 +30,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { InviteLinks } from '@/features/invite/InviteLinks';
+import { type Invite, invitesQuery } from '@/features/invite/invites';
 import { PageBar } from '@/features/shell/PageBar';
+import { PageWaiting } from '@/features/shell/PageWaiting';
 import { shellText } from '@/features/shell/text';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLastGiven } from '@/hooks/useLastGiven';
@@ -38,7 +40,7 @@ import { formatSize } from '@/lib/format';
 import { useCurrentSpace } from './CurrentSpaceProvider';
 import { MemberLimitDialog } from './MemberLimitDialog';
 import { changeRole, type GrantableRole, leave, type Member, membersQuery, removeFromSpace } from './members';
-import { spaceHolds, spaceSizeQuery, useNoLongerIn } from './spaces';
+import { type SpaceSize, spaceHolds, spaceSizeQuery, useNoLongerIn } from './spaces';
 import { shareOf } from './storageLimit';
 import { spaceText } from './text';
 
@@ -54,12 +56,37 @@ const OFFERED = [...grantableRole.options].reverse();
 /** What the person is being asked about: taking a member out, or leaving themselves */
 type Asking = { member: Member } | 'leave' | null;
 
+/**
+ * The page. It is shown whole once all it reads is there, and not a card at a time: the members, how much the
+ * space holds, and for the owner the invites to the space, which nobody else may read.
+ */
 export function MembersPage() {
+  const space = useCurrentSpace();
+  const isOwner = space.role === 'owner';
+  const members = useQuery(membersQuery(space.id));
+  const size = useQuery(spaceSizeQuery(space.id));
+  const invites = useQuery({ ...invitesQuery(space.id), enabled: isOwner });
+  // Null: not this person's to see
+  const links = isOwner ? invites.data?.invites : null;
+
+  if (!members.data || !size.data || links === undefined) {
+    return <PageWaiting title={shellText.members} reads={isOwner ? [members, size, invites] : [members, size]} />;
+  }
+  return <Members members={members.data.members} size={size.data} invites={links} />;
+}
+
+function Members({
+  members,
+  size,
+  invites
+}: {
+  members: readonly Member[];
+  size: SpaceSize;
+  invites: readonly Invite[] | null;
+}) {
   const space = useCurrentSpace();
   const user = useCurrentUser();
   const noLongerIn = useNoLongerIn();
-  const { members } = useSuspenseQuery(membersQuery(space.id)).data;
-  const size = useSuspenseQuery(spaceSizeQuery(space.id)).data;
   // The member whose role is being changed: their row waits until the api has answered
   const [changing, setChanging] = useState<string | null>(null);
   // The member whose storage limit is being set
@@ -212,7 +239,7 @@ export function MembersPage() {
           </CardContent>
         </Card>
 
-        {isOwner && <InviteLinks spaceId={space.id} />}
+        {invites !== null && <InviteLinks spaceId={space.id} invites={invites} />}
       </Page>
 
       <MemberLimitDialog spaceId={space.id} member={limiting} onClose={() => setLimiting(null)} />

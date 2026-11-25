@@ -1,6 +1,5 @@
 import { Add01Icon, Delete02Icon, Link01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useSuspenseQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { CopyButton } from '@/components/CopyButton';
 import {
@@ -20,16 +19,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { copyText } from '@/lib/clipboard';
 import { formatDate, formatSize } from '@/lib/format';
-import { type Invite, inviteLink, invitesQuery, removeInvite } from './invites';
+import { type Invite, inviteLink, removeInvite } from './invites';
 import { NewInviteDialog } from './NewInviteDialog';
 import { inviteText } from './text';
 
 /**
  * The invite links to a space, on the page of its members: the owner makes one, copies it to send it, and deletes
- * it. Only the owner is shown this: an invite's link is all it takes to join.
+ * it. Only the owner is shown this: an invite's link is all it takes to join. invites is what the page has read.
  */
-export function InviteLinks({ spaceId }: { spaceId: string }) {
-  const { invites } = useSuspenseQuery(invitesQuery(spaceId)).data;
+export function InviteLinks({ spaceId, invites }: { spaceId: string; invites: readonly Invite[] }) {
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Invite | null>(null);
   const [deleting, setDeleting] = useState(false);

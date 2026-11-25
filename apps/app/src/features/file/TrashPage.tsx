@@ -1,7 +1,7 @@
 import { Delete02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { roleCovers } from '@pocketmice/contract/spaceRole';
-import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Mouse } from '@/components/Mouse';
 import { Page } from '@/components/Page';
@@ -22,6 +22,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/toast';
 import { PageBar } from '@/features/shell/PageBar';
+import { PageWaiting } from '@/features/shell/PageWaiting';
 import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { useLastGiven } from '@/hooks/useLastGiven';
@@ -41,9 +42,20 @@ type Asking = { file: TrashedFile } | 'everything' | null;
 
 export function TrashPage() {
   const space = useCurrentSpace();
+  const trash = useInfiniteQuery(trashQuery(space.id));
+  if (!trash.data) return <PageWaiting title={shellText.trash} reads={[trash]} />;
+  return (
+    <Trash
+      files={trash.data.pages.flatMap((page) => page.files)}
+      more={trash.hasNextPage ? { busy: trash.isFetchingNextPage, show: () => void trash.fetchNextPage() } : null}
+    />
+  );
+}
+
+/** The page once the trash was read. more is how the next page of it is asked for, or null when there is none */
+function Trash({ files, more }: { files: readonly TrashedFile[]; more: { busy: boolean; show: () => void } | null }) {
+  const space = useCurrentSpace();
   const goTo = useGoToFiles(space.id);
-  const trash = useSuspenseInfiniteQuery(trashQuery(space.id));
-  const files = trash.data.pages.flatMap((page) => page.files);
   // The rows something is being done to: their buttons are off until the api has answered
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   const [asking, setAsking] = useState<Asking>(null);
@@ -177,10 +189,10 @@ export function TrashPage() {
               </TableBody>
             </Table>
           </Card>
-          {trash.hasNextPage && (
+          {more !== null && (
             <div className="flex justify-center">
-              <Button variant="secondary" disabled={trash.isFetchingNextPage} onClick={() => trash.fetchNextPage()}>
-                {trash.isFetchingNextPage && <Spinner data-icon="inline-start" />}
+              <Button variant="secondary" disabled={more.busy} onClick={more.show}>
+                {more.busy && <Spinner data-icon="inline-start" />}
                 {fileText.showMore}
               </Button>
             </div>

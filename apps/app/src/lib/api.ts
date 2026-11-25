@@ -15,6 +15,10 @@ import { commonText } from '@/lib/text';
 //   thing show the same.
 // - A read goes through the cache (readQuery). A write is called (call) and answers with a result that says whether
 //   it worked; whoever wrote then marks the reads it changed as stale, and the cache asks for them again.
+// - A page is shown as soon as the person goes to it, and reads what it shows then. While an answer is on its way
+//   the page says so where the answer will be, and says there what went wrong when none comes
+//   (features/shell/PageWaiting). What no page can be shown without is read before it: who is signed in, and which
+//   spaces are theirs.
 // - A page that changes something shows it when the api has answered, not before: nothing on a page is a guess.
 // - Who is signed in is what the api says (currentUserQuery). The browser holds the cookie and the page cannot
 //   read it: nothing in the page remembers that someone signed in.

@@ -1,6 +1,6 @@
 import { Add01Icon, Copy01Icon, Key01Icon, Tick02Icon, ViewIcon, ViewOffSlashIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Code } from '@/components/Code';
 import { CopyButton } from '@/components/CopyButton';
@@ -11,10 +11,11 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Item, ItemActions, ItemContent, ItemTitle } from '@/components/ui/item';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/toast';
-import { apiKeysQuery, hiddenKey } from '@/features/apiKey/apiKeys';
+import { type ApiKey, apiKeysQuery, hiddenKey } from '@/features/apiKey/apiKeys';
 import { NewKeyDialog } from '@/features/apiKey/NewKeyDialog';
 import { apiKeyText } from '@/features/apiKey/text';
 import { PageBar } from '@/features/shell/PageBar';
+import { PageWaiting } from '@/features/shell/PageWaiting';
 import { useCopy } from '@/hooks/useCopy';
 import { apiUrl } from '@/lib/api';
 import { commonText } from '@/lib/text';
@@ -29,7 +30,13 @@ import { connectText } from './text';
 // hidden the message cannot be selected: selected and copied by hand, it would carry a key that works nowhere.
 
 export function ConnectPage() {
-  const { apiKeys } = useSuspenseQuery(apiKeysQuery).data;
+  // What the page hands over is one of the person's keys
+  const keys = useQuery(apiKeysQuery);
+  if (!keys.data) return <PageWaiting title={connectText.title} reads={[keys]} />;
+  return <Connect apiKeys={keys.data.apiKeys} />;
+}
+
+function Connect({ apiKeys }: { apiKeys: readonly ApiKey[] }) {
   // The key the person picked. While they have picked none, or the one they picked is gone, it is their newest
   const [picked, setPicked] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

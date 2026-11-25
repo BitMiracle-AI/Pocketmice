@@ -1,6 +1,6 @@
 import { Add01Icon, Delete02Icon, MoreHorizontalIcon, ViewIcon, ViewOffSlashIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { cn } from 'cn';
 import { useState } from 'react';
@@ -41,6 +41,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { connectText } from '@/features/connect/text';
 import { PageBar } from '@/features/shell/PageBar';
+import { PageWaiting } from '@/features/shell/PageWaiting';
 import { formatDate } from '@/lib/format';
 import { type ApiKey, apiKeysQuery, hiddenKey, removeApiKey } from './apiKeys';
 import { NewKeyDialog } from './NewKeyDialog';
@@ -52,7 +53,12 @@ import { apiKeyText } from './text';
 // stays in sight; showing and deleting are in the menu of the row.
 
 export function KeysPage() {
-  const { data } = useSuspenseQuery(apiKeysQuery);
+  const keys = useQuery(apiKeysQuery);
+  if (!keys.data) return <PageWaiting title={apiKeyText.title} reads={[keys]} />;
+  return <Keys apiKeys={keys.data.apiKeys} />;
+}
+
+function Keys({ apiKeys }: { apiKeys: readonly ApiKey[] }) {
   const [creating, setCreating] = useState(false);
   // The keys that are written out in full. The others are shown by their first and last characters
   const [shown, setShown] = useState<ReadonlySet<string>>(new Set());
@@ -94,7 +100,7 @@ export function KeysPage() {
             </CardAction>
           </CardHeader>
           <CardContent>
-            {data.apiKeys.length === 0 ? (
+            {apiKeys.length === 0 ? (
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia>
@@ -106,7 +112,7 @@ export function KeysPage() {
               </Empty>
             ) : (
               <ItemGroup aria-label={apiKeyText.listLabel}>
-                {data.apiKeys.map((each) => (
+                {apiKeys.map((each) => (
                   <KeyRow
                     key={each.id}
                     apiKey={each}

@@ -99,11 +99,6 @@ export function spaceSizeQuery(spaceId: string) {
   return readQuery(getSpaceSize, { spaceId });
 }
 
-/** What a page that says how much a space holds needs before it is shown */
-export async function loadSpaceSize(spaceId: string): Promise<void> {
-  await queryClient.ensureQueryData(spaceSizeQuery(spaceId));
-}
-
 /** How much a space holds, in a sentence: against its limit when it has one */
 export function spaceHolds({ storageSize, storageLimit }: SpaceSize): string {
   return storageLimit === null

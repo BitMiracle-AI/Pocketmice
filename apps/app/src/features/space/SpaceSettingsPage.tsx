@@ -1,7 +1,7 @@
 import { Settings01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { SPACE_NAME_MAX_LENGTH } from '@pocketmice/contract/domains/space';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { Page } from '@/components/Page';
 import { SavedCard } from '@/components/SavedCard';
@@ -23,6 +23,7 @@ import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/components/ui/toast';
 import { PageBar } from '@/features/shell/PageBar';
+import { Waiting } from '@/features/shell/PageWaiting';
 import { commonText } from '@/lib/text';
 import { useCurrentSpace } from './CurrentSpaceProvider';
 import { StorageLimitField } from './StorageLimitField';
@@ -30,6 +31,7 @@ import {
   removeSpace,
   renameSpace,
   type Space,
+  type SpaceSize,
   setSpaceLimit,
   spaceHolds,
   spaceSizeQuery,
@@ -112,9 +114,25 @@ export function SpaceSettingsPage() {
  * How much the space holds, with a bar that says how much of its limit that is when it has one, and the field the
  * limit is set in. The card is saved by itself, as the name over it is: the button is off while what is typed is
  * the limit that is there.
+ * It is the one card of the page that reads something: the cards around it are there at once, and this one says
+ * that it waits.
  */
 function SpaceStorage({ spaceId }: { spaceId: string }) {
-  const size = useSuspenseQuery(spaceSizeQuery(spaceId)).data;
+  const size = useQuery(spaceSizeQuery(spaceId));
+  if (size.data) return <SpaceStorageForm spaceId={spaceId} size={size.data} />;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{spaceText.storageTitle}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Waiting reads={[size]} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function SpaceStorageForm({ spaceId, size }: { spaceId: string; size: SpaceSize }) {
   const [typed, setTyped] = useState(() => typedOf(size.storageLimit));
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

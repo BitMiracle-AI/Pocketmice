@@ -6,9 +6,7 @@ import {
   updateMemberStorageLimit
 } from '@pocketmice/contract/domains/space';
 import type { InputOf, OutputOf } from '@pocketmice/contract/operation';
-import { invitesQuery } from '@/features/invite/invites';
-import { call, failureText, queryClient, readQuery, spaceChanged } from '@/lib/api';
-import { spaceSizeQuery, spacesQuery } from './spaces';
+import { call, failureText, readQuery, spaceChanged } from '@/lib/api';
 import { spaceText } from './text';
 
 // The members of a space: whoever is one can get in, and what they may do there is their role. Every member sees
@@ -24,21 +22,6 @@ export type GrantableRole = InputOf<typeof updateMember>['role'];
 /** The members of a space, in the order they became members */
 export function membersQuery(spaceId: string) {
   return readQuery(getMembers, { spaceId });
-}
-
-/**
- * What the page of the members needs before it is shown: the members, how much the space holds, and for the owner
- * the invites to the space, which nobody else may read.
- */
-export async function loadMembers(spaceId: string): Promise<void> {
-  const [{ spaces }] = await Promise.all([
-    queryClient.ensureQueryData(spacesQuery),
-    queryClient.ensureQueryData(membersQuery(spaceId)),
-    queryClient.ensureQueryData(spaceSizeQuery(spaceId))
-  ]);
-  if (spaces.find((each) => each.id === spaceId)?.role === 'owner') {
-    await queryClient.ensureQueryData(invitesQuery(spaceId));
-  }
 }
 
 /** Changes the role of a member. Null when it is changed, or the sentence that says why it is not */
