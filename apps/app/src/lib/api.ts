@@ -144,8 +144,8 @@ export function readQuery<Op extends Operation<'read'>>(operation: Op, input: In
 
 /**
  * The answer to a read that comes a page at a time, as the cache keeps it: the pages read so far, the first one
- * first. Hand it to useSuspenseInfiniteQuery or queryClient.ensureInfiniteQueryData; fetchNextPage reads the page
- * after the last. input is what the operation takes, without the cursor: where a page starts is kept here.
+ * first. Hand it to useInfiniteQuery; fetchNextPage reads the page after the last. input is what the operation
+ * takes, without the cursor: where a page starts is kept here.
  * Only an operation that answers with nextCursor passes the type check. The pages are kept under the name of the
  * operation and the input, as a single call would be, so marking what was read from a space as stale reaches them:
  * they are then read again from the first, as many as there were.
