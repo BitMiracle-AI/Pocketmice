@@ -1,8 +1,8 @@
 import { ArrowLeft01Icon, FolderAddIcon, InformationCircleIcon, Upload04Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { getFile, getFileByPath } from '@pocketmice/contract/domains/file';
+import { id } from '@pocketmice/contract/id';
 import { roleCovers } from '@pocketmice/contract/spaceRole';
-import { useQueries, useSuspenseQueries } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { SidePane } from '@/components/SidePane';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageBar } from '@/features/shell/PageBar';
+import { Waiting } from '@/features/shell/PageWaiting';
 import { shellText } from '@/features/shell/text';
 import { useCurrentSpace } from '@/features/space/CurrentSpaceProvider';
 import { uploadFiles } from '@/features/upload/uploads';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useLastGiven } from '@/hooks/useLastGiven';
-import { readQuery } from '@/lib/api';
 import { FileColumns, type OpenFolder } from './FileColumns';
 import { FileDialogs, useFileActions } from './FileDialogs';
 import { FileGonePage } from './FileGonePage';
@@ -25,7 +25,7 @@ import { FileSearchField } from './FileSearchField';
 import { FilesLink, useGoToFiles } from './FilesLink';
 import { FilesTrail } from './FilesTrail';
 import { foldersAbove, foldersToFind, isWithin } from './fileOrder';
-import type { DriveFile } from './files';
+import { type DriveFile, fileQuery, folderAtQuery } from './files';
 import { NewFolderDialog } from './NewFolderDialog';
 import { fileText } from './text';
 
@@ -42,36 +42,47 @@ import { fileText } from './text';
 /**
  * The page. fileId is what the address says is picked, or null when it says nothing; words is what it says is
  * looked for, empty when it says nothing.
- * Its route has made sure there is such a file. One that has gone since (into the trash, or for good; by the
- * person a page ago, or by someone else while this page is open) is still in the cache as it was, next to the
- * answer that it is not there: the page goes by that answer, as the route does for an address with nothing at it.
+ * Nothing is read before the page is shown. What is picked is laid out as soon as anything is known of it, which
+ * for a row that was clicked is at once (fileQuery); an address the page has heard nothing of waits for the api,
+ * and the page says so meanwhile.
+ * fileId is the one in the address, which anyone can write: what is no id, and an id the space has nothing for,
+ * is said to be gone. So is what has gone since (into the trash, or for good; by the person a page ago, or by
+ * someone else while this page is open): it is still in the cache as it was, next to the answer that it is not
+ * there, and the page goes by that answer.
  */
 export function FilesPage({ fileId, words }: { fileId: string | null; words: string }) {
   const space = useCurrentSpace();
+  const valid = fileId === null || id.safeParse(fileId).success;
   // What is picked is read here, one file or none, and not in a component of its own around the page: the page
   // is the same page with something picked and with nothing, and stays as it is from the one to the other
-  const found = useSuspenseQueries({
-    queries: (fileId === null ? [] : [fileId]).map((id) => readQuery(getFile, { spaceId: space.id, fileId: id }))
+  const found = useQueries({
+    queries: (fileId !== null && valid ? [fileId] : []).map((each) => fileQuery(space.id, each))
   }).at(0);
-  if (found?.error?.code === 'NOT_FOUND') return <FileGonePage />;
-  return <Files picked={found?.data.file ?? null} words={words} />;
+  if (!valid || found?.error?.code === 'NOT_FOUND') return <FileGonePage />;
+  if (found && !found.data) {
+    return (
+      <>
+        <PageBar title={shellText.files} />
+        <Waiting reads={[found]} />
+      </>
+    );
+  }
+  return <Files picked={found?.data?.file ?? null} words={words} />;
 }
 
 /**
  * The folders that are open as columns when picked is what is picked: the space, the folders above it, and itself
  * when it is a folder.
  * The names come from the path of what is picked, which is there at once. The address of the folder right above
- * is in the file itself; the ones further up are asked for by their paths, and are not known until the answers
- * are there (the route has asked before the page is shown, so that is after something changed in the space):
- * their columns wait until then.
+ * is in the file itself; the ones further up are asked for by their paths (folderAtQuery). A folder the page has
+ * heard of, as every one is that was opened as a column, is known at once; one it has not is not known until the
+ * answer is there, and its column waits until then.
  */
 function useOpenFolders(picked: DriveFile | null): OpenFolder[] {
   const space = useCurrentSpace();
   const above = picked ? foldersAbove(picked.path) : [];
   const found = useQueries({
-    queries: (picked ? foldersToFind(picked.path) : []).map(({ path }) =>
-      readQuery(getFileByPath, { spaceId: space.id, path })
-    )
+    queries: (picked ? foldersToFind(picked.path) : []).map(({ path }) => folderAtQuery(space.id, path))
   });
   return [
     { key: '/', id: null, name: space.name },

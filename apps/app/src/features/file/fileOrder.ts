@@ -17,6 +17,33 @@ export function inOrder(files: readonly DriveFile[], compare: (a: string, b: str
 }
 
 /**
+ * An answer of the api that tells of files, as the cache keeps it: one file, the files of a folder, or what words
+ * found, a page at a time.
+ */
+export type FilesAnswer =
+  | { file: DriveFile }
+  | readonly DriveFile[]
+  | { pages: readonly { files: readonly DriveFile[] }[] };
+
+/**
+ * The first file or folder among answers that is the one looked for, or undefined when none of them tells of it.
+ * answers come in the order they are to be believed in: the latest first.
+ */
+export function fileAmong(
+  answers: readonly (FilesAnswer | undefined)[],
+  isIt: (file: DriveFile) => boolean
+): DriveFile | undefined {
+  for (const answer of answers) {
+    if (answer === undefined) continue;
+    const files: readonly DriveFile[] =
+      'file' in answer ? [answer.file] : 'pages' in answer ? answer.pages.flatMap((page) => page.files) : answer;
+    const found = files.find(isIt);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
  * The folders above a folder, from the top of the space down: each with its name and its path. They are read from
  * the path of the folder, which every answer carries; the api does not say what their ids are.
  */

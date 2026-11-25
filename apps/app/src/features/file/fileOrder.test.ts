@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { getFile } from '@pocketmice/contract/domains/file';
 import type { OutputOf } from '@pocketmice/contract/operation';
-import { foldersAbove, foldersToFind, inOrder, isWithin, placeOf } from './fileOrder.ts';
+import { fileAmong, foldersAbove, foldersToFind, inOrder, isWithin, placeOf } from './fileOrder.ts';
 
 type DriveFile = OutputOf<typeof getFile>['file'];
 
@@ -81,4 +81,34 @@ test('the folders to ask for are the ones above, but for the one right above', (
     { name: 'Reports', path: '/Reports' },
     { name: '2026', path: '/Reports/2026' }
   ]);
+});
+
+test('a file is found in whichever answer tells of it: one file, a folder, or what words found', () => {
+  const alone = { file: entry('alone.txt') };
+  const folder = [entry('Reports', 'folder'), entry('listed.txt')];
+  const found = { pages: [{ files: [entry('first.txt')] }, { files: [entry('second.txt')] }] };
+  const answers = [alone, folder, found];
+
+  for (const name of ['alone.txt', 'Reports', 'listed.txt', 'first.txt', 'second.txt']) {
+    assert.equal(fileAmong(answers, (file) => file.id === name)?.name, name);
+  }
+  assert.equal(fileAmong(answers, (file) => file.path === '/Reports')?.kind, 'folder');
+});
+
+test('of two answers that tell of a file, the earlier one in the list is believed', () => {
+  const latest = [{ ...entry('plan.txt'), description: 'as it is now' }];
+  const older = { file: { ...entry('plan.txt'), description: 'as it was' } };
+
+  assert.equal(fileAmong([latest, older], (file) => file.id === 'plan.txt')?.description, 'as it is now');
+});
+
+test('a file no answer tells of is not found, and an answer that is not there yet is passed over', () => {
+  assert.equal(
+    fileAmong([undefined, [entry('a.txt')], { pages: [] }], (file) => file.id === 'b.txt'),
+    undefined
+  );
+  assert.equal(
+    fileAmong([], () => true),
+    undefined
+  );
 });

@@ -6,18 +6,17 @@ import {
   getFileByPath,
   getFileSize,
   getFiles,
+  getMatchingFiles,
   moveFile,
   updateFile
 } from '@pocketmice/contract/domains/file';
-import { id } from '@pocketmice/contract/id';
 import type { OutputOf } from '@pocketmice/contract/operation';
 import { PAGE_SIZE_MAX } from '@pocketmice/contract/paging';
 import { queryOptions } from '@tanstack/react-query';
-import { notFound } from '@tanstack/react-router';
 import { ApiFailure, call, failureText, queryClient, readQuery, spaceChanged } from '@/lib/api';
 import { language } from '@/lib/language/language';
 import { languageTag } from '@/lib/language/languages';
-import { foldersToFind, inOrder } from './fileOrder';
+import { type FilesAnswer, fileAmong, inOrder } from './fileOrder';
 import { fileText } from './text';
 
 // What is in a space: a tree of files and folders. The page of the files shows it a folder at a time, down to what
@@ -30,31 +29,59 @@ import { fileText } from './text';
 /** A file or a folder, as the api answers one */
 export type DriveFile = OutputOf<typeof getFile>['file'];
 
+/** The reads whose answers tell of files and folders that are in a space, and not in its trash */
+const TELLING: readonly string[] = [getFile.name, getFileByPath.name, getFiles.name, getMatchingFiles.name];
+
 /**
- * What the page of the files needs before it is shown: the file or the folder its address says is picked, and
- * which folders are above it. That is what the page is laid out by; each column, and the pane, then asks for what
- * it shows and says so while it waits. So a pick shows after one answer or two, and not after one for every step
- * of the way down.
- * The api names a file by its id and its path: the folder right above is in the file itself, and the ones further
- * up are asked for by their paths (the page reads the same answers, see FilesPage).
- * The file is asked for again when what the cache holds of it was marked stale: a path from before a folder above
- * it was renamed leads nowhere.
- * fileId is the one in the address, which anyone can write: what is no id, and an id the space has nothing for,
- * is "not found", and the route says so in place of the page.
+ * A file or a folder of a space as the cache last heard of it, whichever read told of it: the file read alone,
+ * the folder it is in, or what words found. Undefined when none has. Of several that tell of it, the latest
+ * answer is believed.
  */
-export async function loadPicked(spaceId: string, fileId: string): Promise<void> {
-  if (!id.safeParse(fileId).success) throw notFound();
-  try {
-    const { file } = await queryClient.fetchQuery(readQuery(getFile, { spaceId, fileId }));
-    await Promise.all(
-      foldersToFind(file.path).map(({ path }) =>
-        queryClient.ensureQueryData(readQuery(getFileByPath, { spaceId, path }))
-      )
-    );
-  } catch (error) {
-    if (error instanceof ApiFailure && error.code === 'NOT_FOUND') throw notFound();
-    throw error;
-  }
+function heardOf(spaceId: string, isIt: (file: DriveFile) => boolean): DriveFile | undefined {
+  const told = queryClient
+    .getQueryCache()
+    .findAll({
+      predicate: ({ queryKey }) =>
+        TELLING.includes(String(queryKey[0])) && (queryKey[1] as { spaceId?: unknown } | undefined)?.spaceId === spaceId
+    })
+    .sort((one, other) => other.state.dataUpdatedAt - one.state.dataUpdatedAt);
+  return fileAmong(
+    told.map((query) => query.state.data as FilesAnswer | undefined),
+    isIt
+  );
+}
+
+/**
+ * One file or folder of a space, by its id: what the page of the files reads for what is picked.
+ * Until the api has answered, it is as the cache last heard of it. A row that is clicked is a file the page
+ * already knows all about, from the folder it was listed in: the page shows it at once, picked, and the api says
+ * a moment later what it is now. What nothing has told of yet (an address opened from outside) has no answer
+ * until the api gives one, and the page says that it waits.
+ */
+export function fileQuery(spaceId: string, fileId: string) {
+  return queryOptions({
+    ...readQuery(getFile, { spaceId, fileId }),
+    placeholderData: () => {
+      const file = heardOf(spaceId, (each) => each.id === fileId);
+      return file && { file };
+    }
+  });
+}
+
+/**
+ * The folder at a path of a space: how the page of the files learns which folders are above what is picked,
+ * beyond the one right above it. Until the api has answered, it is as the cache last heard of it, like fileQuery:
+ * a folder that is open as a column stays open, and is not a column that waits, when something further down is
+ * picked.
+ */
+export function folderAtQuery(spaceId: string, path: string) {
+  return queryOptions({
+    ...readQuery(getFileByPath, { spaceId, path }),
+    placeholderData: () => {
+      const file = heardOf(spaceId, (each) => each.path === path);
+      return file && { file };
+    }
+  });
 }
 
 /**
