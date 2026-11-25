@@ -373,7 +373,9 @@
   }
   /* Nothing on a page is picked up by dragging across it or by a double click: what is there is pressed, not
      read off. What a person may want to take away says so itself with select-text: what someone wrote (a
-     message, a description), the content of a file, code. What is typed into stays as the browser has it. */
+     message, a description, the name at the top of a pane), the content of a file, code, and whatever a button
+     copies (a key, a link): where the browser keeps the clipboard from the page, selecting it is the only way to
+     copy it. What is typed into stays as the browser has it. */
   body {
     @apply bg-background text-foreground select-none;
   }

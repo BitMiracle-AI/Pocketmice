@@ -85,7 +85,8 @@ export function InviteLinks({ spaceId }: { spaceId: string }) {
                 </ItemMedia>
                 <ItemContent className="min-w-0">
                   <ItemTitle className="w-full">
-                    <code className="truncate font-mono text-xs font-normal">{inviteLink(invite.id)}</code>
+                    {/* It can be selected: that is how it is copied when the browser keeps the clipboard from the page */}
+                    <code className="truncate font-mono text-xs font-normal select-text">{inviteLink(invite.id)}</code>
                   </ItemTitle>
                   <ItemDescription>
                     {inviteText.joinsAs[invite.role]}

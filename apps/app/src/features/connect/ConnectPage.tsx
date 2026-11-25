@@ -146,7 +146,8 @@ export function ConnectPage() {
           <CardContent>
             <Item variant="muted" size="sm">
               <ItemContent>
-                <ItemTitle>{connectText.tryPrompt}</ItemTitle>
+                {/* It can be selected: that is how it is copied when the browser keeps the clipboard from the page */}
+                <ItemTitle className="select-text">{connectText.tryPrompt}</ItemTitle>
               </ItemContent>
               <ItemActions>
                 <CopyButton

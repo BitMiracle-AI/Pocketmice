@@ -176,7 +176,8 @@ function KeyRow({
           <Badge variant="secondary">{apiKeyText.permissions[apiKey.permission]}</Badge>
         </ItemTitle>
         <ItemDescription className="line-clamp-1 flex items-baseline gap-2.5">
-          <code className={cn('truncate font-mono', shown && 'text-foreground')}>
+          {/* Shown, it can be selected: that is how it is copied when the browser keeps the clipboard from the page */}
+          <code className={cn('truncate font-mono', shown && 'text-foreground select-text')}>
             {shown ? apiKey.key : hiddenKey(apiKey.key)}
           </code>
           <span className="shrink-0">{apiKeyText.created(formatDate(apiKey.createdAt))}</span>

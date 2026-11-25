@@ -114,7 +114,7 @@ export function ConversationAbout({
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-6 p-6">
           <div className="flex flex-col gap-1.5">
-            <h2 className="text-base font-medium break-words">{conversation.title}</h2>
+            <h2 className="text-base font-medium break-words select-text">{conversation.title}</h2>
             <p className="text-sm text-muted-foreground">{conversationText.membersCount(members.length)}</p>
           </div>
           <div>

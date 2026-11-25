@@ -111,7 +111,7 @@ function Heading({ file, onDescribe }: { file: DriveFile; onDescribe?: () => voi
     <div className="flex items-start gap-3">
       <FileIcon name={file.name} folder={file.kind === 'folder'} className="size-7" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <h2 className="text-xl leading-7 font-semibold break-words">{file.name}</h2>
+        <h2 className="text-xl leading-7 font-semibold break-words select-text">{file.name}</h2>
         {file.description && (
           <p className="text-sm break-words whitespace-pre-line text-muted-foreground select-text">
             {file.description}
@@ -388,7 +388,7 @@ function SpaceDetails() {
       <div className="flex items-start gap-3">
         <SpaceMark id={space.id} name={space.name} />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <h2 className="text-xl leading-9 font-semibold break-words">{space.name}</h2>
+          <h2 className="text-xl leading-9 font-semibold break-words select-text">{space.name}</h2>
           <p className="text-sm text-muted-foreground">{fileText.pickHint}</p>
         </div>
       </div>
