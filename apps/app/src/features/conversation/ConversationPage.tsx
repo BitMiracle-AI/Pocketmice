@@ -1,7 +1,7 @@
 import { ArrowLeft01Icon, SidebarRightIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { keepPreviousData, useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { PersonAvatar } from '@/components/PersonAvatar';
 import { SidePane } from '@/components/SidePane';
@@ -24,12 +24,13 @@ import { Composer } from './Composer';
 import { ConversationAbout } from './ConversationAbout';
 import { ConversationFilePane } from './ConversationFilePane';
 import { ConversationGonePage } from './ConversationGonePage';
+import { BackToList, ConversationWaiting } from './ConversationWaiting';
 import {
   addToConversation,
   type Conversation,
   type ConversationMember,
-  conversationQuery,
-  messagesQuery
+  messagesQuery,
+  useOpening
 } from './conversations';
 import { MessageStream } from './MessageStream';
 import { earlierStart, firstUnreadNumber, windowStart } from './messageLayout';
@@ -53,10 +54,11 @@ const AVATARS_SHOWN = 3;
 type Pane = 'file' | 'about' | null;
 
 /**
- * The page. Its route has made sure the person can read the conversation. fileId is the file the address says is
- * shown beside it, or null; about says the address asks for what the conversation is.
- * A conversation can be gone for the person while the page is open: it was deleted, or they were taken out of it.
- * The page hears of it, asks, and says so in place of the conversation.
+ * The page. It is there as soon as the person picks a conversation, and says that it waits until the conversation
+ * can be shown as it is now (useOpening). fileId is the file the address says is shown beside it, or null; about
+ * says the address asks for what the conversation is.
+ * A conversation can be gone for the person, when the page opens or while it is open: it never was, it was
+ * deleted, or they were taken out of it. The page asks, hears of it, and says so in place of the conversation.
  */
 export function ConversationPage({
   conversationId,
@@ -68,13 +70,14 @@ export function ConversationPage({
   about: boolean;
 }) {
   const space = useCurrentSpace();
-  const found = useSuspenseQuery(conversationQuery(space.id, conversationId));
+  const opening = useOpening(space.id, conversationId);
   // The person is leaving or deleting it themselves, and the api has not answered yet: the page goes elsewhere when
   // it has, and does not say on the way that the conversation is gone
   const [going, setGoing] = useState(false);
 
-  if (found.error?.code === 'UNKNOWN_CONVERSATION' && !going) return <ConversationGonePage />;
-  const { conversation, members } = found.data;
+  if (opening.gone && !going) return <ConversationGonePage />;
+  if (opening.shown === null) return <ConversationWaiting failed={opening.failed} />;
+  const { conversation, members } = opening.shown;
   // What the page keeps of a conversation (how far back it shows, where the unread began) starts over with another
   return (
     <OpenConversation
@@ -165,24 +168,7 @@ function OpenConversation({
         <MessageScrollerProvider autoScroll>
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
             {/* Where the list has no room next to the conversation, this is the way back to it */}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="@3xl:hidden"
-              aria-label={conversationText.backToList}
-              title={conversationText.backToList}
-              nativeButton={false}
-              render={
-                // The list is where every conversation begins, and is not this page: the link does not say it is
-                <Link
-                  to="/spaces/$spaceId/conversations"
-                  params={{ spaceId: space.id }}
-                  activeOptions={{ exact: true }}
-                />
-              }
-            >
-              <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} />
-            </Button>
+            <BackToList />
             {/* The page is the conversations of the space, which the bar of the list says: this is one of them */}
             <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">{conversation.title}</h2>
             {/* Who is in it at a glance: read out as how many they are, and not as their letters */}

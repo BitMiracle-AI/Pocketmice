@@ -17,8 +17,8 @@ import {
 import { id } from '@pocketmice/contract/id';
 import type { OutputOf } from '@pocketmice/contract/operation';
 import { PAGE_SIZE_MAX } from '@pocketmice/contract/paging';
-import { queryOptions, useInfiniteQuery } from '@tanstack/react-query';
-import { notFound } from '@tanstack/react-router';
+import { queryOptions, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ApiFailure, call, failureText, queryClient, readPages, readQuery } from '@/lib/api';
 import { unreadCount, windowStart } from './messageLayout';
 import { conversationText } from './text';
@@ -91,22 +91,61 @@ export function messagesQuery(spaceId: string, conversationId: string, afterNumb
   });
 }
 
+/** How far the opening of a conversation has come, for the page that shows it */
+export interface Opening {
+  /** The conversation and its members, from the moment the page may show them, and null until then */
+  shown: { conversation: Conversation; members: readonly ConversationMember[] } | null;
+  /** The person can read no such conversation */
+  gone: boolean;
+  /** What the opening waits for was asked and not answered: what went wrong, and how it is asked again */
+  failed: { error: unknown; retry: () => void } | null;
+}
+
 /**
- * What the page of a conversation needs before it is shown: the conversation, and the messages it opens with.
+ * Opens the conversation conversationId of a space for its page: reads the conversation, and then the messages
+ * the page opens with.
+ * The page is there at once, and says that it waits. It shows the conversation from the moment both answers are
+ * what is true now, and not before: as it opens it decides, from what it is handed then, where what the person has
+ * not read begins and where the page stands. So what the cache holds is used while it is fresh, and waited for
+ * when it was marked stale or is old: a conversation shown a moment ago opens at once, and one in which something
+ * happened since opens when the api has said what.
+ * Once open it stays open: what is read again while the person looks on is handed on as it comes.
  * conversationId is the one in the address, which anyone can write: what is no id, and an id the person can read
- * no conversation for, is "not found", and the route says so in place of the page.
- * What the cache holds is used while it is fresh, and asked for again when it was marked stale: the page opens
- * where the conversation ends now, and marks as new what the person has not read, so it opens with what is true.
+ * no conversation for, is gone.
  */
-export async function loadConversation(spaceId: string, conversationId: string): Promise<void> {
-  if (!id.safeParse(conversationId).success) throw notFound();
-  try {
-    const { conversation } = await queryClient.fetchQuery(conversationQuery(spaceId, conversationId));
-    await queryClient.fetchQuery(messagesQuery(spaceId, conversationId, windowStart(conversation.lastMessageNumber)));
-  } catch (error) {
-    if (error instanceof ApiFailure && error.code === 'UNKNOWN_CONVERSATION') throw notFound();
-    throw error;
-  }
+export function useOpening(spaceId: string, conversationId: string): Opening {
+  const valid = id.safeParse(conversationId).success;
+  const found = useQuery({ ...conversationQuery(spaceId, conversationId), enabled: valid });
+  // Which conversation was opened. The page stays while the address goes from one conversation to another, and
+  // the next one is opened anew
+  const [openedId, setOpenedId] = useState<string | null>(null);
+  const wasOpen = openedId === conversationId;
+  const told = found.data !== undefined && !found.isStale;
+  // Where the messages begin is known once the conversation has said where it ends now. The page reads them
+  // itself from then on (the same answer, under the same name)
+  const first = useQuery({
+    ...messagesQuery(spaceId, conversationId, windowStart(found.data?.conversation.lastMessageNumber ?? 0)),
+    enabled: told && !wasOpen
+  });
+  const open = wasOpen || (told && first.data !== undefined && !first.isStale);
+  if (open && !wasOpen) setOpenedId(conversationId);
+
+  // A read that failed with an earlier answer in hand keeps that answer and stays failed while it is asked again
+  const failing = open ? [] : [found, first].filter((read) => read.isError && !read.isFetching);
+  const failure = failing[0];
+  const unknown = (code: string | undefined) => code === 'UNKNOWN_CONVERSATION';
+  return {
+    shown: open && found.data !== undefined ? found.data : null,
+    gone: !valid || unknown(found.error?.code) || (!open && unknown(first.error?.code)),
+    failed: failure
+      ? {
+          error: failure.error,
+          retry: () => {
+            for (const read of failing) void read.refetch();
+          }
+        }
+      : null
+  };
 }
 
 /** The reads that list conversations */
