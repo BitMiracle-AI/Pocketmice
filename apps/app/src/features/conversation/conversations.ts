@@ -109,17 +109,18 @@ export interface Opening {
  * not read begins and where the page stands. So what the cache holds is used while it is fresh, and waited for
  * when it was marked stale or is old: a conversation shown a moment ago opens at once, and one in which something
  * happened since opens when the api has said what.
- * Once open it stays open: what is read again while the person looks on is handed on as it comes.
+ * Once open it stays open for as long as the address names it: what is read again while the person looks on is
+ * handed on as it comes.
  * conversationId is the one in the address, which anyone can write: what is no id, and an id the person can read
  * no conversation for, is gone.
  */
 export function useOpening(spaceId: string, conversationId: string): Opening {
   const valid = id.safeParse(conversationId).success;
   const found = useQuery({ ...conversationQuery(spaceId, conversationId), enabled: valid });
-  // Which conversation was opened. The page stays while the address goes from one conversation to another, and
-  // the next one is opened anew
-  const [openedId, setOpenedId] = useState<string | null>(null);
-  const wasOpen = openedId === conversationId;
+  // The conversation that is open, and null while the one in the address is being opened. The page stays while
+  // the address goes from one conversation to another: each is opened anew, also one that was open a moment ago
+  const [openId, setOpenId] = useState<string | null>(null);
+  const wasOpen = openId === conversationId;
   const told = found.data !== undefined && !found.isStale;
   // Where the messages begin is known once the conversation has said where it ends now. The page reads them
   // itself from then on (the same answer, under the same name)
@@ -128,23 +129,18 @@ export function useOpening(spaceId: string, conversationId: string): Opening {
     enabled: told && !wasOpen
   });
   const open = wasOpen || (told && first.data !== undefined && !first.isStale);
-  if (open && !wasOpen) setOpenedId(conversationId);
+  const nowOpen = open ? conversationId : null;
+  if (nowOpen !== openId) setOpenId(nowOpen);
 
-  // A read that failed with an earlier answer in hand keeps that answer and stays failed while it is asked again
-  const failing = open ? [] : [found, first].filter((read) => read.isError && !read.isFetching);
-  const failure = failing[0];
+  // One answer is waited for at a time: the conversation, and then its messages. A read that failed with an
+  // earlier answer in hand keeps that answer and stays failed while it is asked again
+  const waited = told ? first : found;
   const unknown = (code: string | undefined) => code === 'UNKNOWN_CONVERSATION';
   return {
     shown: open && found.data !== undefined ? found.data : null,
-    gone: !valid || unknown(found.error?.code) || (!open && unknown(first.error?.code)),
-    failed: failure
-      ? {
-          error: failure.error,
-          retry: () => {
-            for (const read of failing) void read.refetch();
-          }
-        }
-      : null
+    gone: !valid || unknown(found.error?.code) || (!open && unknown(waited.error?.code)),
+    failed:
+      !open && waited.isError && !waited.isFetching ? { error: waited.error, retry: () => void waited.refetch() } : null
   };
 }
 
